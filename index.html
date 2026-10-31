@@ -2902,6 +2902,8 @@
       const step = index % 16, bar = Math.floor(index / 16), phrase = Math.floor(bar / 8), barInPhrase = bar % 8, plan = track.arrangement;
       const name = plan[phrase < plan.length ? phrase : 1 + (phrase - 1) % (plan.length - 1)];
       const section = track.sections[name], chord = track.progression[barInPhrase >> 1], fill = barInPhrase === 7, heat = musicIntensity;
+      // From the second pass through the arrangement on, the hook is doubled an octave down and the drums add tom fills.
+      const reprise = phrase >= plan.length - 2;
       if (step % 2) at += (track.swing || 0) * track.step;
       const has = (list, n = step) => list && list.includes(n);
       if (step === 0 && barInPhrase === 0 && phrase > 0 && name !== 'breakdown') crash(at, 0.4);
@@ -2916,12 +2918,16 @@
       if (has(section.open)) hat(at, 0.13, true);
       else if (has(section.hats) || (heat > 0.45 && step % 2 === 1)) hat(at, step % 4 === 2 ? 0.17 : 0.1, false);
       if (has(section.metal) && (bar % 2 === 0 || step > 8)) metal(at, 0.3, bar % 2 ? 1.12 : 1);
+      if (reprise && fill && kicks.length > 2 && step >= 8 && step % 2 === 0) tom(at, 0.4, 1.4 - (step - 8) * 0.08);
       if (has(section.stab)) stab(at, chord.pad.slice(1).map(n => midi(n + 12)), 0.05, track.step * 1.6);
       const note = BASS[section.bass][step];
       if (note) bass(at, midi(chord.root + note[0]), note[1] * track.step * 0.92, note[2] ? 0.34 : 0.25, (note[2] ? 1500 : 850) + heat * 900);
       if (section.pad && section.gate) { if (step % 2 === 0) stab(at, chord.pad.map(midi), 0.035, track.step * 1.4); }
       else if (section.pad && step === 0 && barInPhrase % 2 === 0) pad(at, chord.pad.map(midi), track.step * 32);
-      if (section.hook) { const melody = track.melody.get(barInPhrase * 16 + step); if (melody) lead(at, midi(melody[0]), melody[1] * track.step, 0.15); }
+      if (section.hook) {
+        const melody = track.melody.get(barInPhrase * 16 + step);
+        if (melody) { lead(at, midi(melody[0]), melody[1] * track.step, 0.15); if (reprise) lead(at, midi(melody[0] - 12), melody[1] * track.step, 0.07); }
+      }
       else if ((section.arp || heat > 0.6) && !(section.arp === 'soft' && step % 2)) pluck(at, midi(chord.arp[ARP_ORDER[step]] + 12), section.arp === 'soft' ? 0.05 : 0.08);
       if (section.riser && barInPhrase === 6 && step === 0) riser(at, track.step * 32);
     }
@@ -2984,7 +2990,11 @@
     const sectorList = document.getElementById('sectorList'), arsenalList = document.getElementById('arsenalList'), difficultyRow = document.getElementById('difficultyRow'), menuNote = document.getElementById('menuNote');
     let menuOpen = false, menuOpenedAt = 0, started = false, sectorTime = 0, briefTimer = 0;
     const WARP_TIME = 2.4;
+    // A run starts whenever a sector is started from the menu or a new game begins; warps add to its totals.
+    const run = { from: 0, time: 0, kills: 0 };
+    const startRun = (index) => Object.assign(run, { from: index, time: 0, kills: 0 });
     function startSector(index) {
+      startRun(index);
       const kit = save.sectors[index] || { weapon: 1, missiles: 0 };
       weaponLevel = clamp(kit.weapon, 1, WEAPONS.length); missileAmmo = kit.missiles; launcherLevel = clamp(kit.launcher || 1, 1, LAUNCHERS.length);
       loadLevel(index, 100);
@@ -3049,7 +3059,7 @@
       if (!enter) return;
       Promise.resolve(enter.call(root)).then(() => screen.orientation?.lock?.('landscape')).catch(() => {});
     });
-    document.getElementById('newGameButton').addEventListener('click', () => { weaponLevel = 1; missileAmmo = 0; launcherLevel = 1; loadLevel(0, 100); closeMenu(); });
+    document.getElementById('newGameButton').addEventListener('click', () => { weaponLevel = 1; missileAmmo = 0; launcherLevel = 1; startRun(0); loadLevel(0, 100); closeMenu(); });
     // Checkpoints: opening a gate or destroying a boss records how far the sector has got. Spawns are seeded per
     // sector, so a restart reloads the sector and replays that progress: the same enemies stay dead, barrels and
     // pickups stay gone and gates stay open, with the ship back where it was and the loadout it had then.
@@ -3064,7 +3074,7 @@
     }
     function resetGame(fromStart) {
       const cp = checkpoint, elapsed = sectorTime;
-      if (finished) { weaponLevel = 1; missileAmmo = 0; launcherLevel = 1; loadLevel(0, 100); return; }
+      if (finished) { weaponLevel = 1; missileAmmo = 0; launcherLevel = 1; startRun(0); loadLevel(0, 100); return; }
       weaponLevel = levelWeapon; missileAmmo = levelMissiles; launcherLevel = levelLauncher;
       loadLevel(levelIndex, fromStart || !cp ? 100 : cp.health);
       if (fromStart || !cp || cp.hostiles !== hostileTotal) return;
@@ -3719,7 +3729,10 @@
     }
     function finishGame() {
       finished = true; ship.speed = 0;
-      gameOverText.innerHTML = `ALL SECTORS CLEAR<small>${touchMode ? 'TAP FIRE' : 'PRESS R'} TO FLY AGAIN FROM SECTOR 1</small>`; gameOverText.classList.add('show');
+      const clock = `${Math.floor(run.time / 3600)}:${String(Math.floor(run.time / 60) % 60).padStart(2, '0')}:${String(Math.floor(run.time % 60)).padStart(2, '0')}`;
+      gameOverText.innerHTML = `ALL SECTORS CLEAR<small>RUN FROM SECTOR ${run.from + 1} // ${clock} // ${run.kills} HOSTILES DESTROYED</small>` +
+        `<small>${touchMode ? 'TAP FIRE' : 'PRESS R'} TO FLY AGAIN FROM SECTOR 1</small>`;
+      gameOverText.classList.add('show');
     }
     // Move an enemy by its velocity one axis at a time, bouncing off walls, floors, ceilings and girders.
     function moveEnemy(enemy, dt, pad) {
@@ -4328,7 +4341,7 @@
         const clock = `${Math.floor(sectorTime / 60)}:${String(Math.floor(sectorTime % 60)).padStart(2, '0')}`;
         const record = save.sectors[levelIndex] ||= {}, best = !record.best || sectorTime < record.best;
         if (best) { record.best = Math.round(sectorTime); writeSave(); }
-        warpTimer = WARP_TIME; playWarp();
+        warpTimer = WARP_TIME; playWarp(); run.time += sectorTime; run.kills += kills;
         notice(`SECTOR CLEAR // ${kills}/${hostileTotal} HOSTILES // ${found}/${secrets.length} SECRETS // ${clock}${best ? ' BEST' : ''}`, WARP_TIME + 0.5);
       }
     }
