@@ -1890,15 +1890,25 @@
     const down = (...names) => names.some(name => keys.has(name));
     // On-screen controls: the stick gives steering rates in -1..1; buttons are held flags.
     const touch = { steerX: 0, steerY: 0, fire: false, thrust: false, brake: false };
+    // Fingers are read through touch events, whose coordinates are reliable on phones; some phone browsers
+    // report touch pointer events at 0,0. Pointer events still work the controls with a mouse (?touch on a desktop).
+    const hasTouchEvents = 'ontouchstart' in window;
+    const usePointer = (event) => !(hasTouchEvents && event.pointerType === 'touch');
+    const findTouch = (event, id) => [...event.changedTouches].find(t => `t${t.identifier}` === id);
+    // ?debugtouch shows the raw coordinates each input path reports, to diagnose odd devices.
+    const debugTouch = /[?&]debugtouch\b/.test(location.search);
+    let lastPointer = 'NONE';
+    if (debugTouch) window.addEventListener('pointerdown', (event) => { lastPointer = `${event.pointerType} ${Math.round(event.clientX)},${Math.round(event.clientY)}`; }, true);
+    const showTouch = (label, x, y) => { if (debugTouch) notice(`${label} ${Math.round(x)},${Math.round(y)} // POINTER ${lastPointer}`, 4); };
     // A floating stick: touching anywhere in the zone centres the stick under the thumb, and the
     // direction is measured from that first touch, so where the thumb lands never biases it.
     let resetStick = () => {};
     function bindStick(zone, stick, onMove) {
       const knob = stick.querySelector('.knob');
-      let pointer = null, originX = 0, originY = 0;
-      const move = (event) => {
+      let active = null, originX = 0, originY = 0;
+      const move = (clientX, clientY) => {
         const radius = stick.offsetWidth * 0.42;
-        let x = (event.clientX - originX) / radius, y = (event.clientY - originY) / radius;
+        let x = (clientX - originX) / radius, y = (clientY - originY) / radius;
         const reach = Math.hypot(x, y);
         if (reach > 1) { x /= reach; y /= reach; }
         knob.style.left = `${50 + x * 32}%`; knob.style.top = `${50 + y * 32}%`;
@@ -1906,35 +1916,56 @@
         const shape = (v) => Math.sign(v) * Math.max(0, (Math.abs(v) - 0.2) / 0.8) ** 1.6;
         onMove(shape(x), shape(y));
       };
-      zone.addEventListener('pointerdown', (event) => {
-        if (pointer !== null) return;
-        event.preventDefault(); pointer = event.pointerId; ensureAudio();
-        try { zone.setPointerCapture(pointer); } catch { /* synthetic pointer */ }
-        originX = event.clientX; originY = event.clientY;
+      const start = (id, clientX, clientY) => {
+        if (active !== null) return false;
+        active = id; originX = clientX; originY = clientY; ensureAudio();
         stick.style.left = `${originX - stick.offsetWidth / 2}px`; stick.style.top = `${originY - stick.offsetHeight / 2}px`; stick.style.bottom = 'auto';
         stick.classList.add('active');
-        move(event);
-      });
-      zone.addEventListener('pointermove', (event) => { if (event.pointerId === pointer) move(event); });
+        move(clientX, clientY); showTouch('TOUCH', clientX, clientY);
+        return true;
+      };
       resetStick = () => {
-        pointer = null; stick.classList.remove('active');
+        active = null; stick.classList.remove('active');
         stick.style.left = stick.style.top = stick.style.bottom = '';
         knob.style.left = '50%'; knob.style.top = '50%'; onMove(0, 0);
       };
-      const release = (event) => { if (event.pointerId === pointer) resetStick(); };
+      zone.addEventListener('touchstart', (event) => {
+        event.preventDefault();
+        const finger = event.changedTouches[0];
+        start(`t${finger.identifier}`, finger.clientX, finger.clientY);
+      }, { passive: false });
+      zone.addEventListener('touchmove', (event) => {
+        event.preventDefault();
+        const finger = findTouch(event, active);
+        if (finger) { move(finger.clientX, finger.clientY); showTouch('DRAG', finger.clientX, finger.clientY); }
+      }, { passive: false });
+      const lift = (event) => { if (findTouch(event, active)) resetStick(); };
+      zone.addEventListener('touchend', lift); zone.addEventListener('touchcancel', lift);
+      zone.addEventListener('pointerdown', (event) => {
+        if (!usePointer(event)) return;
+        event.preventDefault();
+        if (start(`p${event.pointerId}`, event.clientX, event.clientY)) try { zone.setPointerCapture(event.pointerId); } catch { /* synthetic pointer */ }
+      });
+      zone.addEventListener('pointermove', (event) => { if (`p${event.pointerId}` === active) move(event.clientX, event.clientY); });
+      const release = (event) => { if (`p${event.pointerId}` === active) resetStick(); };
       zone.addEventListener('pointerup', release); zone.addEventListener('pointercancel', release);
     }
     function bindHold(id, set) {
       const button = document.getElementById(id);
       const change = (on) => { button.classList.toggle('held', on); set(on); };
+      button.addEventListener('touchstart', (event) => { event.preventDefault(); ensureAudio(); change(true); }, { passive: false });
+      for (const type of ['touchend', 'touchcancel']) button.addEventListener(type, (event) => { if (!event.targetTouches.length) change(false); });
       button.addEventListener('pointerdown', (event) => {
+        if (!usePointer(event)) return;
         event.preventDefault(); ensureAudio(); change(true);
         try { button.setPointerCapture(event.pointerId); } catch { /* synthetic pointer */ }
       });
-      for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) button.addEventListener(type, () => change(false));
+      for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) button.addEventListener(type, (event) => { if (usePointer(event)) change(false); });
     }
     function bindTap(id, action) {
-      document.getElementById(id).addEventListener('pointerdown', (event) => { event.preventDefault(); ensureAudio(); action(); });
+      const button = document.getElementById(id);
+      button.addEventListener('touchstart', (event) => { event.preventDefault(); ensureAudio(); action(); }, { passive: false });
+      button.addEventListener('pointerdown', (event) => { if (!usePointer(event)) return; event.preventDefault(); ensureAudio(); action(); });
     }
     const releaseTouch = () => { Object.assign(touch, { steerX: 0, steerY: 0, fire: false, thrust: false, brake: false }); resetStick();
       for (const held of document.querySelectorAll('.tbutton.held')) held.classList.remove('held'); };
