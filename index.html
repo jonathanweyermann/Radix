@@ -572,7 +572,7 @@
           [-40, 100, -32, 108, COLUMN], [32, 100, 40, 108, COLUMN], [-40, 132, -32, 140, COLUMN], [32, 132, 40, 140, COLUMN],
           [-168, 120, -160, 128, COLUMN], [-144, 168, -136, 176, COLUMN],
           [-12, 328, 12, 352, REACTOR], [-72, 300, -64, 308, COLUMN], [64, 300, 72, 308, COLUMN], [-72, 372, -64, 380, COLUMN], [64, 372, 72, 380, COLUMN],
-          [24, 500, 32, 508, COLUMN], [44, 530, 52, 538, COLUMN],
+          [24, 500, 32, 508, COLUMN], [44, 528, 52, 536, COLUMN],
           [-24, 640, -16, 648, COLUMN], [16, 640, 24, 648, COLUMN],
         ],
         girders: [[-56, 2, 120, 56, 5, 124], [-104, 6, 312, 104, 9, 316], [-104, 14, 364, 104, 17, 368], [-72, 16, 520, 72, 19, 524]],
@@ -916,7 +916,42 @@
         ],
       },
       {
-        name: 'VOID-5', title: 'HEART OF THE VOID', music: 'void', top: 81, start: [0, 12, 0], yaw: 0, exit: [0, -4, 600, true], tint: [1.0, 0.9, 1.1],
+        name: 'VOID-5', title: 'ASH MESAS', music: 'mesa', top: 57, start: [0, -4, 0], yaw: 0, exit: [0, -4, 680, true], tint: [1.05, 0.95, 0.9],
+        sky: { zenith: [0.08, 0.03, 0.03], fog: [0.3, 0.17, 0.13], sun: [1.0, 0.55, 0.35], sunDir: [0.3, 0.35, 0.85] },
+        walls: { lower: [['wallBasalt', 0.6], ['wallRust', 0.4]], upper: [['wallBasalt', 0.7], ['wallRust', 0.3]] },
+        brief: 'DESTROY THE THREE DATA CORES ACROSS THE MESAS TO OPEN THE HANGAR',
+        rooms: [
+          [-24, -32, 24, 24, SLAG],
+          [-200, 24, 200, 640, SLAG],
+          [-200, 180, 200, 196, LAVA, -19], [-120, 368, 200, 384, LAVA, -19],
+          [-180, 60, -120, 140, SLAG, 13, SKY, 'wallBasalt'], [-160, 80, -136, 116, SLAG, 25, SKY, 'wallBasalt'],
+          [-60, 80, 20, 148, SLAG, 25, SKY, 'wallBasalt'], [80, 40, 168, 108, SLAG, 5, SKY, 'wallBasalt'],
+          [120, 160, 200, 260, SLAG, 33, SKY, 'wallBasalt'], [136, 180, 176, 228, SLAG, 45, SKY, 'wallBasalt'],
+          [-200, 220, -112, 328, SLAG, 21, SKY, 'wallBasalt'], [-40, 260, 60, 340, SLAG, 9, SKY, 'wallBasalt'],
+          [100, 332, 180, 420, SLAG, 17, SKY, 'wallBasalt'], [-168, 400, -72, 480, SLAG, 29, SKY, 'wallBasalt'],
+          [-20, 440, 68, 520, SLAG, 1, SKY, 'wallBasalt'], [112, 500, 200, 600, SLAG, 25, SKY, 'wallBasalt'], [-200, 540, -120, 620, SLAG, 9, SKY, 'wallBasalt'],
+          [-100, 200, -84, 216, VENT, BASE], [96, 280, 112, 296, VENT, BASE], [-60, 560, -44, 576, VENT, BASE],
+          [-196, 288, -164, 324, PAD, BASE, 9], [-164, 300, -112, 312, PLATE, BASE, 1],
+          [-32, 640, 32, 700, PAD, BASE, 21],
+        ],
+        blocks: [
+          [-100, 100, -92, 108, CRYSTAL], [40, 208, 48, 216, CRYSTAL], [-80, 360, -72, 368, CRYSTAL], [80, 468, 88, 476, CRYSTAL], [-20, 600, -12, 608, CRYSTAL],
+          [-20, 672, -12, 680, COLUMN], [12, 672, 20, 680, COLUMN],
+        ],
+        girders: [[-200, 25, 300, 200, 28, 304], [-60, 37, 600, 120, 40, 604]],
+        gates: [[-32, 640, 32, 644, 'south', 'core'], [-116, 300, -112, 312, 'east', 'cracked']],
+        extras: { enemies: [['core', 156, 52, 205], ['core', -180, -3, 308], ['core', 25, 8, 480]] },
+        zones: [
+          { name: 'LANDING', area: [-24, -32, 24, 24], barrels: 4 },
+          { name: 'ASH BUNKER', area: [-196, 288, -164, 324], health: 1, missile: 2 },
+          { name: 'SOUTH FLATS', area: [-200, 24, 200, 200], barrels: 10, drones: 4, skimmers: 2, lancers: 2, strikers: 1, wardens: 1, health: 1, missile: 1, high: true },
+          { name: 'MID FLATS', area: [-200, 200, 200, 400], barrels: 10, drones: 3, phantoms: 2, lancers: 2, miners: 1, aegis: 1, broods: 1, health: 1, missile: 1, weapon: 1, high: true },
+          { name: 'NORTH FLATS', area: [-200, 400, 200, 640], barrels: 10, drones: 3, skimmers: 2, lancers: 2, aegis: 1, wardens: 1, strikers: 1, health: 1, missile: 1, high: true },
+          { name: 'EXIT HANGAR', area: [-32, 640, 32, 700], barrels: 4, wardens: 1 },
+        ],
+      },
+      {
+        name: 'VOID-6', title: 'HEART OF THE VOID', music: 'void', top: 81, start: [0, 12, 0], yaw: 0, exit: [0, -4, 600, true], tint: [1.0, 0.9, 1.1],
         brief: 'THE VOID HERALD WAITS BEYOND THE NULL CORRIDOR',
         sky: { zenith: [0.05, 0.0, 0.08], fog: [0.2, 0.08, 0.24], sun: [0.9, 0.4, 0.9], sunDir: [-0.3, 0.5, 0.7] },
         walls: { lower: [['wallVoid', 0.7], ['wallComputer', 0.3]], upper: [['wallVoid', 0.8], ['wallSign', 0.2]] },
@@ -977,6 +1012,7 @@
       'CRYSTAL CANYON': [[-0.5, 0.4, 0.77], [0.4, 0.55, 0.7], [0.85, 0.95, 1.0], 0.28],
       'DRIFT FOUNDRY': [[0.55, 0.3, 0.78], [0.5, 0.12, 0.06], [1.0, 0.5, 0.22], 0.32],
       'MIRROR ARCHIVE': [[-0.45, 0.6, 0.66], [0.18, 0.4, 0.45], [0.55, 0.9, 0.9], 0.14],
+      'ASH MESAS': [[-0.3, 0.3, 0.9], [0.5, 0.2, 0.08], [0.95, 0.6, 0.3], 0.26],
       'HEART OF THE VOID': [[0.0, 0.32, 0.95], [0.4, 0.08, 0.36], [0.95, 0.4, 0.85], 0.38],
     };
     for (const def of LEVELS) {
@@ -2751,6 +2787,9 @@
       archive: { bpm: 108, swing: 0.06, kit: 'synthwave', lead: 'bell', pad: 'glass', arp: 'triangle', chords: [[36, 'm'], [44], [39], [34]],
         hook: ['G5.4 Eb5.4 C5.4 D5.4', 'Eb5.8 r.4 G4.4', 'Ab5.4 Eb5.4 C5.4 Eb5.4', 'G5.8 r.8',
           'Bb5.4 G5.4 Eb5.4 G5.4', 'F5.8 r.4 Eb5.4', 'D5.4 F5.4 Bb5.4 D6.4', 'C6.8 Bb5.8'] },
+      mesa: { bpm: 100, swing: 0.1, kit: 'halftime', lead: 'square', pad: 'warm', chords: [[40], [41], [38, 'm'], [40]],
+        hook: ['E5.4 F5.2 G#5.2 B5.4 A5.4', 'G#5.4 F5.4 E5.8', 'F5.4 A5.2 C6.2 B5.4 A5.4', 'G#5.8 F5.8',
+          'D5.4 F5.2 A5.2 D6.4 C6.4', 'B5.4 A5.4 F5.8', 'E5.4 G#5.2 B5.2 E6.4 D6.4', 'C6.4 B5.4 G#5.8'] },
       menu: { bpm: 76, kit: 'ambient', lead: 'bell', pad: 'glass', arp: 'sine', arrangement: ['intro', 'drive', 'breakdown', 'drive'], chords: [[38, 'm'], [34], [41], [36]],
         hook: ['A5.4 F5.4 D5.4 E5.4', 'F5.12 r.4', 'D6.4 Bb5.4 F5.4 Bb5.4', 'A5.12 r.4', 'C6.4 A5.4 F5.4 A5.4', 'G5.8 F5.8', 'E5.4 G5.4 C6.4 E6.4', 'D6.16'] },
       boss: { bpm: 150, kit: 'foundry', lead: 'saw', pad: 'dark', arrangement: ['drive', 'assault', 'assault', 'breakdown', 'drive', 'assault'], chords: [[38, 'm'], [34], [36], [33]],
@@ -3627,7 +3666,7 @@
         explosions.push({ position: enemy.position.slice(), life: 0.65, scale: 1.2 });
         sparks(enemy.position, 30, [0.4, 1.0, 0.9], 20); playExplosionSound();
         if (left) registerHit(`DATA CORE DESTROYED // ${left} LEFT`);
-        else for (const gate of gates) if (gate.kind === 'core') openGate(gate, 'ALL DATA CORES DOWN // ARCHIVE OPEN');
+        else for (const gate of gates) if (gate.kind === 'core') openGate(gate, 'ALL DATA CORES DOWN // WAY OPEN');
         return;
       }
       if (isGuard(enemy.type)) {
