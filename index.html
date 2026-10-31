@@ -65,7 +65,9 @@
     body.touch .touch-ui { display: block; position: fixed; inset: 0; pointer-events: none; }
     body.touch #fullscreenButton, body.touch #pitchButton { display: inline-block; }
     .touch-ui > * { position: absolute; pointer-events: auto; touch-action: none; }
-    .stick { left: max(20px, env(safe-area-inset-left)); bottom: 108px; width: 132px; height: 132px; border-radius: 50%; border: 2px solid #53d8eb66; background: radial-gradient(#0b1a2433, #0b1a2488); }
+    .steer-zone { left: 0; top: 0; bottom: 0; width: 48%; }
+    .touch-ui > .stick { left: max(20px, env(safe-area-inset-left)); bottom: 108px; width: 132px; height: 132px; border-radius: 50%; border: 2px solid #53d8eb66; background: radial-gradient(#0b1a2433, #0b1a2488); pointer-events: none; opacity: .45; }
+    .touch-ui > .stick.active { opacity: 1; }
     .stick .knob { position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; margin: -27px 0 0 -27px; border-radius: 50%; border: 2px solid #9ff3ff; background: #65e9ff44; box-shadow: 0 0 14px #3be8ff66; }
     .tbutton { display: grid; place-items: center; width: 60px; height: 60px; border-radius: 50%; border: 2px solid #53d8eb88; background: #0b1a2488; color: #d7f9ff; font: 10px Consolas, "Courier New", monospace; letter-spacing: .12em; }
     .tbutton.held { background: #14394acc; border-color: #ffffff; }
@@ -130,7 +132,8 @@
     </div>
   </div>
   <div class="touch-ui" id="touchUi">
-    <div class="stick" id="steerStick" aria-label="Steer"><div class="knob"></div></div>
+    <div class="steer-zone" id="steerZone" aria-label="Steer"></div>
+    <div class="stick" id="steerStick"><div class="knob"></div></div>
     <button class="tbutton" id="fireButton">FIRE</button>
     <button class="tbutton" id="missileButton">MSL</button>
     <button class="tbutton" id="thrustButton">THRUST</button>
@@ -1887,12 +1890,15 @@
     const down = (...names) => names.some(name => keys.has(name));
     // On-screen controls: the stick gives steering rates in -1..1; buttons are held flags.
     const touch = { steerX: 0, steerY: 0, fire: false, thrust: false, brake: false };
-    function bindStick(element, onMove) {
-      const knob = element.querySelector('.knob');
-      let pointer = null;
+    // A floating stick: touching anywhere in the zone centres the stick under the thumb, and the
+    // direction is measured from that first touch, so where the thumb lands never biases it.
+    let resetStick = () => {};
+    function bindStick(zone, stick, onMove) {
+      const knob = stick.querySelector('.knob');
+      let pointer = null, originX = 0, originY = 0;
       const move = (event) => {
-        const box = element.getBoundingClientRect(), radius = box.width / 2;
-        let x = (event.clientX - box.left - radius) / radius, y = (event.clientY - box.top - radius) / radius;
+        const radius = stick.offsetWidth * 0.42;
+        let x = (event.clientX - originX) / radius, y = (event.clientY - originY) / radius;
         const reach = Math.hypot(x, y);
         if (reach > 1) { x /= reach; y /= reach; }
         knob.style.left = `${50 + x * 32}%`; knob.style.top = `${50 + y * 32}%`;
@@ -1900,17 +1906,23 @@
         const shape = (v) => Math.sign(v) * Math.max(0, (Math.abs(v) - 0.2) / 0.8) ** 1.6;
         onMove(shape(x), shape(y));
       };
-      element.addEventListener('pointerdown', (event) => {
+      zone.addEventListener('pointerdown', (event) => {
+        if (pointer !== null) return;
         event.preventDefault(); pointer = event.pointerId; ensureAudio();
-        try { element.setPointerCapture(pointer); } catch { /* synthetic pointer */ }
+        try { zone.setPointerCapture(pointer); } catch { /* synthetic pointer */ }
+        originX = event.clientX; originY = event.clientY;
+        stick.style.left = `${originX - stick.offsetWidth / 2}px`; stick.style.top = `${originY - stick.offsetHeight / 2}px`; stick.style.bottom = 'auto';
+        stick.classList.add('active');
         move(event);
       });
-      element.addEventListener('pointermove', (event) => { if (event.pointerId === pointer) move(event); });
-      const release = (event) => {
-        if (event.pointerId !== pointer) return;
-        pointer = null; knob.style.left = '50%'; knob.style.top = '50%'; onMove(0, 0);
+      zone.addEventListener('pointermove', (event) => { if (event.pointerId === pointer) move(event); });
+      resetStick = () => {
+        pointer = null; stick.classList.remove('active');
+        stick.style.left = stick.style.top = stick.style.bottom = '';
+        knob.style.left = '50%'; knob.style.top = '50%'; onMove(0, 0);
       };
-      element.addEventListener('pointerup', release); element.addEventListener('pointercancel', release);
+      const release = (event) => { if (event.pointerId === pointer) resetStick(); };
+      zone.addEventListener('pointerup', release); zone.addEventListener('pointercancel', release);
     }
     function bindHold(id, set) {
       const button = document.getElementById(id);
@@ -1924,9 +1936,9 @@
     function bindTap(id, action) {
       document.getElementById(id).addEventListener('pointerdown', (event) => { event.preventDefault(); ensureAudio(); action(); });
     }
-    const releaseTouch = () => { Object.assign(touch, { steerX: 0, steerY: 0, fire: false, thrust: false, brake: false });
+    const releaseTouch = () => { Object.assign(touch, { steerX: 0, steerY: 0, fire: false, thrust: false, brake: false }); resetStick();
       for (const held of document.querySelectorAll('.tbutton.held')) held.classList.remove('held'); };
-    bindStick(document.getElementById('steerStick'), (x, y) => { touch.steerX = x; touch.steerY = y; });
+    bindStick(document.getElementById('steerZone'), document.getElementById('steerStick'), (x, y) => { touch.steerX = x; touch.steerY = y; });
     bindHold('fireButton', (on) => { touch.fire = on; });
     bindHold('thrustButton', (on) => { touch.thrust = on; });
     bindHold('brakeButton', (on) => { touch.brake = on; });
