@@ -2691,6 +2691,8 @@
       archive: { bpm: 108, swing: 0.06, kit: 'synthwave', lead: 'bell', pad: 'glass', arp: 'triangle', chords: [[36, 'm'], [44], [39], [34]],
         hook: ['G5.4 Eb5.4 C5.4 D5.4', 'Eb5.8 r.4 G4.4', 'Ab5.4 Eb5.4 C5.4 Eb5.4', 'G5.8 r.8',
           'Bb5.4 G5.4 Eb5.4 G5.4', 'F5.8 r.4 Eb5.4', 'D5.4 F5.4 Bb5.4 D6.4', 'C6.8 Bb5.8'] },
+      menu: { bpm: 76, kit: 'ambient', lead: 'bell', pad: 'glass', arp: 'sine', arrangement: ['intro', 'drive', 'breakdown', 'drive'], chords: [[38, 'm'], [34], [41], [36]],
+        hook: ['A5.4 F5.4 D5.4 E5.4', 'F5.12 r.4', 'D6.4 Bb5.4 F5.4 Bb5.4', 'A5.12 r.4', 'C6.4 A5.4 F5.4 A5.4', 'G5.8 F5.8', 'E5.4 G5.4 C6.4 E6.4', 'D6.16'] },
       boss: { bpm: 150, kit: 'foundry', lead: 'saw', pad: 'dark', arrangement: ['drive', 'assault', 'assault', 'breakdown', 'drive', 'assault'], chords: [[38, 'm'], [34], [36], [33]],
         hook: ['D6.1 r.1 D6.1 r.1 A5.2 F5.2 D6.2 E6.2 F6.2 E6.2', 'D6.2 C6.2 A5.4 D5.8', 'D6.1 r.1 D6.1 r.1 Bb5.2 F5.2 D6.2 E6.2 F6.2 G6.2', 'F6.2 E6.2 D6.4 Bb5.8',
           'E6.1 r.1 E6.1 r.1 C6.2 G5.2 E6.2 F6.2 G6.2 F6.2', 'E6.2 D6.2 C6.4 G5.8', 'C#6.2 E6.2 A6.4 G6.2 F6.2 E6.4', 'D6.2 C#6.2 A5.4 E5.4 C#5.4'] },
@@ -2864,7 +2866,7 @@
       if (section.riser && barInPhrase === 6 && step === 0) riser(at, track.step * 32);
     }
     function scheduleMusic() {
-      if (!musicOn || paused || destroyed || !audioContext || audioContext.state !== 'running') return;
+      if (!musicOn || (paused && !menuOpen) || destroyed || !audioContext || audioContext.state !== 'running') return;
       if (musicNextTime < audioContext.currentTime) musicNextTime = audioContext.currentTime + 0.05;
       while (musicNextTime < audioContext.currentTime + 0.2) {
         playMusicStep(musicStep, musicNextTime);
@@ -2891,7 +2893,7 @@
       impactTimer = 0; hitTimer = 0; muzzleTimer = 0; fireCooldown = 0; wallCooldown = 0; warpTimer = 0;
       shots.length = 0; enemyShots.length = 0; explosions.length = 0; particles.length = 0;
       gameOverText.classList.remove('show'); pausedText.classList.remove('show');
-      bossBlast = null; resetMap(); setTrack(level.music || 'relay');
+      bossBlast = null; resetMap(); setTrack(menuOpen ? 'menu' : level.music || 'relay');
       sectorText.textContent = `${index + 1} / ${LEVELS.length}`; levelText.textContent = level.name;
       Object.assign(save.sectors[index] ||= {}, { weapon: weaponLevel, missiles: missileAmmo, launcher: launcherLevel }); save.last = index; noteArsenal();
       checkpoint = null;
@@ -2965,13 +2967,16 @@
       menuOpen = true; menuOpenedAt = performance.now(); paused = true; mouseFiring = false; keys.clear(); releaseTouch();
       pausedText.classList.remove('show');
       renderMenu(); menu.classList.add('show'); resumeButton.focus();
+      setTrack('menu');
     }
     function closeMenu() {
       menuOpen = false; started = true; paused = false; lastTime = performance.now();
-      menu.classList.remove('show'); ensureAudio();
+      menu.classList.remove('show'); ensureAudio(); setTrack(level.music || 'relay');
       try { const request = canvas.requestPointerLock(); if (request && request.catch) request.catch(() => {}); } catch { /* click the view to capture the mouse */ }
     }
     resumeButton.addEventListener('click', closeMenu);
+    // Any touch or click in the menu starts the audio, so the menu theme can play.
+    menu.addEventListener('pointerdown', () => ensureAudio());
     document.getElementById('touchNote').hidden = !touchMode;
     // Touch pitch defaults to stick-up climbs; the menu can flip it to the mouse's inverted style.
     const pitchButton = document.getElementById('pitchButton');

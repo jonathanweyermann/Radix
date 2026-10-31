@@ -102,7 +102,7 @@ All surfaces use textures painted in JavaScript at load time, with no image file
 
 ### Music
 
-Every sector has its own original track, synthesized in JavaScript, plus a boss theme that takes over during boss fights. Music starts after your first click or key press. Each track has its own tempo, key, chord loop, lead melody and drum kit:
+Every sector has its own original track, synthesized in JavaScript, plus a boss theme that takes over during boss fights and a quiet theme for the menu. Music starts after your first click or key press. Each track has its own tempo, key, chord loop, lead melody and drum kit:
 
 | Track | Sectors | Style |
 | --- | --- | --- |
@@ -122,6 +122,7 @@ Every sector has its own original track, synthesized in JavaScript, plus a boss 
 | Archive | 14 | glassy synthwave with bells, C minor, 108 BPM |
 | Void | 15 | industrial, F minor, 144 BPM |
 | Boss | boss fights | foundry drive, D minor, 150 BPM |
+| Menu | the pause menu | ambient bells, D minor, 76 BPM |
 
 Tracks cycle through intro, drive, assault and breakdown sections. The instruments include kick, snare, clap, rimshot, toms, shaker, hi-hats, metallic hits, a filtered or sub bass, pads, chord stabs, an arpeggio, bells and a lead, with reverb and echo. When hostiles are near, the music adds extra hi-hats and an arpeggio, and the bass gets brighter.
 
