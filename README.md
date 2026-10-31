@@ -16,7 +16,7 @@ The keyboard controls are W/A/S/D to strafe up, left, down, and right, Up to pit
 
 ### Sectors
 
-There are thirteen sectors. Each ends at a green warp gate; fly through it to move on to the next sector. The radar always shows the gate's bearing as a blinking green dot, pinned to the rim when the gate is out of range. Each warp repairs 25% of the hull and refills the shield, and your cannon, launcher and missiles carry over. Each sector has its own music and look, and enemies get a little tougher in every later sector. After the thirteenth sector, press R to fly again from the start.
+There are fifteen sectors. Each ends at a green warp gate; fly through it to move on to the next sector. The radar always shows the gate's bearing as a blinking green dot, pinned to the rim when the gate is out of range. Each warp repairs 25% of the hull and refills the shield, and your cannon, launcher and missiles carry over. Each sector has its own music and look, some open with a short objective, and enemies get a little tougher in every later sector. Each warp shows a results line with the hostiles you destroyed, the secrets you found and your time, and the menu keeps your best time for each sector. After the fifteenth sector, press R to fly again from the start.
 
 1. **DELTA-9 Relay Station**: a dark, enclosed computer station with walls of consoles. From the entry hall, a chained gate opens into a control hub. Routes then run east across a sludge courtyard on a narrow walkway, through a computer annex and pump hall, or west through a yard stacked with cargo containers and a hidden armory. Both routes lead to a long gallery, and a last chained gate opens onto an exit approach crossed by a slow laser grid, then the uplink court and its warp gate.
 2. **DELTA-9 Toxin Refinery**: a rusted refinery built around sludge. Walkways cross a settling basin, and chained gates lead east to a filter room and north, through a duct with a laser grid, to the refinery hall with its sludge vats. A lancer snipes from the tank yard to the west, which has its own chained gate into the hall. Two secret panels hide supply caches, and a final gate opens onto the outflow pool and its warp gate.
@@ -30,19 +30,21 @@ There are thirteen sectors. Each ends at a green warp gate; fly through it to mo
 10. **OMEGA Core Breach**: a covered drop chamber leads to an open arena of void panels around a reactor core with raised balconies, guarded by aegis, lancers and skimmers. Two bores at different heights lead to the vast crown hall, where the OMEGA Sentinel waits. The staircase to the escape deck stays sealed until it is destroyed.
 11. **VOID-1 Abyss Shaft**: you start on a ledge high above a shaft more than a hundred units deep. Ledges, a central island, girders and crystal spires fill the shaft, with a secret gallery and a chained vault off its walls. At the bottom, a chained tunnel crossed by three timed laser grids leads to a vent chimney whose updraft carries you back up to a landing, a chained walk and the exit hall.
 12. **VOID-2 Crystal Canyon**: a winding ice canyon under a bright sky, with shelves along its walls for lancers. It opens into the Needles, a field of crystal pillars below high cliffs with a secret ice cave, then a frozen stair, a chained high pass crossed by laser grids you can either time or fly over, and the carrier berth, a covered hangar where the Void Carrier waits.
-13. **VOID-3 Heart of the Void**: a laser gauntlet leads into the shattered ring, a pit of floating platforms with an updraft at its centre and wings on either side, one behind a secret panel. A second laser corridor opens into the heart chamber and the final fight with the Void Herald.
+13. **VOID-3 Drift Foundry**: a molten slot canyon leads into the atrium, a tall foundry shaft over lava with catwalk tiers at three heights, smelting columns, girders at every level and updraft vents that carry you up. A chained press gallery with laser grids runs from the top tier to the crucible, a raised molten vat with lower stores to the east and a secret high store to the west. A chained casting line climbs to the exit gantry.
+14. **VOID-4 Mirror Archive**: a three-level maze of narrow data corridors around a central well. The archive's exit stays sealed until you destroy three data cores: one in a low east vault, one in a mid-level room to the west and one in a high vault to the east. Chained gates, laser grids at the junctions, stairs between the levels, ledges around the well at four heights and a secret cache off its west ledge tie the levels together.
+15. **VOID-5 Heart of the Void**: a laser gauntlet leads into the shattered ring, a pit of floating platforms with an updraft at its centre and wings on either side, one behind a secret panel. A second laser corridor opens into the heart chamber and the final fight with the Void Herald.
 
-**Chained gates** block some routes. Each gate has two glowing padlocks chained across its face, and shooting both apart sinks the gate into the floor. On the radar, closed gates show as orange outlines. **Secret panels** look almost like the surrounding wall apart from a faint glowing seam; shoot one a few times and it slides away to reveal a hidden room with supplies. **Toxic sludge** and **molten slag** damage the ship if you fly within a few units of the surface; slag burns harder. **Water** is harmless. **Updraft vents** are glowing fans in the floor whose rising streaks push the ship upward. **Laser grids** are stacks of red beams across a passage that switch on and off on a timer and flicker just before they switch on; flying into a live beam damages the ship.
+**Chained gates** block some routes. **Core gates** stay shut until every data core in the sector (glowing teal crystals) is destroyed. Each gate has two glowing padlocks chained across its face, and shooting both apart sinks the gate into the floor. On the radar, closed gates show as orange outlines. **Secret panels** look almost like the surrounding wall apart from a faint glowing seam; shoot one a few times and it slides away to reveal a hidden room with supplies. **Toxic sludge** and **molten slag** damage the ship if you fly within a few units of the surface; slag burns harder. **Water** is harmless. **Updraft vents** are glowing fans in the floor whose rising streaks push the ship upward. **Laser grids** are stacks of red beams across a passage that switch on and off on a timer and flicker just before they switch on; flying into a live beam damages the ship.
 
 The levels are built on a grid of 5-unit cells. Each cell has its own floor height, and covered cells have a ceiling with tunnel lights, so the ship must fit between floor and ceiling. Each sector sets its own sky height, so the tall ones stack ledges, shafts and pits far above and below each other. Raised floors can be dressed as container stacks, ice shelves or void platforms. Steel girders cross many routes at different heights, so you have to fly over, under or between them. Hazard-striped posts with amber beacons mark doorways and pillar corners, and the radar draws the walls around you.
 
 ### Bosses
 
-Three sectors end with a boss. A health bar appears at the top of the screen once it sees you, the boss theme takes over the music, and the gate onward stays sealed until it is destroyed in a chain of explosions.
+Three sectors end with a boss: sectors 10, 12 and 15. A health bar appears at the top of the screen once it sees you, the boss theme takes over the music, and the gate onward stays sealed until it is destroyed in a chain of explosions.
 
 - **OMEGA Sentinel** (sector 10): a huge turning crown. While any of its four blue shield pylons stand, shots bounce off it. It fires fans of seven bolts and launches homing missiles, two at a time once its shield is down; below 40% it fires faster and calls in hunters.
 - **Void Carrier** (sector 12): a long hull that sweeps across its hangar, firing bolt fans and missile pairs and launching skimmers from its bays every other volley. Below 40% it launches mites instead and fires faster.
-- **Void Herald** (sector 13): a great crystal crown shielded by three nodes that circle it and shoot back. It alternates spinning rings of bolts with a charged beam that trails your ship before it fires. With its nodes gone it rises and adds homing missiles, and below a third of its hull it fires faster and calls skimmers.
+- **Void Herald** (sector 15): a great crystal crown shielded by three nodes that circle it and shoot back. It alternates spinning rings of bolts with a charged beam that trails your ship before it fires. With its nodes gone it rises and adds homing missiles, and below a third of its hull it fires faster and calls skimmers.
 
 ### Map
 
@@ -61,7 +63,7 @@ Press Tab to show or hide the map of the current sector. Rooms appear as they co
 - **Skimmers** (green, flat) circle you at speed and fire quick pairs of bolts.
 - **Miners** (orange boxes) patrol back and forth laying mines. **Mines** drift toward a nearby ship, arm after a second and blow up when you get close; shooting one sets it off, which can catch other enemies.
 
-A hostile that spots you wakes the others close to it. Big enemies sometimes leave a repair or missile crystal behind.
+A hostile that spots you wakes the others close to it. Big enemies sometimes leave a repair or missile crystal behind. From sector 6 on, some enemies are **elites**: gold-eyed and gold-tinted, with nearly twice the hull, and they fire a quarter faster. They grow more common in later sectors.
 
 ### Arsenal
 
@@ -113,7 +115,9 @@ Every sector has its own original track, synthesized in JavaScript, plus a boss 
 | Omega | 10 | foundry drive, G minor, 138 BPM |
 | Abyss | 11 | dark ambient, B-flat minor, 84 BPM |
 | Canyon | 12 | synthwave, E minor, 124 BPM |
-| Void | 13 | industrial, F minor, 144 BPM |
+| Drift | 13 | foundry drive, A minor, 130 BPM |
+| Archive | 14 | glassy synthwave with bells, C minor, 108 BPM |
+| Void | 15 | industrial, F minor, 144 BPM |
 | Boss | boss fights | foundry drive, D minor, 150 BPM |
 
 Tracks cycle through intro, drive, assault and breakdown sections. The instruments include kick, snare, clap, rimshot, toms, shaker, hi-hats, metallic hits, a filtered or sub bass, pads, chord stabs, an arpeggio, bells and a lead, with reverb and echo. When hostiles are near, the music adds extra hi-hats and an arpeggio, and the bass gets brighter.

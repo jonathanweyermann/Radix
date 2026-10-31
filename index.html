@@ -242,9 +242,10 @@
     const FLOOR = BASE * WORLD_SCALE, CELL = 4 * WORLD_SCALE;
     let WALL_TOP = TOP * WORLD_SCALE;
     const GRID_X0 = -256 * WORLD_SCALE, GRID_Z0 = -48 * WORLD_SCALE, GRID_W = 128, GRID_D = 200;
-    //   gates: doors [x0, z0, x1, z1, side the player meets them on, 'chain' | 'secret' | 'boss'] that seal their cells.
+    //   gates: doors [x0, z0, x1, z1, side the player meets them on, 'chain' | 'secret' | 'boss' | 'core'] that seal their cells.
     //     Chain gates open once both chain locks on their face are shot; secret panels open after a few hits;
-    //     boss gates open when the sector's sentinel is destroyed.
+    //     boss gates open when the sector's boss is destroyed; core gates when every data core in the sector is.
+    //   brief: an objective shown a few seconds into the sector
     //   walls: optional weighted wall-texture variants for the lower and upper bands
     //   vents: floor material whose updraft lifts the ship; lasers: timed beam grids [x0, z0, x1, z1, bottom, top, period, offset]
     //   music: the sector's track
@@ -669,6 +670,7 @@
       },
       {
         name: 'OMEGA', title: 'CORE BREACH', music: 'omega', start: [0, -4, 0], yaw: 0, exit: [0, 16, 624, true],
+        brief: 'THE OMEGA SENTINEL GUARDS THE CROWN HALL',
         sky: { zenith: [0.06, 0.02, 0.1], fog: [0.24, 0.16, 0.27], sun: [0.85, 0.5, 0.78], sunDir: [-0.5, 0.4, 0.6] },
         walls: { lower: [['wallVoid', 0.35], ['wallComputer', 0.35], ['wallLower', 0.3]], upper: [['wallVoid', 0.5], ['wallUpper', 0.5]] },
         rooms: [
@@ -747,6 +749,7 @@
       },
       {
         name: 'VOID-2', title: 'CRYSTAL CANYON', music: 'canyon', top: 65, start: [0, -4, 0], yaw: 0, exit: [0, 4, 728, true], tint: [0.92, 1.0, 1.08],
+        brief: 'A VOID CARRIER IS DOCKED AT THE END OF THE CANYON',
         sky: { zenith: [0.1, 0.2, 0.38], fog: [0.55, 0.66, 0.78], sun: [1.0, 0.95, 0.9], sunDir: [0.4, 0.55, 0.6] },
         walls: { lower: [['wallIce', 0.7], ['wallTech', 0.3]], upper: [['wallIce', 0.8], ['wallWindows', 0.2]] },
         rooms: [
@@ -794,7 +797,107 @@
         ],
       },
       {
-        name: 'VOID-3', title: 'HEART OF THE VOID', music: 'void', top: 81, start: [0, 12, 0], yaw: 0, exit: [0, -4, 600, true], tint: [1.0, 0.9, 1.1],
+        name: 'VOID-3', title: 'DRIFT FOUNDRY', music: 'drift', top: 81, start: [0, -4, 0], yaw: 0, exit: [0, 56, 500, true], tint: [1.08, 0.96, 0.9],
+        sky: { zenith: [0.1, 0.05, 0.05], fog: [0.34, 0.2, 0.16], sun: [1.0, 0.65, 0.45], sunDir: [-0.4, 0.6, 0.6] },
+        walls: { lower: [['wallBasalt', 0.4], ['wallPipes', 0.3], ['wallTech', 0.3]], upper: [['wallBasalt', 0.5], ['wallRust', 0.3], ['wallUpper', 0.2]] },
+        brief: 'CLIMB THE FOUNDRY // UPDRAFTS RISE FROM THE VENTS',
+        rooms: [
+          [-24, -32, 24, 24, SLAG],
+          [-16, 24, 16, 104, LAVA, -19], [-16, 24, -8, 104, PLATE, -7, SKY, 'wallBasalt'], [8, 24, 16, 104, PLATE, -7, SKY, 'wallBasalt'],
+          [-72, 104, 72, 232, LAVA, -27],
+          [-72, 104, 72, 120, PLATE, -7, SKY, 'wallBasalt'],
+          [-72, 120, -48, 232, PLATE, 9, SKY, 'wallTech'],
+          [48, 120, 72, 200, PLATE, 25, SKY, 'wallTech'],
+          [-48, 216, 72, 232, PLATE, 41, SKY, 'wallTech'],
+          [-16, 152, 16, 184, VENT, -27], [48, 200, 72, 216, VENT, -27],
+          [-12, 232, 12, 296, PLATE, 41, 55],
+          [-56, 296, 56, 392, SLAG, 25], [-16, 328, 16, 360, LAVA, 33, SKY, 'wallBasalt'],
+          [56, 312, 104, 376, GRATE, 9, 33],
+          [-104, 312, -56, 376, PAD, 41, 61],
+          [-36, 448, 36, 520, PAD, 49],
+        ],
+        stairs: [[-12, 392, 12, 448, PLATE, 25, 49, 'z', 14], [56, 336, 64, 352, PLATE, 25, 9, 'x', 14]],
+        blocks: [
+          [24, 140, 32, 148, REACTOR], [-32, 188, -24, 196, REACTOR],
+          [-40, 312, -32, 320, COLUMN], [32, 312, 40, 320, COLUMN], [-40, 368, -32, 376, COLUMN], [32, 368, 40, 376, COLUMN],
+          [-28, 480, -20, 488, COLUMN], [20, 480, 28, 488, COLUMN],
+        ],
+        girders: [[-72, 17, 136, 72, 20, 140], [-48, 33, 176, 48, 36, 180], [-4, 1, 120, 0, 4, 216], [-72, 57, 200, 72, 60, 204], [-56, 45, 344, 56, 48, 348]],
+        gates: [[-12, 232, 12, 236, 'south', 'chain'], [-12, 392, 12, 396, 'south', 'chain'], [-60, 336, -56, 352, 'east', 'secret']],
+        lasers: [[-12, 256, 12, 256, 42.8, 53.2, 3, 0], [-12, 276, 12, 276, 42.8, 53.2, 3, 1.5]],
+        zones: [
+          { name: 'INTAKE BAY', area: [-24, -32, 24, 24], barrels: 4 },
+          { name: 'SLAG CHANNEL', area: [-16, 24, 16, 104], drones: 2, hunters: 1 },
+          { name: 'THE ATRIUM', area: [-72, 104, 72, 232], drones: 4, skimmers: 2, lancers: 2, miners: 1, aegis: 1, health: 1, missile: 1, high: true },
+          { name: 'PRESS GALLERY', area: [-12, 232, 12, 296], hunters: 2 },
+          { name: 'THE CRUCIBLE', area: [-56, 296, 56, 392], barrels: 8, drones: 3, wardens: 2, broods: 1, lancers: 1, health: 1, high: true },
+          { name: 'EAST STORES', area: [56, 296, 104, 376], barrels: 4, turrets: 2, health: 1, missile: 1 },
+          { name: 'WEST STORES', area: [-104, 312, -56, 376], weapon: 1, launcher: 1, health: 1 },
+          { name: 'CASTING LINE', area: [-12, 392, 12, 448], hunters: 2 },
+          { name: 'EXIT GANTRY', area: [-36, 448, 36, 520], barrels: 4, strikers: 2, aegis: 1 },
+        ],
+      },
+      {
+        name: 'VOID-4', title: 'MIRROR ARCHIVE', music: 'archive', top: 57, start: [0, -4, 0], yaw: 0, exit: [0, 48, 396, true], tint: [0.95, 1.0, 1.06],
+        sky: { zenith: [0.03, 0.05, 0.1], fog: [0.14, 0.18, 0.24], sun: [0.7, 0.85, 1.0], sunDir: [0.3, 0.7, 0.5] },
+        walls: { lower: [['wallComputer', 0.4], ['wallTech', 0.4], ['wallVoid', 0.2]], upper: [['wallTech', 0.5], ['wallWindows', 0.3], ['wallVoid', 0.2]] },
+        brief: 'DESTROY THE THREE DATA CORES TO OPEN THE ARCHIVE',
+        rooms: [
+          [-24, -32, 24, 24, PAD, BASE, 13],
+          [-8, 24, 8, 168, PLATE, BASE, 3],
+          [-152, 88, 200, 104, PLATE, BASE, 3],
+          [-120, 104, -104, 216, PLATE, BASE, 3],
+          [184, 104, 200, 200, PLATE, BASE, 3],
+          [168, 200, 224, 248, GRATE, BASE, 9],
+          [-48, 168, 48, 264, GRATE, -27],
+          [-48, 168, 48, 184, PLATE, BASE, SKY, 'wallTech'], [-48, 184, -32, 248, PLATE, 9, SKY, 'wallTech'],
+          [32, 184, 48, 248, PLATE, 25, SKY, 'wallTech'], [-48, 248, 48, 264, PLATE, 41, SKY, 'wallTech'],
+          [-80, 196, -48, 220, PAD, 9, 21],
+          [-104, 232, -48, 248, PLATE, 9, 21],
+          [-120, 248, -104, 312, PLATE, 9, 21],
+          [-176, 264, -120, 312, PAD, 9, 25],
+          [48, 216, 104, 232, PLATE, 25, 37],
+          [104, 152, 120, 296, PLATE, 25, 37],
+          [120, 136, 168, 184, PAD, 25, 41],
+          [120, 280, 168, 296, PLATE, 25, 37],
+          [-12, 264, 12, 344, PLATE, 41, 53],
+          [-40, 344, 40, 416, PAD, 41],
+        ],
+        stairs: [[-120, 216, -104, 248, PLATE, BASE, 9, 'z', 12], [168, 248, 184, 296, PLATE, BASE, 25, 'z', 12]],
+        blocks: [[-20, 380, -12, 388, COLUMN], [12, 380, 20, 388, COLUMN], [208, 208, 216, 216, COLUMN], [-156, 284, -148, 292, COLUMN]],
+        girders: [[-48, 17, 212, 48, 20, 216], [-48, 33, 236, 48, 36, 240]],
+        gates: [
+          [-12, 264, 12, 268, 'south', 'core'], [-52, 200, -48, 216, 'east', 'secret'],
+          [-120, 216, -104, 220, 'south', 'chain'], [176, 88, 180, 104, 'west', 'chain'],
+        ],
+        lasers: [
+          [-8, 56, 8, 56, -10, 2.9, 3, 0], [-60, 88, -60, 104, -10, 2.9, 2.6, 0.5], [90, 88, 90, 104, -10, 2.9, 2.6, 1.8],
+          [-12, 296, 12, 296, 42, 52.3, 3.2, 0], [-12, 316, 12, 316, 42, 52.3, 3.2, 1.6],
+        ],
+        extras: { enemies: [['core', 196, -5, 228], ['core', -148, 15, 300], ['core', 148, 31, 160]] },
+        zones: [
+          { name: 'ENTRY NODE', area: [-24, -32, 24, 24], barrels: 3 },
+          { name: 'SPINE', area: [-8, 24, 8, 88], hunters: 1 },
+          { name: 'CROSSWAY', area: [-152, 88, 200, 104], drones: 3, hunters: 2 },
+          { name: 'WEST STACK', area: [-120, 104, -104, 216], hunters: 2, health: 1 },
+          { name: 'EAST STACK', area: [184, 104, 200, 200], drones: 2 },
+          { name: 'EAST ARCHIVE', area: [168, 200, 224, 248], barrels: 4, turrets: 2, aegis: 1, missile: 1 },
+          { name: 'THE WELL', area: [-48, 168, 48, 264], drones: 3, lancers: 2, skimmers: 2, health: 1, high: true },
+          { name: 'MIRROR CACHE', area: [-80, 196, -48, 220], launcher: 1, missile: 1, health: 1 },
+          { name: 'WEST LINK', area: [-104, 232, -48, 248], hunters: 1 },
+          { name: 'MID WEST', area: [-120, 248, -104, 312], drones: 2 },
+          { name: 'WEST CORE ROOM', area: [-176, 264, -120, 312], wardens: 1, broods: 1, health: 1 },
+          { name: 'HIGH LINK', area: [48, 216, 104, 232], hunters: 1 },
+          { name: 'HIGH EAST', area: [104, 152, 120, 296], drones: 2, miners: 1 },
+          { name: 'HIGH VAULT', area: [120, 136, 168, 184], aegis: 1, lancers: 1, weapon: 1 },
+          { name: 'HIGH NORTH', area: [120, 280, 168, 296], hunters: 1 },
+          { name: 'DATA RUN', area: [-12, 264, 12, 344], hunters: 2 },
+          { name: 'EXIT ATRIUM', area: [-40, 344, 40, 416], barrels: 4, strikers: 2, wardens: 1, aegis: 1, health: 1 },
+        ],
+      },
+      {
+        name: 'VOID-5', title: 'HEART OF THE VOID', music: 'void', top: 81, start: [0, 12, 0], yaw: 0, exit: [0, -4, 600, true], tint: [1.0, 0.9, 1.1],
+        brief: 'THE VOID HERALD WAITS BEYOND THE NULL CORRIDOR',
         sky: { zenith: [0.05, 0.0, 0.08], fog: [0.2, 0.08, 0.24], sun: [0.9, 0.4, 0.9], sunDir: [-0.3, 0.5, 0.7] },
         walls: { lower: [['wallVoid', 0.7], ['wallComputer', 0.3]], upper: [['wallVoid', 0.8], ['wallSign', 0.2]] },
         rooms: [
@@ -936,13 +1039,14 @@
       pylon: { hp: 6, radius: 2.6, scale: 1, tint: [0.6, 0.9, 1.5], eye: [0.4, 0.8, 1.0], ram: 20, radar: '#7fb8ff', sight: 85, name: 'PYLON', bump: true },
       carrier: { hp: 90, radius: 7.5, scale: 2.8, tint: [0.85, 1.15, 0.7], eye: [0.6, 1.0, 0.4], ram: 30, radar: '#a8ff6a', sight: 170, name: 'CARRIER', bump: true, boss: 'VOID CARRIER' },
       herald: { hp: 150, radius: 8, scale: 3.2, tint: [0.95, 0.5, 1.5], eye: [0.85, 0.4, 1.0], ram: 34, radar: '#e070ff', sight: 190, name: 'HERALD', bump: true, boss: 'VOID HERALD', lance: 22 },
+      core: { hp: 6, radius: 2.4, scale: 1.3, tint: [0.45, 1.4, 1.25], eye: [0.4, 1.0, 0.9], ram: 18, radar: '#5dfff0', sight: 0, name: 'DATA CORE', bump: true },
       node: { hp: 8, radius: 2.4, scale: 1.1, tint: [0.95, 0.6, 1.6], eye: [0.8, 0.5, 1.0], ram: 20, radar: '#c99aff', sight: 130, name: 'NODE', bump: true },
     };
     // A boss with guards cannot be hurt while any of them stand: the sentinel's pylons and the herald's orbiting nodes.
     const GUARDS = { sentinel: 'pylon', herald: 'node' };
     const guardsLeft = (boss) => enemies.filter(e => e.type === GUARDS[boss.type] && e.hp > 0).length;
     // Enemies get a little tougher in each later sector; bosses and their parts, mites and mines do not.
-    const toughness = (type) => ENEMY_TYPES[type].boss || ['pylon', 'node', 'mite', 'mine'].includes(type) ? 1 : 1 + 0.05 * levelIndex;
+    const toughness = (type) => ENEMY_TYPES[type].boss || ['pylon', 'node', 'core', 'mite', 'mine'].includes(type) ? 1 : 1 + 0.05 * levelIndex;
     // The sentinel cannot be hurt while any of its shield pylons stand.
     const pylonsLeft = () => enemies.filter(e => e.type === 'pylon' && e.hp > 0).length;
     const barrels = [], enemies = [], pickups = [];
@@ -989,7 +1093,10 @@
             const y = type === 'sentry' ? floorY[i] + 3.4 : clamp(floorY[i] + lift, floorY[i] + 3.5, ceilY[i] - 3.5);
             if (!walkable(x, z, margin) || insideGirder([x, y, z], margin + 1) || fromStart(x, z) < 60 ||
               enemies.some(e => Math.hypot(e.base[0] - x, e.base[2] - z) < 14)) return false;
-            addEnemy(type, x, y, z); return true;
+            const enemy = addEnemy(type, x, y, z);
+            // From sector 6 on, some zone spawns are elites: gold-eyed, tougher and quicker to fire.
+            if (random() < Math.min(0.25, (levelIndex - 4) * 0.035)) { enemy.elite = true; enemy.hp = enemy.maxHp = Math.ceil(enemy.hp * 1.8); }
+            return true;
           });
         }
         for (const type of ['health', 'weapon', 'missile', 'launcher']) scatter(zone[type] || 0, 3, (x, z) => {
@@ -2200,6 +2307,7 @@
     enemyMeshes.mine = crown(4, 0.55, 1.2, 1.2, 1.2);
     enemyMeshes.herald = crown(8, 1.9, 3.6, 2.4, 3.0);
     enemyMeshes.node = crown(3, 0.7, 1.4, 1.6, 1.6);
+    enemyMeshes.core = crown(6, 1.1, 1.7, 2.2, 2.2);
     enemyMeshes.carrier = faceted([[0, 0, 5], [-3, 0, 0], [0, 1.4, 0], [3, 0, 0], [0, -1.2, 0], [0, 0, -5], [-5.5, 0.3, -3.5], [5.5, 0.3, -3.5]], HULL_TRIS);
     const boxHull = (hx, hy, hz) => faceted(
       [[-hx, -hy, -hz], [hx, -hy, -hz], [hx, hy, -hz], [-hx, hy, -hz], [-hx, -hy, hz], [hx, -hy, hz], [hx, hy, hz], [-hx, hy, hz]],
@@ -2559,6 +2667,12 @@
       void: { bpm: 144, kit: 'industrial', lead: 'saw', pad: 'dark', chords: [[41, 'm'], [37], [34, 'm'], [36]],
         hook: ['F5.2 Ab5.2 C6.2 F6.2 Eb6.2 C6.2 Ab5.2 C6.2', 'Db6.4 C6.4 F5.8', 'F5.2 Ab5.2 Db6.2 F6.2 Eb6.2 Db6.2 Ab5.2 Db6.2', 'C6.4 Bb5.4 Ab5.8',
           'F5.2 Bb5.2 Db6.2 F6.2 Gb6.2 F6.2 Db6.2 Bb5.2', 'C6.4 Db6.4 Bb5.8', 'E5.2 G5.2 C6.2 E6.2 G6.4 F6.2 E6.2', 'C6.4 Bb5.4 G5.4 E5.4'] },
+      drift: { bpm: 130, kit: 'foundry', lead: 'square', pad: 'dark', chords: [[45, 'm'], [41], [38, 'm'], [40]],
+        hook: ['A5.2 E5.2 A5.2 C6.2 B5.2 A5.2 E5.4', 'F5.4 E5.4 C5.8', 'A5.2 F5.2 A5.2 C6.2 D6.2 C6.2 A5.4', 'G5.4 F5.4 C5.8',
+          'D6.2 A5.2 F5.2 A5.2 D6.2 E6.2 F6.4', 'E6.4 D6.4 A5.8', 'E6.2 B5.2 G#5.2 B5.2 E6.2 D6.2 B5.4', 'C6.4 B5.4 G#5.8'] },
+      archive: { bpm: 108, swing: 0.06, kit: 'synthwave', lead: 'bell', pad: 'glass', arp: 'triangle', chords: [[36, 'm'], [44], [39], [34]],
+        hook: ['G5.4 Eb5.4 C5.4 D5.4', 'Eb5.8 r.4 G4.4', 'Ab5.4 Eb5.4 C5.4 Eb5.4', 'G5.8 r.8',
+          'Bb5.4 G5.4 Eb5.4 G5.4', 'F5.8 r.4 Eb5.4', 'D5.4 F5.4 Bb5.4 D6.4', 'C6.8 Bb5.8'] },
       boss: { bpm: 150, kit: 'foundry', lead: 'saw', pad: 'dark', arrangement: ['drive', 'assault', 'assault', 'breakdown', 'drive', 'assault'], chords: [[38, 'm'], [34], [36], [33]],
         hook: ['D6.1 r.1 D6.1 r.1 A5.2 F5.2 D6.2 E6.2 F6.2 E6.2', 'D6.2 C6.2 A5.4 D5.8', 'D6.1 r.1 D6.1 r.1 Bb5.2 F5.2 D6.2 E6.2 F6.2 G6.2', 'F6.2 E6.2 D6.4 Bb5.8',
           'E6.1 r.1 E6.1 r.1 C6.2 G5.2 E6.2 F6.2 G6.2 F6.2', 'E6.2 D6.2 C6.4 G5.8', 'C#6.2 E6.2 A6.4 G6.2 F6.2 E6.4', 'D6.2 C#6.2 A5.4 E5.4 C#5.4'] },
@@ -2762,7 +2876,7 @@
       bossBlast = null; resetMap(); setTrack(level.music || 'relay');
       sectorText.textContent = `${index + 1} / ${LEVELS.length}`; levelText.textContent = level.name;
       Object.assign(save.sectors[index] ||= {}, { weapon: weaponLevel, missiles: missileAmmo, launcher: launcherLevel }); save.last = index; noteArsenal();
-      sectorTime = 0;
+      sectorTime = 0; briefTimer = level.brief ? 3.2 : 0;
       notice(`SECTOR ${index + 1} // ${level.name} ${level.title}`, 3);
     }
     // Difficulty scales how many enemies each zone spawns, how much damage reaches the ship and how far ahead enemies aim.
@@ -2786,7 +2900,7 @@
     }
     const menu = document.getElementById('menu'), resumeButton = document.getElementById('resumeButton');
     const sectorList = document.getElementById('sectorList'), arsenalList = document.getElementById('arsenalList'), difficultyRow = document.getElementById('difficultyRow'), menuNote = document.getElementById('menuNote');
-    let menuOpen = false, menuOpenedAt = 0, started = false, sectorTime = 0;
+    let menuOpen = false, menuOpenedAt = 0, started = false, sectorTime = 0, briefTimer = 0;
     const WARP_TIME = 2.4;
     function startSector(index) {
       const kit = save.sectors[index] || { weapon: 1, missiles: 0 };
@@ -3001,6 +3115,11 @@
           enemy.shieldHit = Math.max(0, (enemy.shieldHit || 0) - 0.05);
           continue;
         }
+        if (enemy.type === 'core') {
+          billboard(enemy.position, 2.2, ENEMY_TYPES.core.eye, 1.4 + enemy.flash * 2);
+          billboard(enemy.position, 6, [0.3, 0.9, 0.8], 0.25 + 0.1 * Math.sin(time * 3 + enemy.phase));
+          continue;
+        }
         if (enemy.type === 'pylon' || enemy.type === 'node') {
           const top = enemy.type === 'pylon' ? add(enemy.position, [0, 4.4, 0]) : enemy.position, master = enemy.type === 'pylon' ? sentinel : herald;
           billboard(top, 1.4, ENEMY_TYPES[enemy.type].eye, 1.6 + enemy.flash * 2);
@@ -3029,8 +3148,10 @@
         }
         const reach = { hunter: 3.4, striker: 2.3, sentry: 2.3, lancer: 4.4, skimmer: 2.2, miner: 2.1, brood: 2.4, mite: 3.4 }[enemy.type] * kind.scale || 2.6 * kind.scale;
         const eye = add(enemy.position, [Math.sin(enemy.yaw) * reach, 0, Math.cos(enemy.yaw) * reach]);
-        billboard(eye, 0.9 * kind.scale, kind.eye, 1.4 + enemy.flash * 2);
-        billboard(eye, 2.8 * kind.scale, mul(kind.eye, 0.6), 0.35 + enemy.flash);
+        const glint = enemy.elite ? ELITE_EYE : kind.eye;
+        billboard(eye, 0.9 * kind.scale, glint, 1.4 + enemy.flash * 2);
+        billboard(eye, 2.8 * kind.scale, mul(glint, 0.6), 0.35 + enemy.flash);
+        if (enemy.elite) billboard(enemy.position, kind.radius * 1.9, [1.0, 0.75, 0.25], 0.12 + 0.05 * Math.sin(time * 4 + enemy.phase));
       }
       for (const pickup of pickups) {
         if (pickup.taken || !nearby(pickup.position, 260)) continue;
@@ -3144,7 +3265,7 @@
         const kind = ENEMY_TYPES[enemy.type];
         if (enemy.type === 'sentry') { useMaterial(materials.hazard); drawMesh(pylonMesh, modelMatrix([enemy.base[0], enemy.base[1] - 1.8, enemy.base[2]]), 0, WHITE, exposureAt(enemy.position)); useMaterial(materials.drone); }
         drawMesh(enemyMeshes[enemy.type], modelMatrix(enemy.position, enemy.yaw, enemy.type === 'sentry' || enemy.type === 'pylon' ? 0 : Math.sin(time * 1.7 + enemy.phase) * 0.25, kind.scale),
-          enemy.flash * 0.8, kind.tint, exposureAt(enemy.position));
+          enemy.flash * 0.8, enemy.elite ? [kind.tint[0] * 1.35, kind.tint[1] * 1.1, kind.tint[2] * 0.55] : kind.tint, exposureAt(enemy.position));
       }
       for (const pickup of pickups) {
         if (pickup.taken || !near(pickup.position, 300)) continue;
@@ -3343,6 +3464,14 @@
       if (enemy.hp > 0) { registerHit('TARGET HIT'); return; }
       if (!enemy.summoned) kills++;
       if (enemy.type === 'mine') { detonateMine(enemy); registerHit('MINE DESTROYED'); return; }
+      if (enemy.type === 'core') {
+        const left = enemies.filter(e => e.type === 'core' && e.hp > 0).length;
+        explosions.push({ position: enemy.position.slice(), life: 0.65, scale: 1.2 });
+        sparks(enemy.position, 30, [0.4, 1.0, 0.9], 20); playExplosionSound();
+        if (left) registerHit(`DATA CORE DESTROYED // ${left} LEFT`);
+        else for (const gate of gates) if (gate.kind === 'core') openGate(gate, 'ALL DATA CORES DOWN // ARCHIVE OPEN');
+        return;
+      }
       if (enemy.type === 'pylon' || enemy.type === 'node') {
         const left = enemies.filter(e => e.type === enemy.type && e.hp > 0).length;
         registerHit(left ? `${ENEMY_TYPES[enemy.type].name} DESTROYED // ${left} LEFT` : enemy.type === 'node' ? 'HERALD SHIELD DOWN' : 'CORE SHIELD DOWN');
@@ -3357,7 +3486,7 @@
         return;
       }
       const kind = ENEMY_TYPES[enemy.type], scale = kind.scale;
-      registerHit(kind.bump ? `${kind.name} DESTROYED` : `${kind.name} DOWN`);
+      registerHit(`${enemy.elite ? 'ELITE ' : ''}${kind.name} ${kind.bump ? 'DESTROYED' : 'DOWN'}`);
       if (enemy.type === 'brood') {
         // A brood bursts into four mites.
         for (const [dx, dz] of [[-2, -2], [2, -2], [-2, 2], [2, 2]]) { const spot = add(enemy.position, [dx, 0, dz]); summon('mite', freeAt(...spot, 1) ? spot : enemy.position.slice(), null); }
@@ -3459,7 +3588,8 @@
       return normalize(sub(add(ship.position, mul(shipVelocity, t * DIFFICULTIES[save.difficulty].lead)), from));
     };
     const fireBolt = (from, direction, speed, amount, extra) => enemyShots.push({ position: from, velocity: mul(direction, speed), life: 4, damage: amount, ...extra });
-    const SPINNERS = { sentinel: 0.45, pylon: 1.2, aegis: 1.6, mine: 2.4, herald: 0.3, node: 1.8 };
+    const ELITE_EYE = [1.0, 0.82, 0.25];
+    const SPINNERS = { sentinel: 0.45, pylon: 1.2, aegis: 1.6, mine: 2.4, herald: 0.3, node: 1.8, core: 0.8 };
     // A hostile that spots the ship wakes the others close to it; hunters and mites only wake when they see it.
     function alert(enemy) {
       enemy.active = true;
@@ -3517,6 +3647,7 @@
           return;
         case 'lancer': return bob(enemy, 0.6, 0.6);
         case 'sentry': case 'pylon': enemy.position = enemy.base.slice(); return;
+        case 'core': enemy.position = add(enemy.base, [0, Math.sin(time * 1.6 + enemy.phase) * 0.6, 0]); return;
         case 'sentinel':
           enemy.position = add(enemy.base, [Math.sin(time * 0.35 + enemy.phase) * 16, Math.sin(time * 0.7) * 2.5, Math.sin(time * 0.5) * 6]);
           return;
@@ -3621,7 +3752,7 @@
           if (!visible) { enemy.charge = 0; enemy.cooldown = 1.5; }
           else if ((enemy.charge -= dt) <= 0) { fireBolt(enemy.position.slice(), normalize(sub(enemy.aimPoint, enemy.position)), 105, kind.lance || 16, { kind: 'lance', life: 2.5 }); playLance(distance); }
         }
-        if (visible && distance > 6 && enemy.cooldown <= 0) attack(enemy, aim, distance);
+        if (visible && distance > 6 && enemy.cooldown <= 0) { attack(enemy, aim, distance); if (enemy.elite) enemy.cooldown *= 0.75; }
         if (enemy.type === 'mine') {
           // Mines arm after a second and burst when the ship comes close; old ones fizzle out.
           if (enemy.age > 1 && distance < 5.5) detonateMine(enemy);
@@ -3988,6 +4119,7 @@
       if (paused || destroyed || finished) return;
       time += dt;
       if (warpTimer === 0) sectorTime += dt;
+      if (briefTimer > 0 && (briefTimer -= dt) <= 0) notice(level.brief, 4);
       noticeTimer = Math.max(0, noticeTimer - dt);
       statusText.style.opacity = String(clamp(Math.max(hitTimer * 3, noticeTimer * 2), 0, 1));
       if (warpTimer > 0) {
