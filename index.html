@@ -2044,7 +2044,7 @@
         reverbIn = audioContext.createGain(); reverbIn.gain.value = 0.5;
         reverbIn.connect(reverb); reverb.connect(musicIn);
         const echo = audioContext.createDelay(1), feedback = audioContext.createGain(), tone = audioContext.createBiquadFilter();
-        echo.delayTime.value = MUSIC_STEP * 3; feedback.gain.value = 0.42; tone.type = 'lowpass'; tone.frequency.value = 2200;
+        echo.delayTime.value = track.step * 3; echoNode = echo; feedback.gain.value = 0.42; tone.type = 'lowpass'; tone.frequency.value = 2200;
         delayIn = audioContext.createGain(); delayIn.gain.value = 0.45;
         delayIn.connect(echo); echo.connect(tone); tone.connect(feedback); feedback.connect(echo); tone.connect(musicIn); tone.connect(reverbIn);
       }
@@ -2081,43 +2081,145 @@
       oscillator.start(when); oscillator.stop(when + length + 0.01);
     }
 
-    // Music: an original industrial piece in D minor at 122 BPM, built from 16th-note steps.
-    // Eight-bar phrases cycle through intro, drive, assault and breakdown sections, and
-    // nearby hostiles push extra hats, an arpeggio and a brighter bass into the mix.
-    const MUSIC_STEP = 60 / 122 / 4;
+    // Music: original synth tracks built from 16th-note steps, one per sector style, plus a boss theme.
+    // A track sets its tempo, swing, a four-chord loop (two bars per chord), drum and bass patterns per
+    // section, an eight-bar lead hook and its voices. Eight-bar phrases follow the track's arrangement,
+    // and nearby hostiles push extra hats, an arpeggio and a brighter bass into the mix.
     const midi = (note) => 440 * 2 ** ((note - 69) / 12);
-    const PROGRESSION = [
-      { root: 38, pad: [50, 57, 62, 65], arp: [62, 65, 69, 74] }, // Dm
-      { root: 34, pad: [46, 53, 58, 62], arp: [58, 62, 65, 70] }, // Bb
-      { root: 31, pad: [43, 50, 55, 58], arp: [55, 58, 62, 67] }, // Gm
-      { root: 33, pad: [45, 52, 57, 61], arp: [57, 61, 64, 69] }, // A
-    ];
-    const HOOK = new Map([
-      [0, 0, 74, 2], [0, 2, 77, 2], [0, 4, 81, 4], [0, 8, 79, 2], [0, 10, 77, 2], [0, 12, 76, 4],
-      [1, 0, 77, 4], [1, 4, 74, 4], [1, 8, 69, 8],
-      [2, 0, 74, 2], [2, 2, 77, 2], [2, 4, 82, 4], [2, 8, 81, 2], [2, 10, 79, 2], [2, 12, 77, 4],
-      [3, 0, 79, 4], [3, 4, 77, 4], [3, 8, 74, 8],
-      [4, 0, 70, 2], [4, 2, 74, 2], [4, 4, 79, 4], [4, 8, 77, 2], [4, 10, 74, 2], [4, 12, 70, 4],
-      [5, 0, 72, 4], [5, 4, 74, 4], [5, 8, 67, 8],
-      [6, 0, 73, 2], [6, 2, 76, 2], [6, 4, 81, 4], [6, 8, 79, 2], [6, 10, 76, 2], [6, 12, 73, 4],
-      [7, 0, 76, 4], [7, 4, 73, 2], [7, 6, 76, 2], [7, 8, 81, 8],
-    ].map(([bar, step, note, length]) => [bar * 16 + step, [note, length]]));
+    const NOTE_NAMES = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+    const noteNumber = (name) => /^\d+$/.test(name) ? +name
+      : 12 * (+name.slice(-1) + 1) + NOTE_NAMES[name[0]] + (name[1] === '#' ? 1 : name[1] === 'b' ? -1 : 0);
+    // A hook is eight bars of 'note.length' tokens in 16th steps, with 'r' for a rest.
+    const parseHook = (bars) => new Map(bars.flatMap((bar, b) => {
+      let step = 0;
+      return bar.split(' ').filter(Boolean).flatMap(token => {
+        const [note, length] = token.split('.'), at = step; step += +length;
+        return note === 'r' ? [] : [[b * 16 + at, [noteNumber(note), +length]]];
+      });
+    }));
+    // A chord from its bass root: a four-note pad an octave up and an arpeggio above that.
+    const chord = (root, quality) => {
+      const third = quality === 'm' ? 3 : quality === 'sus' ? 2 : 4;
+      return { root, pad: [root + 12, root + 19, root + 24, root + 24 + third], arp: [root + 24, root + 24 + third, root + 31, root + 36] };
+    };
     const ARP_ORDER = [0, 1, 2, 3, 2, 1, 2, 3, 0, 2, 1, 3, 2, 3, 1, 2];
     // Bass steps are [semitones above the chord root, length in steps, accent].
+    const _ = null;
     const BASS = {
-      pulse: [[0, 3, 1], null, null, null, [0, 2, 0], null, null, [0, 1, 0], [0, 3, 1], null, null, null, [12, 2, 0], null, [7, 2, 0], null],
+      pulse: [[0, 3, 1], _, _, _, [0, 2, 0], _, _, [0, 1, 0], [0, 3, 1], _, _, _, [12, 2, 0], _, [7, 2, 0], _],
       drive: [[0, 1, 1], [0, 1, 0], [12, 1, 0], [0, 1, 0], [0, 1, 1], [0, 1, 0], [7, 1, 0], [0, 1, 0],
         [0, 1, 1], [0, 1, 0], [12, 1, 0], [0, 1, 0], [7, 1, 1], [0, 1, 0], [12, 1, 0], [-5, 1, 0]],
-      long: [[0, 14, 1], null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+      long: [[0, 14, 1], _, _, _, _, _, _, _, _, _, _, _, _, _, _, _],
+      gallop: [[0, 1, 1], _, [0, 1, 0], [0, 1, 0], [0, 1, 1], _, [0, 1, 0], [0, 1, 0], [0, 1, 1], _, [12, 1, 0], [0, 1, 0], [7, 1, 1], _, [0, 1, 0], [12, 1, 0]],
+      octaves: [[0, 2, 1], _, [12, 2, 0], _, [0, 2, 0], _, [12, 2, 0], _, [0, 2, 1], _, [12, 2, 0], _, [0, 2, 0], _, [12, 1, 0], [7, 1, 0]],
+      eighths: [[0, 2, 1], _, [0, 2, 0], _, [0, 2, 0], _, [0, 2, 0], _, [0, 2, 1], _, [0, 2, 0], _, [12, 2, 0], _, [0, 2, 0], _],
+      grind: [[0, 3, 1], _, _, [0, 1, 0], _, _, [12, 2, 0], _, [0, 2, 1], _, [1, 2, 0], _, [0, 3, 0], _, _, [7, 1, 0]],
+      dub: [[0, 4, 1], _, _, _, _, _, [0, 2, 0], _, [7, 3, 1], _, _, [5, 2, 0], _, [0, 3, 0], _, _],
+      tribal: [[0, 2, 1], _, _, [0, 1, 0], [0, 2, 0], _, [7, 2, 0], _, [0, 2, 1], _, _, [0, 1, 0], [10, 2, 0], _, [7, 2, 0], _],
+      sparse: [[0, 8, 1], _, _, _, _, _, _, _, [7, 6, 0], _, _, _, _, _, _, _],
     };
-    const ALL_STEPS = [...Array(16).keys()];
-    const SECTIONS = {
-      intro: { kick: [0, 8], snare: [], hats: [4, 12], open: [], metal: [], bass: 'pulse', pad: true, arp: false, hook: false },
-      drive: { kick: [0, 4, 8, 12], snare: [4, 12], hats: [2, 6, 10, 14], open: [14], metal: [7], bass: 'drive', pad: true, arp: true, hook: false },
-      assault: { kick: [0, 4, 8, 12], snare: [4, 12], hats: ALL_STEPS, open: [6, 14], metal: [3, 11], bass: 'drive', pad: false, arp: false, hook: true },
-      breakdown: { kick: [], snare: [], hats: [2, 6, 10, 14], open: [], metal: [], bass: 'long', pad: true, arp: 'soft', hook: false, riser: true },
+    const ALL_STEPS = [...Array(16).keys()], EIGHTHS = [0, 2, 4, 6, 8, 10, 12, 14], OFFBEATS = [2, 6, 10, 14];
+    // Section kits: which drums play on which steps, which bass pattern runs, and whether pad, arpeggio and hook play.
+    const KITS = {
+      industrial: {
+        intro: { kick: [0, 8], hats: [4, 12], bass: 'pulse', pad: true },
+        drive: { kick: [0, 4, 8, 12], snare: [4, 12], hats: OFFBEATS, open: [14], metal: [7], bass: 'drive', pad: true, arp: true },
+        assault: { kick: [0, 4, 8, 12], snare: [4, 12], hats: ALL_STEPS, open: [6, 14], metal: [3, 11], bass: 'drive', hook: true },
+        breakdown: { hats: OFFBEATS, bass: 'long', pad: true, arp: 'soft', riser: true },
+      },
+      foundry: {
+        intro: { kick: [0, 8], hats: EIGHTHS, metal: [6], bass: 'octaves', pad: true },
+        drive: { kick: [0, 4, 8, 12], snare: [4, 12], hats: ALL_STEPS, metal: [7, 15], toms: [[13, 1], [14, 0.8], [15, 0.6]], bass: 'gallop', arp: true },
+        assault: { kick: [0, 3, 4, 8, 11, 12], snare: [4, 12], hats: ALL_STEPS, open: [14], metal: [3, 11], bass: 'gallop', hook: true },
+        breakdown: { toms: [[0, 1], [6, 0.8], [10, 0.6]], bass: 'long', pad: true, riser: true },
+      },
+      halftime: {
+        intro: { kick: [0], hats: [8], bass: 'sparse', pad: true },
+        drive: { kick: [0, 10], clap: [8], hats: EIGHTHS, metal: [6, 14], bass: 'grind', pad: true },
+        assault: { kick: [0, 3, 10], clap: [8], hats: ALL_STEPS, open: [14], metal: [6], bass: 'grind', hook: true },
+        breakdown: { hats: [8], bass: 'long', pad: true, arp: 'soft', riser: true },
+      },
+      ambient: {
+        intro: { shaker: OFFBEATS, bass: 'sparse', pad: true, arp: 'soft' },
+        drive: { kick: [0, 10], rim: [8], shaker: ALL_STEPS, bass: 'sparse', pad: true, arp: 'soft', hook: true },
+        assault: { kick: [0, 6, 10], rim: [8, 14], hats: OFFBEATS, shaker: ALL_STEPS, bass: 'pulse', pad: true, hook: true },
+        breakdown: { shaker: [4, 12], bass: 'long', pad: true, riser: true },
+      },
+      synthwave: {
+        intro: { kick: [0, 8], hats: OFFBEATS, bass: 'eighths', pad: true, gate: true },
+        drive: { kick: [0, 4, 8, 12], snare: [4, 12], hats: OFFBEATS, open: [14], bass: 'eighths', pad: true, arp: true },
+        assault: { kick: [0, 4, 8, 12], snare: [4, 12], clap: [12], hats: ALL_STEPS, open: [6, 14], bass: 'octaves', pad: true, gate: true, hook: true },
+        breakdown: { hats: OFFBEATS, bass: 'long', pad: true, arp: 'soft', riser: true },
+      },
+      dub: {
+        intro: { rim: [8], hats: OFFBEATS, stab: [4, 12], bass: 'dub' },
+        drive: { kick: [8], rim: [8], hats: OFFBEATS, open: [14], stab: [4, 12], bass: 'dub', pad: true },
+        assault: { kick: [0, 8], snare: [8], hats: ALL_STEPS, stab: [4, 12], bass: 'dub', hook: true },
+        breakdown: { rim: [8], stab: [12], bass: 'long', pad: true, riser: true },
+      },
+      tribal: {
+        intro: { toms: [[0, 0.7], [3, 0.7], [10, 0.9]], shaker: EIGHTHS, bass: 'tribal', pad: true },
+        drive: { kick: [0, 8], clap: [12], toms: [[3, 0.7], [6, 1], [10, 0.7], [14, 1.3]], shaker: ALL_STEPS, bass: 'tribal', pad: true, arp: 'soft' },
+        assault: { kick: [0, 6, 8], clap: [4, 12], toms: [[2, 0.7], [3, 0.7], [10, 1], [11, 1.3]], hats: OFFBEATS, shaker: ALL_STEPS, bass: 'tribal', hook: true },
+        breakdown: { toms: [[0, 0.6], [8, 0.6]], bass: 'long', pad: true, riser: true },
+      },
     };
     const ARRANGEMENT = ['intro', 'drive', 'assault', 'breakdown', 'drive', 'assault'];
+    // Voices: lead is 'saw', 'square', 'soft' or 'bell'; pad is 'warm', 'glass' or 'dark'.
+    const TRACKS = {
+      relay: { bpm: 122, kit: 'industrial', lead: 'saw', pad: 'warm', chords: [[38, 'm'], [34], [31, 'm'], [33]],
+        hook: ['74.2 77.2 81.4 79.2 77.2 76.4', '77.4 74.4 69.8', '74.2 77.2 82.4 81.2 79.2 77.4', '79.4 77.4 74.8',
+          '70.2 74.2 79.4 77.2 74.2 70.4', '72.4 74.4 67.8', '73.2 76.2 81.4 79.2 76.2 73.4', '76.4 73.2 76.2 81.8'] },
+      toxin: { bpm: 98, swing: 0.12, kit: 'halftime', lead: 'square', pad: 'dark', chords: [[40, 'm'], [41], [40, 'm'], [38, 'm']],
+        hook: ['E4.6 G4.2 B4.4 A4.2 G4.2', 'F4.8 E4.8', 'F4.6 A4.2 C5.4 B4.2 A4.2', 'G4.8 F4.4 E4.4',
+          'E4.6 G4.2 B4.4 C5.2 B4.2', 'A4.8 G4.8', 'F4.6 A4.2 D5.4 C5.2 A4.2', 'F4.8 E4.8'] },
+      cryo: { bpm: 88, kit: 'ambient', lead: 'bell', pad: 'glass', arp: 'triangle', chords: [[42, 'm'], [38], [45], [40]],
+        hook: ['C#6.4 A5.4 F#5.4 E5.4', 'F#5.12 r.4', 'D6.4 A5.4 F#5.4 A5.4', 'E5.12 r.4',
+          'C#6.4 E6.4 A5.4 B5.4', 'C#6.8 B5.8', 'B5.4 G#5.4 E5.4 G#5.4', 'F#5.16'] },
+      magma: { bpm: 136, kit: 'foundry', lead: 'saw', pad: 'dark', chords: [[36, 'm'], [32], [41, 'm'], [43]],
+        hook: ['C5.2 C5.1 Eb5.1 G5.2 C5.2 Bb4.2 G4.2 Bb4.2 C5.2', 'Eb5.3 D5.3 C5.2 G4.8', 'Ab4.2 Ab4.1 C5.1 Eb5.2 Ab5.2 G5.2 Eb5.2 C5.2 Eb5.2', 'G5.3 F5.3 Eb5.2 C5.8',
+          'F5.2 F5.1 Ab5.1 C6.2 F5.2 Eb5.2 C5.2 Eb5.2 F5.2', 'Ab5.3 G5.3 F5.2 C5.8', 'G5.2 B4.2 D5.2 G5.2 F5.2 D5.2 B4.2 D5.2', 'G5.4 F5.2 Eb5.2 D5.8'] },
+      spire: { bpm: 126, kit: 'synthwave', lead: 'saw', pad: 'warm', chords: [[45, 'm'], [41], [36], [43]],
+        hook: ['E5.3 A5.3 B5.2 C6.4 B5.2 A5.2', 'G5.4 A5.4 E5.8', 'F5.3 A5.3 C6.2 F6.4 E6.2 C6.2', 'D6.4 C6.4 A5.8',
+          'G5.3 C6.3 D6.2 E6.4 D6.2 C6.2', 'B5.4 C6.4 G5.8', 'D6.3 B5.3 G5.2 B5.4 D6.2 F6.2', 'E6.8 r.4 E5.4'] },
+      docks: { bpm: 112, swing: 0.16, kit: 'dub', lead: 'soft', pad: 'dark', bass: 'sub', chords: [[43, 'm'], [39], [36, 'm'], [38]],
+        hook: ['r.2 D5.2 G5.4 r.2 F5.2 D5.4', 'Bb4.6 C5.2 D5.8', 'r.2 Eb5.2 G5.4 r.2 Bb5.2 G5.4', 'F5.6 Eb5.2 D5.8',
+          'r.2 C5.2 Eb5.4 r.2 G5.2 F5.4', 'Eb5.6 D5.2 C5.8', 'r.2 D5.2 F#5.4 r.2 A5.2 C6.4', 'Bb5.4 A5.4 F#5.4 D5.4'] },
+      hive: { bpm: 116, swing: 0.1, kit: 'tribal', lead: 'soft', pad: 'dark', chords: [[35, 'm'], [31], [40, 'm'], [42]],
+        hook: ['F#5.4 G5.2 F#5.2 D5.4 B4.4', 'C#5.4 D5.4 B4.8', 'G5.4 A5.2 G5.2 D5.4 B4.4', 'D5.4 E5.4 D5.8',
+          'E5.4 F#5.2 G5.2 B5.4 G5.4', 'F#5.4 E5.4 B4.8', 'A#4.4 C#5.4 F#5.4 E5.4', 'C#5.8 A#4.8'] },
+      tether: { bpm: 120, kit: 'synthwave', lead: 'saw', pad: 'glass', chords: [[37, 'm'], [33], [40], [35]],
+        hook: ['G#5.4 E5.2 G#5.2 C#6.4 B5.4', 'G#5.6 F#5.2 E5.8', 'A5.4 E5.2 A5.2 C#6.4 E6.4', 'C#6.6 B5.2 A5.8',
+          'B5.4 G#5.2 B5.2 E6.4 D#6.4', 'B5.6 G#5.2 E5.8', 'F#5.4 B5.4 D#6.4 F#6.4', 'E6.4 D#6.4 B5.8'] },
+      terraces: { bpm: 118, swing: 0.08, kit: 'synthwave', lead: 'square', pad: 'warm', chords: [[38, 'm'], [43], [36], [45, 'm']],
+        hook: ['A5.2 D5.2 F5.2 A5.2 G5.4 F5.4', 'E5.4 D5.4 A4.8', 'B5.2 G5.2 D5.2 G5.2 A5.4 B5.4', 'D6.4 B5.4 G5.8',
+          'G5.2 E5.2 C5.2 E5.2 F5.4 G5.4', 'E5.4 C5.4 G4.8', 'A5.2 C6.2 E6.2 C6.2 B5.4 A5.4', 'G5.4 E5.4 D5.8'] },
+      omega: { bpm: 138, kit: 'foundry', lead: 'saw', pad: 'dark', chords: [[43, 'm'], [39], [34], [41]],
+        hook: ['G5.2 Bb5.2 D6.4 C6.2 Bb5.2 A5.4', 'Bb5.2 A5.2 G5.4 D5.8', 'G5.2 Bb5.2 Eb6.4 D6.2 C6.2 Bb5.4', 'C6.2 Bb5.2 G5.4 Eb5.8',
+          'F5.2 Bb5.2 D6.4 F6.4 D6.4', 'C6.2 Bb5.2 A5.4 F5.8', 'A5.2 C6.2 F6.4 E6.2 C6.2 A5.4', 'Bb5.4 A5.4 G5.8'] },
+      abyss: { bpm: 84, kit: 'ambient', lead: 'bell', pad: 'dark', arp: 'sine', bass: 'sub', chords: [[34, 'm'], [30], [39, 'm'], [41]],
+        hook: ['Bb4.8 Db5.4 F5.4', 'Eb5.8 Db5.8', 'Bb4.8 Db5.4 Gb5.4', 'F5.16', 'Gb5.8 F5.4 Eb5.4', 'Db5.8 Bb4.8', 'A4.8 C5.4 F5.4', 'E5.8 F5.8'] },
+      canyon: { bpm: 124, kit: 'synthwave', lead: 'square', pad: 'glass', chords: [[40, 'm'], [36], [43], [38]],
+        hook: ['B5.3 E5.3 G5.2 B5.2 A5.2 G5.2 F#5.2', 'G5.4 E5.4 B4.8', 'C6.3 G5.3 E5.2 G5.2 A5.2 B5.2 C6.2', 'B5.4 G5.4 E5.8',
+          'D6.3 B5.3 G5.2 D6.2 E6.2 D6.2 B5.2', 'A5.4 G5.4 D5.8', 'F#5.3 A5.3 D6.2 C6.2 B5.2 A5.2 F#5.2', 'G5.4 F#5.4 E5.8'] },
+      void: { bpm: 144, kit: 'industrial', lead: 'saw', pad: 'dark', chords: [[41, 'm'], [37], [34, 'm'], [36]],
+        hook: ['F5.2 Ab5.2 C6.2 F6.2 Eb6.2 C6.2 Ab5.2 C6.2', 'Db6.4 C6.4 F5.8', 'F5.2 Ab5.2 Db6.2 F6.2 Eb6.2 Db6.2 Ab5.2 Db6.2', 'C6.4 Bb5.4 Ab5.8',
+          'F5.2 Bb5.2 Db6.2 F6.2 Gb6.2 F6.2 Db6.2 Bb5.2', 'C6.4 Db6.4 Bb5.8', 'E5.2 G5.2 C6.2 E6.2 G6.4 F6.2 E6.2', 'C6.4 Bb5.4 G5.4 E5.4'] },
+      boss: { bpm: 150, kit: 'foundry', lead: 'saw', pad: 'dark', arrangement: ['drive', 'assault', 'assault', 'breakdown', 'drive', 'assault'], chords: [[38, 'm'], [34], [36], [33]],
+        hook: ['D6.1 r.1 D6.1 r.1 A5.2 F5.2 D6.2 E6.2 F6.2 E6.2', 'D6.2 C6.2 A5.4 D5.8', 'D6.1 r.1 D6.1 r.1 Bb5.2 F5.2 D6.2 E6.2 F6.2 G6.2', 'F6.2 E6.2 D6.4 Bb5.8',
+          'E6.1 r.1 E6.1 r.1 C6.2 G5.2 E6.2 F6.2 G6.2 F6.2', 'E6.2 D6.2 C6.4 G5.8', 'C#6.2 E6.2 A6.4 G6.2 F6.2 E6.4', 'D6.2 C#6.2 A5.4 E5.4 C#5.4'] },
+    };
+    for (const t of Object.values(TRACKS)) {
+      t.step = 60 / t.bpm / 4; t.sections = KITS[t.kit]; t.arrangement ||= ARRANGEMENT;
+      t.progression = t.chords.map(([root, quality]) => chord(root, quality)); t.melody = parseHook(t.hook);
+    }
+    let track = TRACKS.relay, trackName = 'relay', echoNode = null;
+    // Switch tracks at the start of the next step; the new one begins from its intro.
+    function setTrack(name) {
+      if (!TRACKS[name] || name === trackName) return;
+      track = TRACKS[name]; trackName = name; musicStep = 0;
+      if (echoNode) echoNode.delayTime.setValueAtTime(track.step * 3, audioContext.currentTime);
+    }
     function envelope(param, at, attack, peak, length) {
       param.setValueAtTime(0.0001, at);
       param.exponentialRampToValueAtTime(peak, at + attack);
@@ -2152,6 +2254,24 @@
       const body = amp(musicIn); envelope(body.gain, at, 0.002, volume * 0.45, 0.12);
       tone('triangle', 196, at, 0.12, body).frequency.exponentialRampToValueAtTime(150, at + 0.1);
     }
+    function clap(at, volume) {
+      for (const offset of [0, 0.012, 0.024]) {
+        const burst = amp(musicIn, reverbIn); envelope(burst.gain, at + offset, 0.001, volume * (offset ? 0.7 : 1), 0.09 + offset * 4);
+        hiss(at + offset, 0.2, filter('bandpass', 1300, 1.1, burst, at));
+      }
+    }
+    function rim(at, volume) {
+      const out = amp(musicIn, delayIn); envelope(out.gain, at, 0.001, volume, 0.06);
+      tone('triangle', 1650, at, 0.06, out); hiss(at, 0.03, filter('bandpass', 3400, 2, out, at));
+    }
+    function tom(at, volume, pitch) {
+      const out = amp(musicIn, reverbIn); envelope(out.gain, at, 0.002, volume, 0.38);
+      tone('sine', 150 * pitch, at, 0.38, out).frequency.exponentialRampToValueAtTime(90 * pitch, at + 0.26);
+    }
+    function shaker(at, volume) {
+      const out = amp(musicIn); envelope(out.gain, at, 0.004, volume, 0.07);
+      hiss(at, 0.07, filter('bandpass', 6200, 1.4, out, at));
+    }
     function hat(at, volume, open) {
       const length = open ? 0.3 : 0.05, out = amp(musicIn);
       envelope(out.gain, at, 0.001, volume, length);
@@ -2166,34 +2286,55 @@
       const out = amp(musicIn);
       out.gain.setValueAtTime(0.0001, at); out.gain.exponentialRampToValueAtTime(volume, at + 0.006);
       out.gain.setValueAtTime(volume, at + Math.max(0.01, length - 0.05)); out.gain.exponentialRampToValueAtTime(0.0001, at + length + 0.04);
+      if (track.bass === 'sub') {
+        // A round sine sub with a little square edge for dub and the deep sectors.
+        const edge = amp(out); edge.gain.value = 0.3;
+        tone('sine', frequency, at, length + 0.05, out);
+        tone('square', frequency, at, length + 0.05, filter('lowpass', 400 + cutoff * 0.2, 1, edge, at));
+        return;
+      }
       const low = filter('lowpass', cutoff, 8, out, at);
       low.frequency.exponentialRampToValueAtTime(Math.max(120, frequency * 1.5), at + Math.min(0.25, length));
       tone('sawtooth', frequency, at, length + 0.05, low);
       tone('square', frequency / 2, at, length + 0.05, low, 4);
     }
     function pad(at, frequencies, length) {
-      const out = amp(musicIn, reverbIn);
-      out.gain.setValueAtTime(0.0001, at); out.gain.linearRampToValueAtTime(0.045, at + 1.1);
-      out.gain.setValueAtTime(0.045, at + length - 0.4); out.gain.linearRampToValueAtTime(0.0001, at + length + 0.9);
-      const low = filter('lowpass', 500, 0.7, out, at);
-      low.frequency.linearRampToValueAtTime(1600, at + length * 0.5); low.frequency.linearRampToValueAtTime(600, at + length + 0.9);
-      for (const frequency of frequencies) for (const detune of [-8, 8]) tone('sawtooth', frequency, at, length + 1, low, detune);
+      const out = amp(musicIn, reverbIn), voice = track.pad, level = voice === 'glass' ? 0.035 : 0.045;
+      out.gain.setValueAtTime(0.0001, at); out.gain.linearRampToValueAtTime(level, at + 1.1);
+      out.gain.setValueAtTime(level, at + length - 0.4); out.gain.linearRampToValueAtTime(0.0001, at + length + 0.9);
+      const [lo, hi] = voice === 'dark' ? [300, 900] : voice === 'glass' ? [1400, 4200] : [500, 1600];
+      const low = filter('lowpass', lo, 0.7, out, at);
+      low.frequency.linearRampToValueAtTime(hi, at + length * 0.5); low.frequency.linearRampToValueAtTime(lo * 1.2, at + length + 0.9);
+      for (const frequency of frequencies) for (const detune of [-8, 8]) tone(voice === 'glass' ? 'triangle' : 'sawtooth', frequency, at, length + 1, low, detune);
+    }
+    // A short chopped chord: synthwave gates and dub off-beat stabs.
+    function stab(at, frequencies, volume, length) {
+      const out = amp(musicIn, delayIn); envelope(out.gain, at, 0.004, volume, length);
+      const low = filter('lowpass', 2000 + musicIntensity * 1200, 1, out, at);
+      for (const frequency of frequencies) tone('square', frequency, at, length, low, 5);
+    }
+    function bell(at, frequency, volume, length) {
+      const out = amp(musicIn, delayIn, reverbIn); envelope(out.gain, at, 0.002, volume, length);
+      tone('sine', frequency, at, length, out);
+      const over = amp(out); over.gain.value = 0.3; tone('sine', frequency * 2.76, at, length * 0.5, over);
     }
     function lead(at, frequency, length, volume) {
+      if (track.lead === 'bell') return bell(at, frequency, volume * 1.4, Math.max(0.6, length + 0.4));
       const out = amp(musicIn, delayIn);
       out.gain.setValueAtTime(0.0001, at); out.gain.exponentialRampToValueAtTime(volume, at + 0.012);
       out.gain.exponentialRampToValueAtTime(volume * 0.55, at + 0.18);
       out.gain.setValueAtTime(volume * 0.55, at + Math.max(0.2, length - 0.04));
       out.gain.exponentialRampToValueAtTime(0.0001, at + length + 0.12);
-      const low = filter('lowpass', 2600, 2, out, at);
+      const low = filter('lowpass', track.lead === 'soft' ? 1400 : 2600, 2, out, at);
       const vibrato = audioContext.createOscillator(), depth = audioContext.createGain();
       vibrato.frequency.value = 5.2; depth.gain.value = 9; vibrato.connect(depth);
-      for (const [type, detune] of [['sawtooth', -6], ['square', 6]]) depth.connect(tone(type, frequency, at, length + 0.15, low, detune).detune);
+      const waves = track.lead === 'square' ? [['square', -5], ['square', 5]] : track.lead === 'soft' ? [['triangle', -4], ['square', 4]] : [['sawtooth', -6], ['square', 6]];
+      for (const [type, detune] of waves) depth.connect(tone(type, frequency, at, length + 0.15, low, detune).detune);
       vibrato.start(at + 0.15); vibrato.stop(at + length + 0.2);
     }
     function pluck(at, frequency, volume) {
       const out = amp(musicIn, delayIn); envelope(out.gain, at, 0.003, volume, 0.16);
-      tone('square', frequency, at, 0.16, filter('lowpass', 1800 + musicIntensity * 1800, 1.5, out, at));
+      tone(track.arp || 'square', frequency, at, 0.16, filter('lowpass', 1800 + musicIntensity * 1800, 1.5, out, at));
     }
     function riser(at, length) {
       const out = amp(musicIn, reverbIn);
@@ -2210,29 +2351,38 @@
       tone('sine', 72, at, 1.4, boom).frequency.exponentialRampToValueAtTime(32, at + 1.2);
     }
     function playMusicStep(index, at) {
-      const step = index % 16, bar = Math.floor(index / 16), phrase = Math.floor(bar / 8), barInPhrase = bar % 8;
-      const name = ARRANGEMENT[phrase < ARRANGEMENT.length ? phrase : 1 + (phrase - 1) % (ARRANGEMENT.length - 1)];
-      const section = SECTIONS[name], chord = PROGRESSION[barInPhrase >> 1], fill = barInPhrase === 7, heat = musicIntensity;
+      const step = index % 16, bar = Math.floor(index / 16), phrase = Math.floor(bar / 8), barInPhrase = bar % 8, plan = track.arrangement;
+      const name = plan[phrase < plan.length ? phrase : 1 + (phrase - 1) % (plan.length - 1)];
+      const section = track.sections[name], chord = track.progression[barInPhrase >> 1], fill = barInPhrase === 7, heat = musicIntensity;
+      if (step % 2) at += (track.swing || 0) * track.step;
+      const has = (list, n = step) => list && list.includes(n);
       if (step === 0 && barInPhrase === 0 && phrase > 0 && name !== 'breakdown') crash(at, 0.4);
-      if (section.kick.includes(step) || (fill && section.kick.length > 2 && step === 14)) kick(at, step === 0 ? 0.95 : 0.85);
-      if (section.snare.includes(step)) snare(at, 0.55);
-      else if (fill && section.snare.length && step > 12) snare(at, 0.22 + (step - 12) * 0.1);
-      if (section.open.includes(step)) hat(at, 0.13, true);
-      else if (section.hats.includes(step) || (heat > 0.45 && step % 2 === 1)) hat(at, step % 4 === 2 ? 0.17 : 0.1, false);
-      if (section.metal.includes(step) && (bar % 2 === 0 || step > 8)) metal(at, 0.3, bar % 2 ? 1.12 : 1);
+      const kicks = section.kick || [];
+      if (has(kicks) || (fill && kicks.length > 2 && step === 14)) kick(at, step === 0 ? 0.95 : 0.85);
+      if (has(section.snare)) snare(at, 0.55);
+      else if (fill && section.snare && step > 12) snare(at, 0.22 + (step - 12) * 0.1);
+      if (has(section.clap)) clap(at, 0.42);
+      if (has(section.rim)) rim(at, 0.16);
+      for (const [at16, pitch] of section.toms || []) if (at16 === step) tom(at, 0.5, pitch);
+      if (has(section.shaker)) shaker(at, step % 4 === 2 ? 0.09 : 0.05);
+      if (has(section.open)) hat(at, 0.13, true);
+      else if (has(section.hats) || (heat > 0.45 && step % 2 === 1)) hat(at, step % 4 === 2 ? 0.17 : 0.1, false);
+      if (has(section.metal) && (bar % 2 === 0 || step > 8)) metal(at, 0.3, bar % 2 ? 1.12 : 1);
+      if (has(section.stab)) stab(at, chord.pad.slice(1).map(n => midi(n + 12)), 0.05, track.step * 1.6);
       const note = BASS[section.bass][step];
-      if (note) bass(at, midi(chord.root + note[0]), note[1] * MUSIC_STEP * 0.92, note[2] ? 0.34 : 0.25, (note[2] ? 1500 : 850) + heat * 900);
-      if (section.pad && step === 0 && barInPhrase % 2 === 0) pad(at, chord.pad.map(midi), MUSIC_STEP * 32);
-      if (section.hook) { const melody = HOOK.get(barInPhrase * 16 + step); if (melody) lead(at, midi(melody[0]), melody[1] * MUSIC_STEP, 0.15); }
+      if (note) bass(at, midi(chord.root + note[0]), note[1] * track.step * 0.92, note[2] ? 0.34 : 0.25, (note[2] ? 1500 : 850) + heat * 900);
+      if (section.pad && section.gate) { if (step % 2 === 0) stab(at, chord.pad.map(midi), 0.035, track.step * 1.4); }
+      else if (section.pad && step === 0 && barInPhrase % 2 === 0) pad(at, chord.pad.map(midi), track.step * 32);
+      if (section.hook) { const melody = track.melody.get(barInPhrase * 16 + step); if (melody) lead(at, midi(melody[0]), melody[1] * track.step, 0.15); }
       else if ((section.arp || heat > 0.6) && !(section.arp === 'soft' && step % 2)) pluck(at, midi(chord.arp[ARP_ORDER[step]] + 12), section.arp === 'soft' ? 0.05 : 0.08);
-      if (section.riser && barInPhrase === 6 && step === 0) riser(at, MUSIC_STEP * 32);
+      if (section.riser && barInPhrase === 6 && step === 0) riser(at, track.step * 32);
     }
     function scheduleMusic() {
       if (!musicOn || paused || destroyed || !audioContext || audioContext.state !== 'running') return;
       if (musicNextTime < audioContext.currentTime) musicNextTime = audioContext.currentTime + 0.05;
       while (musicNextTime < audioContext.currentTime + 0.2) {
         playMusicStep(musicStep, musicNextTime);
-        musicStep++; musicNextTime += MUSIC_STEP;
+        musicStep++; musicNextTime += track.step;
       }
     }
     function playExplosionSound() {
@@ -2255,7 +2405,7 @@
       impactTimer = 0; hitTimer = 0; muzzleTimer = 0; fireCooldown = 0; wallCooldown = 0; warpTimer = 0;
       shots.length = 0; enemyShots.length = 0; explosions.length = 0; particles.length = 0;
       gameOverText.classList.remove('show'); pausedText.classList.remove('show');
-      bossBlast = null; resetMap();
+      bossBlast = null; resetMap(); setTrack(level.music || 'relay');
       sectorText.textContent = `${index + 1} / ${LEVELS.length}`; levelText.textContent = level.name;
       save.sectors[index] = { weapon: weaponLevel, missiles: missileAmmo, launcher: launcherLevel }; save.last = index; noteArsenal();
       notice(`SECTOR ${index + 1} // ${level.name} ${level.title}`, 3);
