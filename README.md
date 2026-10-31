@@ -67,7 +67,7 @@ Press Tab to show or hide the map of the current sector. Rooms appear as they co
 - **Phantoms** (pale blue, wide-winged) stay cloaked as a faint shimmer, invisible on radar and impossible to lock on to, until they fire a three-shot burst, get hit or come within close range.
 - **Miners** (orange boxes) patrol back and forth laying mines. **Mines** drift toward a nearby ship, arm after a second and blow up when you get close; shooting one sets it off, which can catch other enemies.
 
-The first time you meet each of the tougher types, a one-line tip appears; types you have met are remembered in your save. A hostile that spots you wakes the others close to it. Big enemies sometimes leave a repair or missile crystal behind. From sector 6 on, some enemies are **elites**: gold-eyed and gold-tinted, with nearly twice the hull, and they fire a quarter faster. They grow more common in later sectors.
+The first time you meet each of the tougher types, a one-line tip appears; types you have met are remembered in your save. A hostile that spots you wakes the others close to it. From sector 8 on, some wardens fly with two escort drones that hold formation either side of them, on the side facing you, until the warden dies. Big enemies sometimes leave a repair or missile crystal behind. From sector 6 on, some enemies are **elites**: gold-eyed and gold-tinted, with nearly twice the hull, and they fire a quarter faster. They grow more common in later sectors.
 
 ### Arsenal
 
