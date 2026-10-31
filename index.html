@@ -34,7 +34,8 @@
     .cockpit .hull .meter { height: 10px; }
     .cockpit .speed { width: 100%; text-align: left; font-size: 10px; }
     .cockpit .speed .meter { height: 8px; }
-    .status { position: absolute; top: 30%; left: 50%; transform: translateX(-50%); color: #ffd18a; font-size: 14px; letter-spacing: .22em; opacity: 0; }
+    .status { position: absolute; top: 30%; left: 50%; transform: translateX(-50%); width: max-content; max-width: 92vw; text-align: center; line-height: 1.5; color: #ffd18a; font-size: 14px; letter-spacing: .22em; opacity: 0; }
+    body.touch .status { font-size: 12px; letter-spacing: .14em; }
     .shield-flash { position: absolute; inset: 0; background: radial-gradient(transparent 50%,#4fa8ff77); opacity: 0; }
     .warning { position: absolute; top: 22%; left: 50%; transform: translateX(-50%); color: #ff6a5a; font-size: 13px; letter-spacing: .3em; opacity: 0; }
     .damage-flash { position: absolute; inset: 0; background: radial-gradient(transparent 45%,#ef513d88); opacity: 0; }
@@ -3478,6 +3479,14 @@
         const [ax, ay] = toScreen(gate.x0, gate.z1), [bx, by] = toScreen(gate.x1, gate.z0);
         ctx.strokeRect(ax, ay, bx - ax, by - ay);
       }
+      // Data cores still standing show as teal diamonds once their room has been seen.
+      const cores = enemies.filter(e => e.type === 'core' && e.hp > 0);
+      ctx.fillStyle = '#5dfff0';
+      for (const core of cores) {
+        if (!seen(core.position[0], core.position[2])) continue;
+        const [cx, cy] = toScreen(core.position[0], core.position[2]);
+        ctx.beginPath(); ctx.moveTo(cx, cy - 6); ctx.lineTo(cx + 4.5, cy); ctx.lineTo(cx, cy + 6); ctx.lineTo(cx - 4.5, cy); ctx.closePath(); ctx.fill();
+      }
       const [ex, ey] = toScreen(level.exit[0], level.exit[2]);
       if (Math.sin(time * 6) > -0.3) { ctx.fillStyle = '#5dffb0'; ctx.beginPath(); ctx.arc(ex, ey, 4.5, 0, Math.PI * 2); ctx.fill(); }
       const [px, py] = toScreen(ship.position[0], ship.position[2]), fx = Math.sin(ship.yaw), fy = -Math.cos(ship.yaw);
@@ -3485,7 +3494,7 @@
       ctx.moveTo(px + fx * 8, py + fy * 8); ctx.lineTo(px - fx * 5 - fy * 5, py - fy * 5 + fx * 5); ctx.lineTo(px - fx * 5 + fy * 5, py - fy * 5 - fx * 5);
       ctx.closePath(); ctx.fill();
       ctx.textAlign = 'left'; ctx.fillStyle = '#65e9ff'; ctx.fillText(`MAP // SECTOR ${levelIndex + 1} // ${level.name} ${level.title}`, left + 14, top + 20);
-      ctx.textAlign = 'right'; ctx.fillStyle = '#8a9ca6'; ctx.fillText('ORANGE: CLOSED GATE   GREEN: EXIT   TAB: CLOSE', right - 14, top + 20);
+      ctx.textAlign = 'right'; ctx.fillStyle = '#8a9ca6'; ctx.fillText(`ORANGE: CLOSED GATE   GREEN: EXIT${cores.length ? `   TEAL: DATA CORE (${cores.length} LEFT)` : ''}   TAB: CLOSE`, right - 14, top + 20);
     }
     function hurtEnemy(enemy, amount) {
       if (enemy.hp <= 0) return;

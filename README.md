@@ -48,7 +48,7 @@ Three sectors end with a boss: sectors 10, 12 and 15. A health bar appears at th
 
 ### Map
 
-Press Tab to show or hide the map of the current sector. Rooms appear as they come into view; walls you have not seen stay hidden. Brighter floors are higher, sludge is green, slag is orange, water is dark blue and vents are amber. Areas you have entered are labelled, closed gates are outlined in orange, the exit blinks green, and the white arrow is your ship. The game keeps running while the map is open.
+Press Tab to show or hide the map of the current sector. Rooms appear as they come into view; walls you have not seen stay hidden. Brighter floors are higher, sludge is green, slag is orange, water is dark blue and vents are amber. Areas you have entered are labelled, closed gates are outlined in orange, data cores you have seen show as teal diamonds (with a count of those left), the exit blinks green, and the white arrow is your ship. The game keeps running while the map is open.
 
 ### Enemies
 
