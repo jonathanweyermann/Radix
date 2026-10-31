@@ -1,0 +1,2770 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Radix / Beyond the Void</title>
+  <style>
+    :root { color-scheme: dark; font-family: Consolas, "Courier New", monospace; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #030712; color: #d7f9ff; }
+    #world, #space { position: fixed; inset: 0; display: block; width: 100vw; height: 100vh; }
+    .hud { position: fixed; inset: 0; pointer-events: none; text-shadow: 0 0 10px #3be8ff88; }
+    .scanlines { position: absolute; inset: 0; background: repeating-linear-gradient(to bottom, transparent 0 3px, rgba(35,115,160,0.035) 3px 4px); }
+    .top { position: absolute; top: 20px; left: 28px; right: 28px; display: flex; justify-content: space-between; gap: 20px; align-items: start; }
+    .brand { color: #65e9ff; font-size: 13px; font-weight: bold; letter-spacing: .28em; }
+    .brand small { display: block; color: #a8b8cb; font-size: 10px; font-weight: normal; letter-spacing: .32em; margin-top: 7px; }
+    .hull { width: 190px; margin-top: 20px; color: #83e6ee; font-size: 10px; letter-spacing: .2em; }
+    .hull .meter { height: 8px; margin-top: 8px; border-color: #438f94; }
+    .hull .meter span { width: 100%; background: #69e4c2; box-shadow: 0 0 12px #69e4c2; }
+    .stats { text-align: right; color: #b1ecf8; font-size: 12px; line-height: 1.7; letter-spacing: .13em; }
+    .stats strong { color: white; }
+    .mission { color: #f5b76b; font-size: 11px; letter-spacing: .2em; text-align: right; }
+    .cockpit { position: absolute; left: 0; right: 0; bottom: 0; height: 206px; padding: 15px 28px 38px; display: grid; grid-template-columns: minmax(180px,1fr) 250px minmax(180px,1fr); gap: 20px; background: linear-gradient(#283743ee,#0d1721 20%,#101d28 80%,#050a10); border-top: 5px solid #697d88; box-shadow: 0 -8px 26px #000b, inset 0 1px #b5c3c6; }
+    .panel { background: #08131c; border: 3px ridge #5a6d77; box-shadow: inset 0 0 20px #02090f, 0 4px 12px #0009; padding: 10px 14px; min-width: 0; }
+    .panel-title { color: #f0a65c; font-size: 11px; letter-spacing: .2em; margin-bottom: 8px; }
+    .panel-row { display: flex; justify-content: space-between; gap: 10px; color: #85b5be; font-size: 11px; line-height: 1.38; letter-spacing: .12em; }
+    .panel-row strong { color: #ecf4dc; }
+    .radar-wrap { display: flex; align-items: center; justify-content: center; gap: 14px; min-width: 0; }
+    #radar { width: 118px; height: 118px; border-radius: 50%; border: 5px ridge #607781; background: #061820; box-shadow: 0 0 0 5px #1b2b32, inset 0 0 20px #1e8791; }
+    .readouts { color: #8ecbd5; font-size: 10px; line-height: 1.8; letter-spacing: .12em; }
+    .readouts strong { display: block; color: #edb26f; font-size: 18px; line-height: 1.2; margin-bottom: 6px; }
+    .cockpit .hull { width: 100%; margin: 0 0 7px; }
+    .cockpit .shield .meter span { background: #6fb6ff; box-shadow: 0 0 12px #6fb6ff; }
+    .cockpit .hull .meter { height: 10px; }
+    .cockpit .speed { width: 100%; text-align: left; font-size: 10px; }
+    .cockpit .speed .meter { height: 8px; }
+    .status { position: absolute; top: 30%; left: 50%; transform: translateX(-50%); color: #ffd18a; font-size: 14px; letter-spacing: .22em; opacity: 0; }
+    .shield-flash { position: absolute; inset: 0; background: radial-gradient(transparent 50%,#4fa8ff77); opacity: 0; }
+    .warning { position: absolute; top: 22%; left: 50%; transform: translateX(-50%); color: #ff6a5a; font-size: 13px; letter-spacing: .3em; opacity: 0; }
+    .damage-flash { position: absolute; inset: 0; background: radial-gradient(transparent 45%,#ef513d88); opacity: 0; }
+    .warp { position: absolute; inset: 0; background: radial-gradient(#f2fff8, #8dffc8 45%, #1a6a52); opacity: 0; }
+    .controls { position: absolute; left: 28px; right: 28px; bottom: 9px; color: #8a9ca6; font-size: 10px; line-height: 1.4; letter-spacing: .05em; text-align: center; white-space: nowrap; overflow: hidden; }
+    .controls b { color: #e1faff; font-weight: normal; }
+    .speed { width: 160px; flex: 0 0 160px; text-align: right; color: #6fe7fa; font-size: 10px; letter-spacing: .2em; }
+    .meter { height: 5px; margin-top: 9px; border: 1px solid #438699; background: #0c2330; }
+    .meter span { display: block; width: 0; height: 100%; background: #75edff; box-shadow: 0 0 12px #4edfff; }
+    .paused { position: absolute; top: 48%; left: 50%; transform: translate(-50%, -50%); color: #b9f8ff; font-size: 22px; letter-spacing: .4em; display: none; }
+    .paused.show { display: block; }
+    .impact { position: absolute; top: 34%; left: 50%; transform: translateX(-50%); color: #ff9d83; font-size: 14px; letter-spacing: .3em; opacity: 0; }
+    .gameover { position: absolute; top: 48%; left: 50%; transform: translate(-50%,-50%); display: none; text-align: center; color: #ffb8a4; font-size: 24px; letter-spacing: .28em; white-space: nowrap; }
+    .gameover small { display: block; margin-top: 16px; color: #d6e5eb; font-size: 11px; letter-spacing: .18em; }
+    .gameover.show { display: block; }
+    .corner { position: absolute; width: 33px; height: 33px; border-color: #53d8eb55; border-style: solid; }
+    .tl { top: 12px; left: 12px; border-width: 1px 0 0 1px; }
+    .tr { top: 12px; right: 12px; border-width: 1px 1px 0 0; }
+    .bl { bottom: 12px; left: 12px; border-width: 0 0 1px 1px; }
+    .br { bottom: 12px; right: 12px; border-width: 0 1px 1px 0; }
+    @media (max-width: 700px) { .top { left: 16px; right: 16px; top: 16px; } .brand { font-size: 11px; } .mission { display: none; } .cockpit { height: 155px; padding: 11px 12px 28px; grid-template-columns: 1fr 100px 1fr; gap: 6px; } .panel { padding: 6px; border-width: 2px; } .panel-row { font-size: 9px; } .panel-title { font-size: 9px; } #radar { width: 82px; height: 82px; } .readouts { display: none; } .controls { left: 10px; right: 10px; font-size: 8px; } }
+  </style>
+</head>
+<body>
+  <canvas id="world" aria-label="3D space flight scene"></canvas>
+  <canvas id="space" aria-hidden="true"></canvas>
+  <div class="hud" aria-hidden="true">
+    <div class="scanlines"></div>
+    <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+    <div class="top"><div class="brand">RADIX <small>BEYOND THE VOID / FLIGHT TEST</small></div><div class="mission"><span id="levelText">THETA-2</span> // <span id="zoneText">LAUNCH BAY</span></div></div>
+    <div class="damage-flash" id="damageFlash"></div>
+    <div class="shield-flash" id="shieldFlash"></div>
+    <div class="warning" id="warningText">MISSILE WARNING</div>
+    <div class="warp" id="warpFlash"></div>
+    <div class="paused" id="pausedText">PAUSED</div>
+    <div class="impact" id="impactText">HULL IMPACT</div>
+    <div class="status" id="statusText">TARGET HIT</div>
+    <div class="gameover" id="gameOverText">SHIP DESTROYED<small>PRESS R TO RESTART</small></div>
+    <div class="cockpit">
+      <div class="panel"><div class="panel-title">NEUTRON CANNON</div><div class="panel-row"><span>SECTOR</span><strong id="sectorText">1 / 4</strong></div><div class="panel-row"><span>CANNON</span><strong id="cannonText">MK I</strong></div><div class="panel-row"><span>MISSILES</span><strong id="missileText">0</strong></div><div class="panel-row"><span>BARRELS</span><strong id="barrelText">0 / 0</strong></div><div class="panel-row"><span>HOSTILES</span><strong id="killText">0 / 0</strong></div><div class="panel-row"><span>MUSIC</span><strong id="musicText">ON</strong></div></div>
+      <div class="radar-wrap"><canvas id="radar" width="118" height="118"></canvas><div class="readouts">SPEED<strong id="speedText">8.0</strong>HEADING<strong id="headingText">000</strong>ALT<strong id="altitudeText">-4</strong></div></div>
+      <div class="panel"><div class="panel-title">SHIP STATUS</div><div class="hull shield">SHIELD <strong id="shieldText">100</strong>%<div class="meter"><span id="shieldBar"></span></div></div><div class="hull">HULL <strong id="healthText">100</strong>%<div class="meter"><span id="healthBar"></span></div></div><div class="speed">THRUST<div class="meter"><span id="speedBar"></span></div></div></div>
+      <div class="controls"><b>MOUSE</b> STEER / FIRE &nbsp; <b>WASD</b> STRAFE &nbsp; <b>↑/↓</b> PITCH &nbsp; <b>←/→</b> TURN &nbsp; <b>Q/E</b> ROLL &nbsp; <b>X</b> ACCELERATE &nbsp; <b>Z</b> BRAKE &nbsp; <b>F/J</b> FIRE &nbsp; <b>C/RMB</b> MISSILE &nbsp; <b>P</b> PAUSE &nbsp; <b>M</b> MUSIC</div>
+    </div>
+  </div>
+  <script>
+  (() => {
+    'use strict';
+    const world = document.getElementById('world');
+    const gl = world.getContext('webgl2', { antialias: true, alpha: false, powerPreference: 'high-performance' });
+    const canvas = document.getElementById('space');
+    const ctx = canvas.getContext('2d');
+    const radar = document.getElementById('radar');
+    const radarCtx = radar.getContext('2d');
+    const speedText = document.getElementById('speedText');
+    const headingText = document.getElementById('headingText');
+    const altitudeText = document.getElementById('altitudeText');
+    const barrelText = document.getElementById('barrelText');
+    const killText = document.getElementById('killText');
+    const musicText = document.getElementById('musicText');
+    const zoneText = document.getElementById('zoneText');
+    const healthText = document.getElementById('healthText');
+    const healthBar = document.getElementById('healthBar');
+    const shieldText = document.getElementById('shieldText');
+    const shieldBar = document.getElementById('shieldBar');
+    const shieldFlash = document.getElementById('shieldFlash');
+    const missileText = document.getElementById('missileText');
+    const warningText = document.getElementById('warningText');
+    const speedBar = document.getElementById('speedBar');
+    const pausedText = document.getElementById('pausedText');
+    const impactText = document.getElementById('impactText');
+    const statusText = document.getElementById('statusText');
+    const damageFlash = document.getElementById('damageFlash');
+    const gameOverText = document.getElementById('gameOverText');
+    const warpFlash = document.getElementById('warpFlash');
+    const sectorText = document.getElementById('sectorText');
+    const cannonText = document.getElementById('cannonText');
+    const levelText = document.getElementById('levelText');
+    if (!gl) { statusText.textContent = 'THIS BROWSER NEEDS WEBGL 2'; statusText.style.opacity = '1'; return; }
+    const keys = new Set();
+    const ship = { position: [0, -4, 0], yaw: 0, pitch: 0, roll: 0, speed: 8, strafe: [0, 0] };
+    const STRAFE_SPEED = 14;
+    let width = 0, height = 0, dpr = 1, lastTime = performance.now(), time = 0, paused = false, impactTimer = 0, hitTimer = 0, muzzleTimer = 0, fireCooldown = 0, wallCooldown = 0, health = 100, barrelsDestroyed = 0, kills = 0, destroyed = false, mouseFiring = false, audioContext = null, musicBus = null, musicOn = true, musicStep = 0, musicNextTime = 0;
+    let musicIn = null, reverbIn = null, delayIn = null, noiseBuffer = null, musicIntensity = 0;
+    let shield = 34, shieldDelay = 0, shieldGlow = 0, shieldOnly = false, missileAmmo = 0, levelMissiles = 0, missileCooldown = 0, missileRequest = false, lockTarget = null, lockTimer = 0;
+    let sludgeCooldown = 0, weaponLevel = 1, levelWeapon = 1, finished = false, warpTimer = 0, warpGlow = 0, noticeTimer = 0;
+    let seed = 0x5eed;
+    const random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 0x100000000; };
+    const range = (a, b) => a + random() * (b - a);
+    const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+    const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+    const mul = (a, n) => [a[0] * n, a[1] * n, a[2] * n];
+    const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+    const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+    const normalize = (a) => mul(a, 1 / Math.hypot(...a));
+    const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+    const smoothstep = (a, b, n) => { const t = clamp((n - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+    const hashInt = (x, y, s) => {
+      let n = Math.imul(x | 0, 374761393) ^ Math.imul(y | 0, 668265263) ^ Math.imul(s | 0, 1442695041);
+      n = Math.imul(n ^ (n >>> 13), 1274126177);
+      return ((n ^ (n >>> 16)) >>> 0) / 4294967296;
+    };
+
+    // Each level is a grid of 4-unit cells carved out of solid ground.
+    //   rooms:  open space [x0, z0, x1, z1, floor material, floor height, ceiling height]; no ceiling means open sky
+    //   stairs: rooms whose floor climbs [x0, z0, x1, z1, material, height at x0/z0 side, height at x1/z1 side, axis, headroom]
+    //   blocks: solid pillars put back [x0, z0, x1, z1, wall kind]
+    //   girders: beams [x0, y0, z0, x1, y1, z1] to fly over, under or between
+    //   exit: the warp gate [x, y, z, gate spans x]
+    // Levels are written in design units (floor BASE, open sky at TOP) and scaled up by WORLD_SCALE when the game starts.
+    const WORLD_SCALE = 1.25, BASE = -11, TOP = 33;
+    const FLOOR = BASE * WORLD_SCALE, SKY_LIMIT = 32 * WORLD_SCALE, WALL_TOP = TOP * WORLD_SCALE, CELL = 4 * WORLD_SCALE;
+    const GRID_X0 = -256 * WORLD_SCALE, GRID_Z0 = -48 * WORLD_SCALE, GRID_W = 128, GRID_D = 200;
+    //   gates: doors [x0, z0, x1, z1, side the player meets them on, 'chain' | 'secret'] that seal their cells.
+    //     Chain gates open once both chain locks on their face are shot; secret panels open after a few hits.
+    //   walls: optional weighted wall-texture variants for the lower and upper bands
+    const FLOOR_MATERIALS = ['floorPlate', 'floorGrate', 'floorPad', 'floorFoundry', 'floorSludge', 'floorLava'];
+    const PLATE = 0, GRATE = 1, PAD = 2, SLAG = 3, SLUDGE = 4, LAVA = 5, BULKHEAD = 1, COLUMN = 2, REACTOR = 3;
+    const LEVELS = [
+      {
+        name: 'DELTA-9', title: 'RELAY STATION', start: [0, -4, 0], yaw: 0, exit: [0, -2, 440, true],
+        sky: { zenith: [0.02, 0.03, 0.06], fog: [0.17, 0.19, 0.23], sun: [0.6, 0.55, 0.5], sunDir: [0.4, 0.5, 0.75] },
+        walls: { lower: [['wallComputer', 0.4], ['wallLower', 0.3], ['wallVent', 0.15], ['wallDoor', 0.15]], upper: [['wallUpper', 0.8], ['wallWindows', 0.2]] },
+        rooms: [
+          [-20, -32, 20, 40, PAD, BASE, 9],
+          [-8, 40, 8, 100, PLATE, BASE, 3],
+          [-48, 100, 48, 180, GRATE, BASE, 21], [-16, 124, 16, 156, PAD, -5, 21],
+          [48, 128, 64, 144, PLATE, BASE, 9],
+          [64, 104, 136, 184, SLUDGE], [64, 132, 136, 140, PLATE, -7],
+          [136, 104, 192, 208, PLATE, BASE, 13],
+          [152, 208, 168, 280, PLATE, BASE, 5],
+          [96, 280, 200, 344, GRATE, BASE, 17], [104, 296, 128, 328, SLUDGE, BASE, 17],
+          [-96, 280, 96, 296, PLATE, BASE, 5],
+          [-48, 180, -32, 280, PLATE, BASE, 3],
+          [-96, 136, -48, 152, PLATE, BASE, 7],
+          [-160, 120, -96, 296, GRATE], [-152, 136, -104, 180, SLUDGE],
+          [-152, 296, -144, 304, PLATE, BASE, 11], [-200, 304, -136, 360, PLATE, BASE, 11],
+          [-24, 296, 24, 392, PLATE, BASE, 7],
+          [-40, 392, 40, 456, PAD],
+        ],
+        blocks: [
+          [-36, 108, -28, 116, COLUMN], [28, 108, 36, 116, COLUMN], [-36, 164, -28, 172, COLUMN], [28, 164, 36, 172, COLUMN],
+          [148, 120, 152, 168, BULKHEAD], [176, 140, 180, 192, BULKHEAD], [160, 112, 168, 120, COLUMN],
+          [148, 304, 164, 320, REACTOR], [176, 296, 184, 304, COLUMN], [176, 320, 184, 328, COLUMN],
+          [-136, 192, -128, 200, COLUMN], [-120, 236, -112, 244, COLUMN], [-144, 256, -136, 264, COLUMN],
+          [-184, 320, -176, 344, BULKHEAD], [-24, 416, -16, 424, COLUMN], [16, 416, 24, 424, COLUMN],
+        ],
+        girders: [[64, 4, 160, 136, 7, 164], [96, 8, 284, 200, 11, 288], [-160, 6, 216, -96, 9, 220], [-40, 8, 404, 40, 11, 408]],
+        gates: [
+          [-8, 92, 8, 96, 'south', 'chain'], [152, 208, 168, 212, 'south', 'chain'],
+          [-48, 180, -32, 184, 'south', 'chain'], [-24, 296, 24, 300, 'south', 'chain'],
+          [-152, 296, -144, 300, 'south', 'secret'],
+        ],
+        extras: { enemies: [['drone', 0, BASE + 8, 150]] },
+        zones: [
+          { name: 'ENTRY HALL', area: [-20, -32, 20, 40], barrels: 4 },
+          { name: 'ACCESS CORRIDOR', area: [-8, 40, 8, 100], barrels: 2 },
+          { name: 'CONTROL HUB', area: [-48, 100, 48, 180], barrels: 8, drones: 3, hunters: 1, health: 1, high: true },
+          { name: 'SLUDGE COURT', area: [48, 104, 136, 184], drones: 3, hunters: 1 },
+          { name: 'COMPUTER ANNEX', area: [136, 104, 192, 280], barrels: 8, drones: 3, weapon: 1, health: 1 },
+          { name: 'PUMP HALL', area: [96, 280, 200, 344], barrels: 8, drones: 3, wardens: 1, health: 1, high: true },
+          { name: 'LONG GALLERY', area: [-96, 280, 96, 296], barrels: 6, drones: 2, hunters: 2 },
+          { name: 'SERVICE CORRIDOR', area: [-48, 180, -32, 280], barrels: 3, hunters: 1 },
+          { name: 'WEST YARD', area: [-160, 120, -48, 296], barrels: 8, drones: 3, hunters: 2, high: true },
+          { name: 'HIDDEN ARMORY', area: [-200, 296, -136, 360], barrels: 4, weapon: 1, health: 1 },
+          { name: 'EXIT APPROACH', area: [-24, 296, 24, 392], barrels: 4, drones: 2, hunters: 1 },
+          { name: 'UPLINK COURT', area: [-40, 392, 40, 456], barrels: 4, drones: 2, wardens: 1 },
+        ],
+      },
+      {
+        name: 'DELTA-9', title: 'TOXIN REFINERY', start: [0, -4, 0], yaw: 0, exit: [0, 6, 468, true],
+        sky: { zenith: [0.04, 0.06, 0.03], fog: [0.19, 0.23, 0.15], sun: [0.7, 0.75, 0.5], sunDir: [-0.3, 0.45, 0.8] },
+        walls: { lower: [['wallRust', 0.45], ['wallPipes', 0.3], ['wallVent', 0.25]], upper: [['wallRust', 0.55], ['wallUpper', 0.45]] },
+        rooms: [
+          [-24, -32, 24, 32, PAD, BASE, 11],
+          [-8, 32, 8, 80, PLATE, BASE, 1],
+          [-64, 80, 64, 176, SLUDGE], [-64, 120, 64, 136, PLATE, -5], [-8, 80, 8, 176, PLATE, -5], [-56, 88, -24, 112, PAD, -3],
+          [64, 120, 112, 136, PLATE, BASE, 7],
+          [112, 96, 176, 192, GRATE, BASE, 19], [128, 112, 160, 176, SLUDGE, BASE, 19], [128, 140, 160, 148, PLATE, -5, 19],
+          [176, 160, 184, 176, PLATE, BASE, 9], [184, 144, 232, 192, PLATE, BASE, 9],
+          [-112, 120, -64, 136, PLATE, BASE, 7],
+          [-176, 96, -112, 208, GRATE], [-168, 104, -120, 136, SLUDGE],
+          [-184, 148, -176, 164, PLATE, BASE, 9], [-216, 140, -184, 172, PLATE, BASE, 9],
+          [-8, 176, 8, 240, PLATE, BASE, 3],
+          [-72, 240, 72, 320, GRATE, BASE, 23], [-56, 256, -24, 304, SLUDGE, BASE, 23], [24, 256, 56, 304, SLUDGE, BASE, 23],
+          [128, 192, 152, 272, PLATE, -3, 9], [72, 264, 152, 280, PLATE, -3, 9],
+          [-176, 208, -152, 300, PLATE, BASE, 5], [-152, 284, -72, 300, PLATE, BASE, 5],
+          [-8, 320, 8, 400, PLATE, BASE, 5],
+          [-48, 400, 48, 480, SLUDGE], [-48, 456, 48, 480, PAD, -3], [-48, 400, -32, 456, PLATE, -5], [32, 400, 48, 456, PLATE, -5],
+        ],
+        blocks: [
+          [-40, 148, -32, 156, COLUMN], [32, 96, 40, 104, COLUMN], [40, 152, 48, 160, COLUMN],
+          [116, 100, 124, 108, COLUMN], [164, 180, 172, 188, COLUMN],
+          [-148, 160, -140, 172, COLUMN], [-128, 176, -120, 184, COLUMN],
+          [-8, 272, 8, 288, REACTOR], [-68, 244, -60, 252, COLUMN], [60, 244, 68, 252, COLUMN], [-68, 308, -60, 316, COLUMN], [60, 308, 68, 316, COLUMN],
+          [200, 160, 216, 176, BULKHEAD],
+        ],
+        girders: [[-64, 2, 104, 64, 5, 108], [112, 6, 160, 176, 9, 164], [-72, 12, 260, 72, 15, 264], [-48, 8, 428, 48, 11, 432]],
+        gates: [
+          [64, 120, 68, 136, 'west', 'chain'], [-8, 176, 8, 180, 'south', 'chain'],
+          [-76, 284, -72, 300, 'west', 'chain'], [-8, 320, 8, 324, 'south', 'chain'],
+          [176, 160, 180, 176, 'west', 'secret'], [-180, 148, -176, 164, 'east', 'secret'],
+        ],
+        zones: [
+          { name: 'RECEIVING BAY', area: [-24, -32, 24, 32], barrels: 4 },
+          { name: 'LOW DUCT', area: [-8, 32, 8, 80], barrels: 2 },
+          { name: 'SETTLING BASIN', area: [-64, 80, 64, 176], drones: 4, hunters: 2, health: 1, high: true },
+          { name: 'EAST DUCT', area: [64, 120, 112, 136], barrels: 3, drones: 1 },
+          { name: 'FILTER ROOM', area: [112, 96, 176, 192], barrels: 6, drones: 3, hunters: 1, weapon: 1, high: true },
+          { name: 'SEALED STORE', area: [176, 144, 232, 192], barrels: 4, health: 1, weapon: 1 },
+          { name: 'FILTER RISE', area: [72, 192, 152, 280], barrels: 4, drones: 2, hunters: 1 },
+          { name: 'WEST DUCT', area: [-112, 120, -64, 136], barrels: 3, drones: 1 },
+          { name: 'TANK YARD', area: [-176, 96, -112, 208], barrels: 8, drones: 3, wardens: 1, high: true },
+          { name: 'DRAIN CACHE', area: [-216, 140, -176, 172], health: 2 },
+          { name: 'YARD PASSAGE', area: [-176, 208, -72, 300], barrels: 4, drones: 2, hunters: 2 },
+          { name: 'NORTH DUCT', area: [-8, 176, 8, 240], barrels: 2, hunters: 1 },
+          { name: 'REFINERY HALL', area: [-72, 240, 72, 320], barrels: 10, drones: 4, wardens: 2, health: 1, high: true },
+          { name: 'OUTFLOW DUCT', area: [-8, 320, 8, 400], barrels: 2, drones: 2 },
+          { name: 'OUTFLOW POOL', area: [-48, 400, 48, 480], drones: 3, hunters: 2, wardens: 1 },
+        ],
+      },
+      {
+        name: 'EPSILON-5', title: 'CRYO VAULTS', start: [0, -4, 0], yaw: 0, exit: [0, -2, 600, true], tint: [0.82, 0.94, 1.12],
+        sky: { zenith: [0.05, 0.08, 0.14], fog: [0.36, 0.44, 0.54], sun: [0.8, 0.9, 1.0], sunDir: [0.3, 0.6, 0.7] },
+        walls: { lower: [['wallLower', 0.5], ['wallVent', 0.2], ['wallComputer', 0.15], ['wallDoor', 0.15]], upper: [['wallUpper', 0.6], ['wallWindows', 0.4]] },
+        rooms: [
+          [-24, -32, 24, 24, PAD, BASE, 13],
+          [-8, 24, 8, 96, PLATE, BASE, 5],
+          [-64, 96, 64, 192, GRATE, BASE, 25],
+          [-64, 256, 64, 280, PLATE, 9, 21],
+          [-24, 280, 24, 360, GRATE, BASE, 21], [-8, 360, 8, 372, PLATE, BASE, 9],
+          [-80, 372, 80, 440, GRATE, BASE, 21],
+          [-112, 128, -64, 144, PLATE, BASE, 7], [-176, 112, -112, 240, GRATE, BASE, 17],
+          [-184, 160, -176, 176, PLATE, BASE, 9], [-216, 152, -184, 184, PLATE, BASE, 9],
+          [-160, 240, -144, 400, PLATE, BASE, 3], [-144, 384, -80, 400, PLATE, BASE, 3],
+          [-8, 440, 8, 520, PLATE, BASE, 5],
+          [-40, 520, 40, 620, PAD, BASE, 25],
+        ],
+        stairs: [[-64, 192, -40, 256, PAD, BASE, 9, 'z', 12], [40, 192, 64, 256, PAD, BASE, 9, 'z', 12]],
+        blocks: [
+          [-40, 120, -32, 128, COLUMN], [32, 120, 40, 128, COLUMN], [-40, 160, -32, 168, COLUMN], [32, 160, 40, 168, COLUMN],
+          [-64, 384, -56, 392, COLUMN], [-40, 384, -32, 392, COLUMN], [32, 384, 40, 392, COLUMN], [56, 384, 64, 392, COLUMN],
+          [-64, 412, -56, 420, COLUMN], [-40, 412, -32, 420, COLUMN], [32, 412, 40, 420, COLUMN], [56, 412, 64, 420, COLUMN],
+          [-148, 168, -140, 176, COLUMN], [-136, 204, -128, 212, COLUMN], [-28, 540, -20, 548, COLUMN], [20, 540, 28, 548, COLUMN],
+        ],
+        girders: [[-64, 10, 140, 64, 13, 144], [-24, -2, 316, 24, 1, 320], [-80, 8, 428, 80, 11, 432]],
+        gates: [
+          [-8, 88, 8, 92, 'south', 'chain'], [-8, 364, 8, 368, 'south', 'chain'], [-84, 384, -80, 400, 'west', 'chain'],
+          [-8, 440, 8, 444, 'south', 'chain'], [-180, 160, -176, 176, 'east', 'secret'],
+        ],
+        zones: [
+          { name: 'ENTRY LOCK', area: [-24, -32, 24, 24], barrels: 3 },
+          { name: 'COLD CORRIDOR', area: [-8, 24, 8, 96], barrels: 2 },
+          { name: 'VAULT HALL', area: [-64, 96, 64, 192], barrels: 8, drones: 3, turrets: 2, health: 1, missile: 1, high: true },
+          { name: 'FROST CACHE', area: [-216, 152, -176, 184], health: 1, weapon: 1 },
+          { name: 'WEST COLD STORE', area: [-176, 112, -64, 240], barrels: 6, drones: 2, hunters: 2, strikers: 1, high: true },
+          { name: 'NORTH DUCT', area: [-160, 240, -80, 400], barrels: 3, hunters: 2 },
+          { name: 'UPPER GALLERY', area: [-64, 192, 64, 280], barrels: 4, drones: 2, turrets: 2 },
+          { name: 'COLD WELL', area: [-24, 280, 24, 372], drones: 2, strikers: 1, high: true },
+          { name: 'CRYO CHAMBER', area: [-80, 372, 80, 440], barrels: 8, drones: 3, turrets: 2, wardens: 1, health: 1, high: true },
+          { name: 'EXIT DUCT', area: [-8, 440, 8, 520], hunters: 2 },
+          { name: 'EXIT VAULT', area: [-40, 520, 40, 620], barrels: 4, strikers: 2, missile: 1 },
+        ],
+      },
+      {
+        name: 'EPSILON-5', title: 'MAGMA WORKS', start: [0, -4, 0], yaw: 0, exit: [0, 14, 600, true], tint: [1.12, 0.95, 0.85],
+        sky: { zenith: [0.12, 0.05, 0.03], fog: [0.4, 0.23, 0.14], sun: [1.0, 0.6, 0.35], sunDir: [0.5, 0.35, 0.8] },
+        walls: { lower: [['wallRust', 0.4], ['wallPipes', 0.3], ['wallLower', 0.3]], upper: [['wallRust', 0.5], ['wallUpper', 0.5]] },
+        rooms: [
+          [-24, -32, 24, 32, PAD],
+          [-12, 32, 12, 120, PLATE],
+          [-96, 120, 96, 220, LAVA], [-96, 152, 96, 168, PLATE, -5], [-12, 120, 12, 220, PLATE, -5],
+          [-88, 128, -56, 148, PAD, -3], [56, 184, 88, 212, PAD, -3],
+          [-12, 220, 12, 300, PLATE, -5, 7],
+          [-80, 300, 80, 380, SLAG, -5], [-40, 316, 40, 364, LAVA],
+          [-80, 440, 80, 500, GRATE, 7],
+          [96, 152, 160, 168, PLATE, -5, 9], [140, 168, 160, 340, PLATE, -5, 9], [80, 320, 160, 340, PLATE, -5, 9],
+          [160, 152, 168, 168, PLATE, -5, 9], [168, 136, 208, 184, PLATE, -5, 9],
+          [-160, 152, -96, 168, PLATE, -5, 9], [-160, 168, -140, 300, PLATE, -5, 9], [-160, 300, -80, 320, PLATE, -5, 9],
+          [-24, 500, 24, 560, PLATE, 7, 19],
+          [-40, 560, 40, 640, PAD, 7],
+        ],
+        stairs: [[-80, 380, -56, 440, PAD, -5, 7, 'z'], [56, 380, 80, 440, PAD, -5, 7, 'z']],
+        blocks: [
+          [-72, 340, -60, 352, REACTOR], [60, 340, 72, 352, REACTOR],
+          [-48, 456, -40, 464, COLUMN], [40, 456, 48, 464, COLUMN], [-48, 480, -40, 488, COLUMN], [40, 480, 48, 488, COLUMN],
+          [184, 152, 192, 160, COLUMN], [-28, 600, -20, 608, COLUMN], [20, 600, 28, 608, COLUMN],
+        ],
+        girders: [[-96, 6, 190, 96, 9, 194], [-80, 14, 330, 80, 17, 334], [-80, 20, 470, 80, 23, 474]],
+        gates: [
+          [-12, 220, 12, 224, 'south', 'chain'], [80, 320, 84, 340, 'east', 'chain'], [-84, 300, -80, 320, 'west', 'chain'],
+          [-24, 500, 24, 504, 'south', 'chain'], [160, 152, 164, 168, 'west', 'secret'],
+        ],
+        zones: [
+          { name: 'STAGING PAD', area: [-24, -32, 24, 32], barrels: 3 },
+          { name: 'CAUSEWAY', area: [-12, 32, 12, 120], barrels: 3, drones: 2 },
+          { name: 'LAVA FIELD', area: [-96, 120, 96, 220], drones: 4, strikers: 2, health: 1, missile: 1, high: true },
+          { name: 'SLAG CACHE', area: [160, 136, 208, 184], health: 1, weapon: 1 },
+          { name: 'WEST FLUE', area: [-160, 152, -80, 320], barrels: 3, hunters: 2, turrets: 1 },
+          { name: 'EAST FLUE', area: [80, 152, 160, 340], barrels: 3, hunters: 2, turrets: 1 },
+          { name: 'CENTRAL FLUE', area: [-12, 220, 12, 300], hunters: 1 },
+          { name: 'SMELTER YARD', area: [-80, 300, 80, 380], barrels: 8, drones: 3, strikers: 2, wardens: 1, health: 1, high: true },
+          { name: 'UPPER WORKS', area: [-80, 380, 80, 500], barrels: 8, drones: 3, turrets: 3, missile: 1, high: true },
+          { name: 'VENT SHAFT', area: [-24, 500, 24, 560], hunters: 2 },
+          { name: 'EXIT DECK', area: [-40, 560, 40, 640], barrels: 4, strikers: 2, wardens: 1 },
+        ],
+      },
+      {
+        name: 'EPSILON-5', title: 'SIGNAL SPIRE', start: [0, -4, 0], yaw: 0, exit: [0, 22, 600, true], tint: [0.95, 0.95, 1.06],
+        sky: { zenith: [0.015, 0.015, 0.05], fog: [0.12, 0.12, 0.2], sun: [0.5, 0.56, 0.9], sunDir: [-0.4, 0.55, 0.7] },
+        walls: { lower: [['wallComputer', 0.3], ['wallLower', 0.4], ['wallDoor', 0.3]], upper: [['wallWindows', 0.5], ['wallSign', 0.2], ['wallUpper', 0.3]] },
+        rooms: [
+          [-24, -32, 24, 40, PAD],
+          [-120, 40, 120, 200, GRATE], [-8, 96, 8, 144, PLATE, BASE, 1],
+          [-128, 100, -120, 116, PLATE, BASE, 9], [-168, 88, -128, 128, PLATE, BASE, 9],
+          [-120, 200, -56, 280, PLATE, -3], [56, 200, 120, 280, PLATE, -3], [-56, 200, 56, 280, SLUDGE], [-56, 232, 56, 248, PLATE, -3],
+          [-120, 280, 120, 360, GRATE, 5],
+          [-12, 360, 12, 440, PLATE, 5, 17],
+          [-120, 360, -100, 456, PLATE, 5, 15], [-120, 456, -60, 472, PLATE, 5, 15],
+          [-60, 440, 60, 520, GRATE, 9, 29],
+          [-40, 560, 40, 620, PAD, 15],
+        ],
+        stairs: [
+          [-104, 200, -80, 232, PAD, BASE, -3, 'z'], [80, 200, 104, 232, PAD, BASE, -3, 'z'],
+          [-116, 280, -92, 312, PAD, -3, 5, 'z'], [92, 280, 116, 312, PAD, -3, 5, 'z'],
+          [-12, 520, 12, 560, PAD, 9, 15, 'z'],
+        ],
+        blocks: [
+          [-24, 96, -8, 144, REACTOR], [8, 96, 24, 144, REACTOR],
+          [-80, 80, -72, 88, COLUMN], [72, 80, 80, 88, COLUMN], [-80, 160, -72, 168, COLUMN], [72, 160, 80, 168, COLUMN],
+          [-60, 312, -48, 324, COLUMN], [48, 312, 60, 324, COLUMN], [-12, 320, 12, 336, BULKHEAD],
+          [-36, 464, -28, 472, COLUMN], [28, 464, 36, 472, COLUMN], [-36, 492, -28, 500, COLUMN], [28, 492, 36, 500, COLUMN],
+        ],
+        girders: [[-120, 16, 180, 120, 19, 184], [-56, 6, 264, 56, 9, 268], [-60, 18, 480, 60, 21, 484]],
+        gates: [
+          [-12, 360, 12, 364, 'south', 'chain'], [-120, 360, -100, 364, 'south', 'chain'], [-12, 520, 12, 524, 'south', 'chain'],
+          [-124, 100, -120, 116, 'east', 'secret'],
+        ],
+        zones: [
+          { name: 'BASE CAMP', area: [-24, -32, 24, 40], barrels: 3 },
+          { name: 'SIGNAL CACHE', area: [-168, 88, -120, 128], weapon: 1, health: 1 },
+          { name: 'SPIRE BORE', area: [-8, 96, 8, 144], hunters: 1 },
+          { name: 'SPIRE PLAZA', area: [-120, 40, 120, 200], barrels: 12, drones: 4, turrets: 3, strikers: 1, health: 1, missile: 1, high: true },
+          { name: 'LOWER TERRACES', area: [-120, 200, 120, 280], barrels: 8, drones: 3, hunters: 2, strikers: 1, high: true },
+          { name: 'UPPER TERRACE', area: [-120, 280, 120, 360], barrels: 8, turrets: 3, wardens: 1, health: 1, high: true },
+          { name: 'TOWER BORE', area: [-12, 360, 12, 440], hunters: 2 },
+          { name: 'WEST BORE', area: [-120, 360, -60, 472], barrels: 3, drones: 2, strikers: 1 },
+          { name: 'SUMMIT HALL', area: [-60, 440, 60, 520], barrels: 8, drones: 3, wardens: 2, strikers: 1, missile: 1, health: 1, high: true },
+          { name: 'SUMMIT DECK', area: [-40, 520, 40, 620], strikers: 2, turrets: 2 },
+        ],
+      },
+      {
+        name: 'TAU-3', title: 'DROWNED DOCKS', start: [0, -4, 0], yaw: 0, exit: [0, 13, 600, true], tint: [0.92, 1.02, 1.05],
+        sky: { zenith: [0.08, 0.12, 0.14], fog: [0.3, 0.36, 0.38], sun: [0.7, 0.75, 0.8], sunDir: [0.2, 0.5, 0.8] },
+        walls: { lower: [['wallPipes', 0.35], ['wallRust', 0.35], ['wallDoor', 0.3]], upper: [['wallUpper', 0.5], ['wallRust', 0.3], ['wallWindows', 0.2]] },
+        rooms: [
+          [-24, -32, 24, 32, PAD],
+          [-12, 32, 12, 96, PLATE],
+          [-112, 96, 112, 240, SLUDGE], [-8, 96, 8, 240, PLATE, -7], [-112, 160, 112, 172, PLATE, -7],
+          [-96, 112, -64, 140, PAD, -5], [64, 200, 96, 228, PAD, -5],
+          [-148, 160, -112, 172, PLATE, BASE, 9], [-216, 128, -148, 224, GRATE, BASE, 17],
+          [112, 160, 148, 172, PLATE, BASE, 9], [148, 120, 216, 220, SLAG],
+          [216, 160, 224, 176, PLATE, BASE, 9], [224, 148, 252, 188, PAD, BASE, 9],
+          [-12, 240, 12, 300, PLATE, -7, 7],
+          [-100, 300, 100, 400, GRATE, -7], [-24, 320, 24, 380, PLATE, 9],
+          [-100, 440, 100, 500, PLATE, 5],
+          [-12, 500, 12, 560, PLATE, 5, 17],
+          [-40, 560, 40, 640, PAD, 5],
+        ],
+        stairs: [[-100, 400, -76, 440, PAD, -7, 5, 'z'], [76, 400, 100, 440, PAD, -7, 5, 'z']],
+        blocks: [
+          [-200, 144, -192, 152, COLUMN], [-172, 144, -164, 152, COLUMN], [-200, 200, -192, 208, COLUMN], [-172, 200, -164, 208, COLUMN],
+          [164, 136, 180, 152, REACTOR], [184, 184, 200, 200, REACTOR], [196, 136, 204, 144, COLUMN],
+          [-80, 460, -72, 468, COLUMN], [72, 460, 80, 468, COLUMN], [-20, 472, 20, 484, BULKHEAD],
+          [-28, 600, -20, 608, COLUMN], [20, 600, 28, 608, COLUMN],
+        ],
+        girders: [[-112, 10, 200, 112, 13, 204], [-216, 8, 176, -148, 11, 180], [-100, 6, 308, 100, 9, 312], [-100, 16, 390, 100, 19, 394], [-100, 18, 488, 100, 21, 492]],
+        gates: [
+          [-116, 160, -112, 172, 'east', 'chain'], [112, 160, 116, 172, 'west', 'chain'], [-12, 240, 12, 244, 'south', 'chain'],
+          [-12, 500, 12, 504, 'south', 'chain'], [216, 160, 220, 176, 'west', 'secret'],
+        ],
+        zones: [
+          { name: 'MOORING PAD', area: [-24, -32, 24, 32], barrels: 3 },
+          { name: 'PIER', area: [-12, 32, 12, 96], barrels: 2, drones: 1 },
+          { name: 'HARBOR BASIN', area: [-112, 96, 112, 240], drones: 4, strikers: 2, hunters: 1, health: 1, missile: 1, high: true },
+          { name: 'WEST HANGAR', area: [-216, 128, -112, 224], barrels: 8, drones: 2, wardens: 1, turrets: 1, weapon: 1, health: 1 },
+          { name: 'FUEL DEPOT', area: [112, 120, 216, 220], barrels: 12, turrets: 2, hunters: 2, missile: 1 },
+          { name: 'DEPOT CACHE', area: [216, 148, 252, 188], health: 1, weapon: 1 },
+          { name: 'DOCK CHANNEL', area: [-12, 240, 12, 300], hunters: 2 },
+          { name: 'DRY DOCK', area: [-100, 300, 100, 400], barrels: 10, drones: 3, strikers: 2, turrets: 2, health: 1, high: true },
+          { name: 'CRANE DECK', area: [-100, 400, 100, 500], barrels: 8, drones: 3, wardens: 1, missile: 1, high: true },
+          { name: 'CONTROL BORE', area: [-12, 500, 12, 560], hunters: 2 },
+          { name: 'LAUNCH PAD', area: [-40, 560, 40, 640], strikers: 2, wardens: 1 },
+        ],
+      },
+      {
+        name: 'TAU-3', title: 'HIVE WARRENS', start: [0, -4, 0], yaw: 0, exit: [0, 17, 640, true], tint: [1.06, 1.0, 0.84],
+        sky: { zenith: [0.05, 0.04, 0.02], fog: [0.2, 0.17, 0.1], sun: [0.8, 0.65, 0.4], sunDir: [0.3, 0.6, 0.7] },
+        walls: { lower: [['wallPipes', 0.4], ['wallVent', 0.3], ['wallRust', 0.3]], upper: [['wallRust', 0.6], ['wallUpper', 0.4]] },
+        rooms: [
+          [-24, -32, 24, 32, PAD, BASE, 9],
+          [-8, 32, 8, 80, PLATE, BASE, 1],
+          [-56, 80, 56, 160, GRATE, BASE, 19],
+          [-184, 96, -120, 200, PLATE, 3, 19], [-160, 200, -144, 300, PLATE, 3, 15], [-160, 300, -104, 316, PLATE, 3, 15],
+          [56, 112, 120, 128, PLATE, BASE, 1],
+          [120, 88, 200, 168, SLUDGE, BASE, 9], [120, 124, 200, 132, PLATE, -7, 9], [128, 96, 152, 120, PAD, -7, 9], [168, 136, 192, 160, PAD, -7, 9],
+          [176, 168, 192, 300, PLATE, BASE, 1], [104, 300, 192, 316, PLATE, BASE, 1],
+          [-104, 280, 104, 400, GRATE, BASE, 25],
+          [-72, 480, 72, 560, PLATE, 9, 25], [-56, 496, -24, 544, SLUDGE, 9, 25],
+          [-80, 512, -72, 528, PLATE, 9, 19], [-124, 500, -80, 540, PAD, 9, 19],
+          [-8, 560, 8, 600, PLATE, 9, 21],
+          [-40, 600, 40, 672, PAD, 9],
+        ],
+        stairs: [[-120, 112, -56, 128, PLATE, 3, BASE, 'x', 11], [-8, 400, 8, 480, PLATE, BASE, 9, 'z', 11]],
+        blocks: [
+          [-40, 100, -32, 108, COLUMN], [32, 100, 40, 108, COLUMN], [-40, 132, -32, 140, COLUMN], [32, 132, 40, 140, COLUMN],
+          [-168, 120, -160, 128, COLUMN], [-144, 168, -136, 176, COLUMN],
+          [-12, 328, 12, 352, REACTOR], [-72, 300, -64, 308, COLUMN], [64, 300, 72, 308, COLUMN], [-72, 372, -64, 380, COLUMN], [64, 372, 72, 380, COLUMN],
+          [24, 500, 32, 508, COLUMN], [44, 530, 52, 538, COLUMN],
+          [-24, 640, -16, 648, COLUMN], [16, 640, 24, 648, COLUMN],
+        ],
+        girders: [[-56, 2, 120, 56, 5, 124], [-104, 6, 312, 104, 9, 316], [-104, 14, 364, 104, 17, 368], [-72, 16, 520, 72, 19, 524]],
+        gates: [
+          [176, 168, 192, 172, 'south', 'chain'], [104, 300, 108, 316, 'east', 'chain'], [-108, 300, -104, 316, 'west', 'chain'],
+          [-8, 400, 8, 404, 'south', 'chain'], [-76, 512, -72, 528, 'east', 'secret'],
+        ],
+        zones: [
+          { name: 'HATCHERY MOUTH', area: [-24, -32, 24, 32], barrels: 3 },
+          { name: 'FEED TUBE', area: [-8, 32, 8, 80], hunters: 1 },
+          { name: 'BROOD CHAMBER', area: [-56, 80, 56, 160], barrels: 6, drones: 3, hunters: 3, health: 1, high: true },
+          { name: 'WEST CLIMB', area: [-120, 112, -56, 128], hunters: 2 },
+          { name: 'WEST GALLERY', area: [-184, 96, -120, 200], barrels: 6, drones: 2, turrets: 2, strikers: 1, weapon: 1 },
+          { name: 'WEST SHAFT', area: [-160, 200, -104, 316], drones: 1, hunters: 2 },
+          { name: 'EAST TUBE', area: [56, 112, 120, 128], barrels: 2, hunters: 1 },
+          { name: 'EGG VAULT', area: [120, 88, 200, 168], drones: 3, hunters: 2, strikers: 1, missile: 1, health: 1 },
+          { name: 'EAST SHAFT', area: [104, 168, 192, 316], hunters: 3, turrets: 1 },
+          { name: 'THE NEST', area: [-104, 280, 104, 400], barrels: 10, drones: 4, hunters: 4, wardens: 2, strikers: 1, health: 1, missile: 1, high: true },
+          { name: 'HIVE STAIR', area: [-8, 400, 8, 480], hunters: 2 },
+          { name: 'UPPER WARREN', area: [-72, 480, 72, 560], barrels: 6, drones: 3, turrets: 2, wardens: 1, health: 1 },
+          { name: 'ROYAL CACHE', area: [-124, 500, -72, 540], weapon: 1, health: 1, missile: 1 },
+          { name: 'BREACH TUNNEL', area: [-8, 560, 8, 600], hunters: 2 },
+          { name: 'SURFACE BREACH', area: [-40, 600, 40, 672], drones: 2, strikers: 2, wardens: 1 },
+        ],
+      },
+      {
+        name: 'TAU-3', title: 'TETHER ANCHOR', start: [0, -4, 0], yaw: 0, exit: [0, 27, 620, true], tint: [1.0, 1.0, 1.04],
+        sky: { zenith: [0.12, 0.22, 0.42], fog: [0.62, 0.7, 0.8], sun: [1.0, 0.95, 0.85], sunDir: [0.3, 0.7, 0.6] },
+        walls: { lower: [['wallLower', 0.4], ['wallDoor', 0.2], ['wallPipes', 0.2], ['wallComputer', 0.2]], upper: [['wallUpper', 0.5], ['wallWindows', 0.3], ['wallSign', 0.2]] },
+        rooms: [
+          [-24, -32, 24, 32, PAD],
+          [-128, 96, 128, 224, GRATE, -3], [-48, 128, 48, 192, LAVA, -27], [-48, 156, 48, 164, PLATE, -3], [-4, 128, 4, 192, PLATE, -3],
+          [128, 152, 140, 168, PLATE, -3, 9], [140, 120, 216, 200, PLATE, -3, 13],
+          [216, 152, 224, 168, PLATE, -3, 9], [224, 140, 252, 180, PAD, -3, 9],
+          [-128, 288, 128, 368, PLATE, 9], [-112, 300, -80, 332, PAD, 15], [80, 300, 112, 332, PAD, 15],
+          [-128, 368, 128, 432, LAVA, -21],
+          [-96, 432, 96, 520, GRATE, 15],
+          [-12, 520, 12, 560, PLATE, 15, 27],
+          [-40, 580, 40, 660, PAD, 19],
+        ],
+        stairs: [
+          [-12, 32, 12, 96, PLATE, BASE, -3, 'z'],
+          [-12, 224, 12, 288, PLATE, -3, 9, 'z', 12], [-124, 224, -104, 288, PAD, -3, 9, 'z'],
+          [-12, 560, 12, 580, PAD, 15, 19, 'z', 12],
+        ],
+        blocks: [
+          [-8, 152, 8, 168, REACTOR],
+          [-112, 104, -104, 112, COLUMN], [104, 104, 112, 112, COLUMN], [-112, 208, -104, 216, COLUMN], [104, 208, 112, 216, COLUMN],
+          [160, 136, 168, 144, COLUMN], [188, 176, 196, 184, COLUMN],
+          [-20, 320, 20, 336, BULKHEAD], [-60, 344, -52, 352, COLUMN], [52, 344, 60, 352, COLUMN],
+          [-8, 468, 8, 484, REACTOR], [-64, 448, -56, 456, COLUMN], [56, 448, 64, 456, COLUMN], [-64, 496, -56, 504, COLUMN], [56, 496, 64, 504, COLUMN],
+          [-28, 620, -20, 628, COLUMN], [20, 620, 28, 628, COLUMN],
+        ],
+        girders: [[-128, 12, 110, 128, 15, 114], [-128, 16, 352, 128, 19, 356], [-128, 4, 388, 128, 7, 392], [-128, 16, 412, 128, 19, 416]],
+        gates: [
+          [-12, 224, 12, 228, 'south', 'chain'], [-124, 224, -104, 228, 'south', 'chain'], [128, 152, 132, 168, 'west', 'chain'],
+          [-12, 520, 12, 524, 'south', 'chain'], [216, 152, 220, 168, 'west', 'secret'],
+        ],
+        zones: [
+          { name: 'BASE PAD', area: [-24, -32, 24, 32], barrels: 3 },
+          { name: 'ANCHOR RAMP', area: [-12, 32, 12, 96], barrels: 2, drones: 1 },
+          { name: 'ANCHOR RING', area: [-128, 96, 128, 224], barrels: 10, drones: 4, strikers: 2, turrets: 2, health: 1, missile: 1, high: true },
+          { name: 'LIFT BORE', area: [-12, 224, 12, 288], hunters: 1 },
+          { name: 'WEST RAMP', area: [-124, 224, -104, 288], hunters: 2 },
+          { name: 'MAINTENANCE BAY', area: [128, 120, 216, 200], barrels: 6, drones: 2, turrets: 1, weapon: 1, health: 1 },
+          { name: 'BAY CACHE', area: [216, 140, 252, 180], missile: 2, health: 1 },
+          { name: 'SPOKE DECK', area: [-128, 288, 128, 368], barrels: 10, drones: 3, turrets: 3, wardens: 1, strikers: 1, health: 1, high: true },
+          { name: 'TETHER GAP', area: [-128, 368, 128, 432], drones: 3, strikers: 2, high: true },
+          { name: 'SUMMIT RING', area: [-96, 432, 96, 520], barrels: 8, turrets: 2, wardens: 2, strikers: 1, health: 1, missile: 1, high: true },
+          { name: 'DOCKING BORE', area: [-12, 520, 12, 580], hunters: 2 },
+          { name: 'CRADLE', area: [-40, 580, 40, 660], strikers: 2, wardens: 1 },
+        ],
+      },
+      {
+        name: 'SIGMA-4', title: 'REFINERY TERRACES', start: [0, -4, 0], yaw: 0, exit: [0, 20, 524, true],
+        sky: { zenith: [0.1, 0.16, 0.3], fog: [0.52, 0.44, 0.38], sun: [0.95, 0.75, 0.55], sunDir: [0.3, 0.6, -0.45] },
+        rooms: [
+          [-32, -32, 32, 40, PAD],
+          [-12, 40, 12, 140, PLATE],
+          [-80, 140, 80, 220, GRATE, -5], [-24, 160, 24, 200, SLAG],
+          [-180, 180, -100, 300, PLATE, 1], [100, 180, 180, 300, PLATE, 1],
+          [-120, 320, 120, 420, GRATE, 7],
+          [-40, 460, 40, 540, PAD, 13],
+        ],
+        stairs: [
+          [-100, 184, -80, 216, PAD, 1, -5, 'x'], [80, 184, 100, 216, PAD, -5, 1, 'x'],
+          [-124, 300, -104, 320, PAD, 1, 7, 'z'], [104, 300, 124, 320, PAD, 1, 7, 'z'],
+          [-8, 220, 8, 320, PLATE, -5, 7, 'z', 10],
+          [-12, 420, 12, 460, PAD, 7, 13, 'z'],
+        ],
+        blocks: [
+          [-148, 228, -140, 236, COLUMN], [140, 228, 148, 236, COLUMN], [-148, 260, -140, 268, COLUMN], [140, 260, 148, 268, COLUMN],
+          [-92, 340, -80, 352, COLUMN], [80, 340, 92, 352, COLUMN], [-92, 388, -80, 400, COLUMN], [80, 388, 92, 400, COLUMN],
+          [-28, 360, 28, 376, BULKHEAD], [-60, 392, -48, 404, BULKHEAD], [48, 336, 60, 348, BULKHEAD],
+          [-28, 488, -20, 496, COLUMN], [20, 488, 28, 496, COLUMN],
+        ],
+        girders: [[-12, 0, 90, 12, 3, 94], [-80, 10, 196, 80, 13, 200], [-180, 12, 260, -100, 15, 264], [100, 18, 240, 180, 21, 244], [-120, 20, 396, 120, 23, 400]],
+        zones: [
+          { name: 'PIPE TUNNEL', area: [-8, 220, 8, 320], barrels: 2, hunters: 2 },
+          { name: 'START BASIN', area: [-32, -32, 32, 40], barrels: 4 },
+          { name: 'NORTH CANYON', area: [-12, 40, 12, 140], barrels: 5, drones: 3 },
+          { name: 'LOWER TERRACE', area: [-80, 140, 80, 220], barrels: 10, drones: 4, hunters: 2, health: 1, high: true },
+          { name: 'WEST TERRACE', area: [-180, 180, -80, 320], barrels: 8, drones: 3, wardens: 1, weapon: 1, high: true },
+          { name: 'EAST TERRACE', area: [80, 180, 180, 320], barrels: 8, drones: 3, hunters: 2, health: 1, high: true },
+          { name: 'UPPER TERRACE', area: [-120, 320, 120, 460], barrels: 14, drones: 5, wardens: 2, health: 1, high: true },
+          { name: 'SUMMIT', area: [-40, 460, 40, 540], barrels: 6, drones: 2, wardens: 1 },
+        ],
+      },
+      {
+        name: 'OMEGA', title: 'CORE BREACH', start: [0, -4, 0], yaw: 0, exit: [0, 16, 624, true],
+        sky: { zenith: [0.06, 0.02, 0.1], fog: [0.24, 0.16, 0.27], sun: [0.85, 0.5, 0.78], sunDir: [-0.5, 0.4, 0.6] },
+        rooms: [
+          [-20, -32, 20, 24, PAD, BASE, 9],
+          [-8, 24, 8, 120, PLATE, BASE, 1],
+          [-96, 120, 96, 312, GRATE], [-96, 120, -72, 312, PLATE, 1], [72, 120, 96, 312, PLATE, 1],
+          [-60, 312, -44, 440, PLATE, BASE, 3], [44, 312, 60, 440, PLATE, -3, 11],
+          [-80, 440, 80, 520, PLATE, -3, 23],
+          [-32, 580, 32, 640, PAD, 9],
+        ],
+        stairs: [[-72, 200, -52, 232, PAD, 1, BASE, 'x'], [52, 200, 72, 232, PAD, BASE, 1, 'x'], [-12, 520, 12, 580, PAD, -3, 9, 'z']],
+        blocks: [
+          [-24, 192, 24, 240, REACTOR],
+          [-52, 148, -44, 156, COLUMN], [44, 148, 52, 156, COLUMN], [-52, 276, -44, 284, COLUMN], [44, 276, 52, 284, COLUMN],
+          [-52, 464, -44, 472, COLUMN], [44, 464, 52, 472, COLUMN], [-52, 492, -44, 500, COLUMN], [44, 492, 52, 500, COLUMN],
+          [-8, 472, 8, 488, REACTOR],
+        ],
+        girders: [[-8, -7, 70, 8, -4, 74], [-96, 14, 160, 96, 17, 164], [-96, 4, 270, 96, 7, 274], [-80, 8, 456, 80, 11, 460]],
+        zones: [
+          { name: 'DROP CHAMBER', area: [-20, -32, 20, 24], barrels: 3, health: 1 },
+          { name: 'ENTRY BORE', area: [-8, 24, 8, 120], barrels: 3, drones: 2, hunters: 2 },
+          { name: 'CORE ARENA', area: [-96, 120, 96, 312], barrels: 16, drones: 6, hunters: 3, wardens: 3, health: 2, weapon: 1, high: true },
+          { name: 'WEST BORE', area: [-60, 312, -44, 440], barrels: 4, drones: 2, hunters: 2 },
+          { name: 'EAST BORE', area: [44, 312, 60, 440], barrels: 4, drones: 2, hunters: 2, health: 1 },
+          { name: 'CROWN HALL', area: [-80, 440, 80, 520], barrels: 10, drones: 4, wardens: 3, health: 1, high: true },
+          { name: 'ASCENT', area: [-12, 520, 12, 580], drones: 2 },
+          { name: 'ESCAPE DECK', area: [-32, 580, 32, 640], barrels: 4, wardens: 1 },
+        ],
+      },
+    ];
+    for (const def of LEVELS) def.sky.sunDir = normalize(def.sky.sunDir);
+    // Scale every position and height in a level, leaving materials, wall kinds, axes and facings alone.
+    function scaleLevel(def) {
+      const scale = (list, keep = []) => list.map(row => row.map((v, k) => typeof v === 'number' && !keep.includes(k) ? v * WORLD_SCALE : v));
+      def.start = def.start.map(v => v * WORLD_SCALE);
+      def.exit = def.exit.map(v => typeof v === 'number' ? v * WORLD_SCALE : v);
+      def.rooms = scale(def.rooms, [4]);
+      def.stairs = scale(def.stairs || [], [4]);
+      def.blocks = scale(def.blocks, [4]);
+      def.girders = scale(def.girders);
+      def.gates = scale(def.gates || []);
+      if (def.extras) def.extras = { barrels: scale(def.extras.barrels || []), enemies: scale(def.extras.enemies || []) };
+      for (const zone of def.zones) zone.area = zone.area.map(v => v * WORLD_SCALE);
+    }
+    for (const def of LEVELS) scaleLevel(def);
+
+    const open = new Uint8Array(GRID_W * GRID_D), solidKind = new Uint8Array(GRID_W * GRID_D);
+    const floorY = new Float32Array(GRID_W * GRID_D), ceilY = new Float32Array(GRID_W * GRID_D), sealed = new Uint8Array(GRID_W * GRID_D);
+    let level = LEVELS[0], levelIndex = 0;
+    const gates = [];
+    const fillCells = ([x0, z0, x1, z1], fill) => {
+      for (let gz = (z0 - GRID_Z0) / CELL; gz < (z1 - GRID_Z0) / CELL; gz++)
+        for (let gx = (x0 - GRID_X0) / CELL; gx < (x1 - GRID_X0) / CELL; gx++) fill(gz * GRID_W + gx, GRID_X0 + gx * CELL, GRID_Z0 + gz * CELL);
+    };
+    function carve(def) {
+      open.fill(0); solidKind.fill(BULKHEAD); floorY.fill(FLOOR); ceilY.fill(WALL_TOP);
+      for (const [x0, z0, x1, z1, material, floor = FLOOR, ceil = WALL_TOP] of def.rooms)
+        fillCells([x0, z0, x1, z1], i => { open[i] = 1 + material; floorY[i] = floor; ceilY[i] = ceil; });
+      for (const [x0, z0, x1, z1, material, from, to, axis, headroom] of def.stairs || []) {
+        const span = axis === 'x' ? x1 - x0 : z1 - z0;
+        fillCells([x0, z0, x1, z1], (i, x, z) => {
+          const floor = from + (to - from) * ((axis === 'x' ? x - x0 : z - z0) + CELL / 2) / span;
+          open[i] = 1 + material; floorY[i] = floor; ceilY[i] = headroom ? floor + headroom : WALL_TOP;
+        });
+      }
+      for (const block of def.blocks) fillCells(block, i => { open[i] = 0; solidKind[i] = block[4]; });
+      sealed.fill(0);
+      for (const gate of def.gates || []) fillCells(gate, i => { sealed[i] = 1; });
+    }
+    // cellAt sees the carved shape for building geometry; cellIndex also treats closed gates as solid.
+    const cellAt = (gx, gz) => gx >= 0 && gz >= 0 && gx < GRID_W && gz < GRID_D ? open[gz * GRID_W + gx] : 0;
+    const cellIndex = (x, z) => {
+      const gx = Math.floor((x - GRID_X0) / CELL), gz = Math.floor((z - GRID_Z0) / CELL), i = gz * GRID_W + gx;
+      return cellAt(gx, gz) && !sealed[i] ? i : -1;
+    };
+    // Sludge and lava hurt the ship when it flies low over them; returns the hazard's floor material or 0.
+    const hazardAt = (x, z) => { const i = cellIndex(x, z); return i >= 0 && (open[i] === 1 + SLUDGE || open[i] === 1 + LAVA) ? open[i] - 1 : 0; };
+    const isOpen = (x, z) => cellIndex(x, z) >= 0;
+    const floorAt = (x, z) => { const i = cellIndex(x, z); return i < 0 ? WALL_TOP : floorY[i]; };
+    const coveredAt = (x, z) => { const i = cellIndex(x, z); return i >= 0 && ceilY[i] < WALL_TOP; };
+    const freeAt = (x, y, z, pad = 0) => { const i = cellIndex(x, z); return i >= 0 && y >= floorY[i] + pad && y <= ceilY[i] - pad; };
+    function walkable(x, z, margin = 0) {
+      if (!isOpen(x, z)) return false;
+      return margin === 0 || (isOpen(x - margin, z - margin) && isOpen(x + margin, z - margin) &&
+        isOpen(x - margin, z + margin) && isOpen(x + margin, z + margin));
+    }
+    const flatAt = (x, z, margin) => [[-margin, -margin], [margin, -margin], [-margin, margin], [margin, margin]]
+      .every(([dx, dz]) => floorAt(x + dx, z + dz) === floorAt(x, z));
+    const shipFits = (p, margin = 0.7) => [[0, 0], [-margin, -margin], [margin, -margin], [-margin, margin], [margin, margin]]
+      .every(([dx, dz]) => freeAt(p[0] + dx, p[1], p[2] + dz, 1));
+    const insideGirder = (p, pad = 0) => level.girders.some(([x0, y0, z0, x1, y1, z1]) =>
+      p[0] > x0 - pad && p[0] < x1 + pad && p[1] > y0 - pad && p[1] < y1 + pad && p[2] > z0 - pad && p[2] < z1 + pad);
+    function lineOfSight(point, from = ship.position) {
+      const delta = sub(point, from), steps = Math.ceil(Math.hypot(...delta) / 1.5);
+      for (let i = 1; i < steps; i++) {
+        const t = i / steps;
+        if (!freeAt(from[0] + delta[0] * t, from[1] + delta[1] * t, from[2] + delta[2] * t)) return false;
+      }
+      return true;
+    }
+    const zoneAt = (x, z) => level.zones.find(({ area: [x0, z0, x1, z1] }) => x >= x0 && x <= x1 && z >= z0 && z <= z1);
+
+    // Drones hover and fire single shots; hunters charge and ram; wardens are armored and fire spreads;
+    // strikers launch homing missiles; sentries are floor turrets that fire three-shot bursts.
+    const ENEMY_TYPES = {
+      drone: { hp: 2, radius: 2.3, scale: 1, tint: [1, 1, 1], eye: [1.0, 0.4, 0.32], ram: 23, radar: '#ff626b' },
+      hunter: { hp: 1, radius: 1.9, scale: 0.8, tint: [1.5, 0.95, 0.4], eye: [1.0, 0.7, 0.2], ram: 18, radar: '#ffb347' },
+      warden: { hp: 8, radius: 3.9, scale: 1.7, tint: [0.75, 0.55, 1.6], eye: [0.75, 0.4, 1.0], ram: 30, radar: '#c08cff' },
+      striker: { hp: 4, radius: 2.7, scale: 1.1, tint: [0.5, 1.35, 1.25], eye: [0.3, 1.0, 0.9], ram: 25, radar: '#4dffe0' },
+      sentry: { hp: 5, radius: 2.3, scale: 1, tint: [1.25, 1.05, 0.7], eye: [1.0, 0.85, 0.3], ram: 20, radar: '#ffe066' },
+    };
+    const barrels = [], enemies = [], pickups = [];
+    const addBarrel = (x, z) => barrels.push({ position: [x, floorAt(x, z) + 1.8, z], floor: floorAt(x, z), radius: 1.7, height: 3.6, hp: 2, exploded: false, spin: range(0, Math.PI * 2), flash: 0 });
+    const addEnemy = (type, x, y, z) => enemies.push({ type, base: [x, y, z], position: [x, y, z], velocity: [0, 0, 0], hp: ENEMY_TYPES[type].hp,
+      cooldown: 1.5 + random(), phase: range(0, Math.PI * 2), yaw: Math.PI, flash: 0, active: false });
+    function spawnLevel(def) {
+      barrels.length = 0; enemies.length = 0; pickups.length = 0;
+      seed = 0x5eed + levelIndex * 7919;
+      for (const [x, z] of def.extras?.barrels || []) addBarrel(x, z);
+      for (const [type, x, y, z] of def.extras?.enemies || []) addEnemy(type, x, y, z);
+      const fromStart = (x, z) => Math.hypot(x - def.start[0], z - def.start[2]);
+      for (const zone of def.zones) {
+        const [x0, z0, x1, z1] = zone.area;
+        const scatter = (count, margin, place) => {
+          let placed = 0;
+          for (let attempt = 0; attempt < 600 && placed < count; attempt++)
+            if (place(range(x0 + margin, x1 - margin), range(z0 + margin, z1 - margin))) placed++;
+        };
+        let last = null, placed = 0;
+        for (let attempt = 0; attempt < 600 && placed < (zone.barrels || 0); attempt++) {
+          let x = range(x0 + 3, x1 - 3), z = range(z0 + 3, z1 - 3);
+          if (last && random() < 0.55) { const angle = range(0, Math.PI * 2), gap = range(3.7, 5); x = last[0] + Math.cos(angle) * gap; z = last[1] + Math.sin(angle) * gap; }
+          if (!walkable(x, z, 2.6) || !flatAt(x, z, 2.6) || hazardAt(x, z) || fromStart(x, z) < 18 ||
+            barrels.some(b => (b.position[0] - x) ** 2 + (b.position[2] - z) ** 2 < 3.7 * 3.7)) continue;
+          addBarrel(x, z); last = [x, z]; placed++;
+        }
+        for (const [type, field] of [['drone', 'drones'], ['hunter', 'hunters'], ['warden', 'wardens'], ['striker', 'strikers'], ['sentry', 'turrets']]) {
+          const margin = type === 'warden' ? 6 : 4;
+          scatter(zone[field] || 0, margin, (x, z) => {
+            const i = cellIndex(x, z);
+            if (i < 0 || ceilY[i] - floorY[i] < 9) return false;
+            if (type === 'sentry' && (!flatAt(x, z, 3) || hazardAt(x, z))) return false;
+            const y = type === 'sentry' ? floorY[i] + 3.4 : clamp(floorY[i] + range(6, zone.high ? 25 : 15), floorY[i] + 3.5, ceilY[i] - 3.5);
+            if (!walkable(x, z, margin) || insideGirder([x, y, z], margin + 1) || fromStart(x, z) < 60 ||
+              enemies.some(e => Math.hypot(e.base[0] - x, e.base[2] - z) < 14)) return false;
+            addEnemy(type, x, y, z); return true;
+          });
+        }
+        for (const type of ['health', 'weapon', 'missile']) scatter(zone[type] || 0, 3, (x, z) => {
+          if (!walkable(x, z, 3) || !flatAt(x, z, 2) || hazardAt(x, z) || fromStart(x, z) < 25 ||
+            barrels.some(b => Math.hypot(b.position[0] - x, b.position[2] - z) < 4)) return false;
+          pickups.push({ type, position: [x, floorAt(x, z) + 3, z], taken: false, phase: range(0, Math.PI * 2) });
+          return true;
+        });
+      }
+    }
+    // Gates seal their cells until opened. Chain gates carry two padlocks on the face the player meets,
+    // each chained to the door edges; secret panels are opened by shooting the panel itself.
+    const FACING = { south: [0, 0, -1], north: [0, 0, 1], west: [-1, 0, 0], east: [1, 0, 0] };
+    function setupGates(def) {
+      gates.length = 0;
+      for (const [x0, z0, x1, z1, facing, kind] of def.gates || []) {
+        const i = Math.floor(((z0 + z1) / 2 - GRID_Z0) / CELL) * GRID_W + Math.floor(((x0 + x1) / 2 - GRID_X0) / CELL);
+        const y0 = floorY[i], y1 = ceilY[i], normal = FACING[facing], spansX = normal[0] === 0;
+        const face = spansX ? (normal[2] < 0 ? z0 - 0.7 : z1 + 0.7) : (normal[0] < 0 ? x0 - 0.7 : x1 + 0.7);
+        const [start, end] = spansX ? [x0, x1] : [z0, z1];
+        const at = (along, y) => spansX ? [along, y, face] : [face, y, along];
+        const gate = { kind, x0, z0, x1, z1, door: { x0, y0, z0, x1, y1, z1 }, yaw: spansX ? 0 : -Math.PI / 2,
+          exposure: y1 < WALL_TOP ? 0.3 : 1, locks: [], hp: 3, flash: 0, open: 0, opening: false };
+        if (kind === 'chain') for (const t of [1 / 3, 2 / 3]) {
+          const lock = { position: at(start + (end - start) * t, y0 + Math.min(6, (y1 - y0) / 2)), hp: 3, flash: 0, links: [] };
+          const edge = t < 0.5 ? start + 0.5 : end - 0.5;
+          for (const anchor of [at(edge, y0 + Math.min(y1 - y0 - 1, 14)), at(edge, y0 + 1)]) {
+            const span = sub(anchor, lock.position), length = Math.hypot(...span), steps = Math.floor(length / 0.7);
+            const roll = spansX ? Math.atan2(span[1], span[0]) : Math.atan2(span[1], span[2]);
+            for (let k = 1; k < steps; k++) lock.links.push({ position: add(lock.position, mul(span, k / steps)), roll, flat: k % 2 });
+          }
+          gate.locks.push(lock);
+        }
+        gates.push(gate);
+      }
+    }
+    const gateAt = (p) => gates.find(g => !g.opening && p[0] > g.x0 - 0.5 && p[0] < g.x1 + 0.5 && p[2] > g.z0 - 0.5 && p[2] < g.z1 + 0.5);
+    const shots = [], enemyShots = [], explosions = [], particles = [], missiles = [], enemyMissiles = [];
+    const LOCK_TIME = 0.45, MISSILE_MAX = 24, SHIELD_MAX = 34;
+
+    function createTextures() {
+      let state = 0x71ea, fieldSeed = 17;
+      const rnd = () => { state = (Math.imul(state, 1664525) + 1013904223) >>> 0; return state / 0x100000000; };
+      const between = (a, b) => a + rnd() * (b - a);
+      const gray = (v) => { const n = Math.round(clamp(v, 0, 1) * 255); return `rgb(${n},${n},${n})`; };
+      const RUST = [118, 58, 32], BARE = [168, 176, 178];
+      // Tileable fractal value noise, sampled at low resolution and filtered up later.
+      function fbmField(w, h, cellsX, octaves, s) {
+        const field = new Float32Array(w * h), cellsY = Math.max(1, Math.round(cellsX * h / w));
+        let amp = 1, total = 0;
+        for (let o = 0; o < octaves; o++) {
+          const cx = cellsX << o, cy = cellsY << o;
+          for (let y = 0; y < h; y++) {
+            const fy = y / h * cy, yi = Math.floor(fy), ty = fy - yi, sy = ty * ty * (3 - 2 * ty);
+            const y0 = yi % cy, y1 = (yi + 1) % cy;
+            for (let x = 0; x < w; x++) {
+              const fx = x / w * cx, xi = Math.floor(fx), tx = fx - xi, sx = tx * tx * (3 - 2 * tx);
+              const x0 = xi % cx, x1 = (xi + 1) % cx;
+              const a = hashInt(x0, y0, s + o), b = hashInt(x1, y0, s + o), c = hashInt(x0, y1, s + o), d = hashInt(x1, y1, s + o);
+              field[y * w + x] += amp * (a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy);
+            }
+          }
+          total += amp; amp *= 0.5;
+        }
+        for (let i = 0; i < field.length; i++) field[i] /= total;
+        return field;
+      }
+      function sampleField(field, fw, fh, u, v) {
+        const x0 = Math.floor(u), y0 = Math.floor(v), tx = u - x0, ty = v - y0;
+        const xa = x0 % fw, xb = (x0 + 1) % fw, ya = (y0 % fh) * fw, yb = ((y0 + 1) % fh) * fw;
+        const a = field[ya + xa], b = field[ya + xb], c = field[yb + xa], d = field[yb + xb];
+        return a + (b - a) * tx + (c - a) * ty + (a - b - c + d) * tx * ty;
+      }
+      // Every texture is painted on three layers at once: color, height (for the normal map) and glow.
+      function painter(w, h, base) {
+        const layer = (fill) => {
+          const surface = document.createElement('canvas'); surface.width = w; surface.height = h;
+          const brush = surface.getContext('2d', { willReadFrequently: true });
+          brush.fillStyle = fill; brush.fillRect(0, 0, w, h);
+          return brush;
+        };
+        return { w, h, c: layer(base), b: layer(gray(0.5)), g: layer('#000') };
+      }
+      function fillRect(p, x, y, w, h, color, height) {
+        if (color) { p.c.fillStyle = color; p.c.fillRect(x, y, w, h); }
+        if (height !== undefined) { p.b.fillStyle = gray(height); p.b.fillRect(x, y, w, h); }
+      }
+      function plate(p, x, y, w, h, color, from, to, bevel = 6) {
+        fillRect(p, x, y, w, h, color);
+        for (let i = 0; i < bevel; i++) {
+          p.b.fillStyle = gray(from + (to - from) * (i + 1) / bevel);
+          p.b.fillRect(x + i, y + i, w - i * 2, h - i * 2);
+        }
+        const shade = p.c.createLinearGradient(x, y, x + w * 0.35, y + h);
+        shade.addColorStop(0, 'rgba(255,255,255,0.07)'); shade.addColorStop(1, 'rgba(0,0,0,0.13)');
+        p.c.fillStyle = shade; p.c.fillRect(x, y, w, h);
+        p.c.strokeStyle = 'rgba(220,235,240,0.10)'; p.c.lineWidth = 1.5; p.c.strokeRect(x + 1, y + 1, w - 2, h - 2);
+      }
+      function groove(p, x0, y0, x1, y1, width = 3, depth = 0.25) {
+        for (const [brush, style] of [[p.c, 'rgba(4,8,11,0.6)'], [p.b, gray(depth)]]) {
+          brush.strokeStyle = style; brush.lineWidth = width;
+          brush.beginPath(); brush.moveTo(x0, y0); brush.lineTo(x1, y1); brush.stroke();
+        }
+      }
+      function rivet(p, x, y, r = 5, color = '#8d9ba1') {
+        const shine = p.c.createRadialGradient(x - r * 0.35, y - r * 0.35, 0, x, y, r);
+        shine.addColorStop(0, '#e6eff0'); shine.addColorStop(0.45, color); shine.addColorStop(1, 'rgba(8,12,14,0.9)');
+        p.c.fillStyle = shine; p.c.beginPath(); p.c.arc(x, y, r, 0, Math.PI * 2); p.c.fill();
+        const bump = p.b.createRadialGradient(x, y, 0, x, y, r);
+        bump.addColorStop(0, 'rgba(255,255,255,0.55)'); bump.addColorStop(1, 'rgba(255,255,255,0)');
+        p.b.globalCompositeOperation = 'lighter'; p.b.fillStyle = bump;
+        p.b.beginPath(); p.b.arc(x, y, r, 0, Math.PI * 2); p.b.fill();
+        p.b.globalCompositeOperation = 'source-over';
+      }
+      function dent(p, x, y, r) {
+        const hollow = p.b.createRadialGradient(x, y, 0, x, y, r);
+        hollow.addColorStop(0, 'rgba(0,0,0,0.35)'); hollow.addColorStop(1, 'rgba(0,0,0,0)');
+        p.b.fillStyle = hollow; p.b.beginPath(); p.b.arc(x, y, r, 0, Math.PI * 2); p.b.fill();
+      }
+      function glow(p, x, y, w, h, color, strength = 1) {
+        fillRect(p, x, y, w, h, color);
+        p.g.fillStyle = gray(strength); p.g.fillRect(x, y, w, h);
+      }
+      function stripes(p, x, y, w, h, a, b, period, height) {
+        p.c.save(); p.c.beginPath(); p.c.rect(x, y, w, h); p.c.clip();
+        p.c.fillStyle = a; p.c.fillRect(x, y, w, h); p.c.fillStyle = b;
+        for (let s = x - h - period; s < x + w + period; s += period) {
+          p.c.beginPath(); p.c.moveTo(s, y + h); p.c.lineTo(s + period / 2, y + h);
+          p.c.lineTo(s + period / 2 + h, y); p.c.lineTo(s + h, y); p.c.closePath(); p.c.fill();
+        }
+        p.c.restore();
+        if (height !== undefined) fillRect(p, x, y, w, h, null, height);
+      }
+      function streaks(p, count, rgb, top, bottom, alpha = 0.22) {
+        for (let i = 0; i < count; i++) {
+          const x = rnd() * p.w, y = between(top, bottom), length = between(40, 260), w = between(1, 6);
+          const fade = p.c.createLinearGradient(0, y, 0, y + length);
+          fade.addColorStop(0, `rgba(${rgb},${alpha * between(0.4, 1)})`); fade.addColorStop(1, `rgba(${rgb},0)`);
+          p.c.fillStyle = fade;
+          for (const offset of [-p.w, 0, p.w]) p.c.fillRect(x + offset, y, w, length);
+        }
+      }
+      function scratches(p, count, alpha = 0.25) {
+        p.c.lineCap = 'round';
+        for (let i = 0; i < count; i++) {
+          const x = rnd() * p.w, y = rnd() * p.h, angle = between(0, Math.PI), length = between(6, 40);
+          p.c.strokeStyle = rnd() > 0.35 ? `rgba(205,214,216,${alpha * between(0.3, 1)})` : `rgba(8,12,14,${alpha})`;
+          p.c.lineWidth = between(0.6, 1.8);
+          p.c.beginPath(); p.c.moveTo(x, y); p.c.lineTo(x + Math.cos(angle) * length, y + Math.sin(angle) * length); p.c.stroke();
+        }
+      }
+      function stain(p, x, y, rx, ry, rgb, alpha) {
+        for (const ox of [-p.w, 0, p.w]) for (const oy of [-p.h, 0, p.h]) {
+          const cx = x + ox, cy = y + oy;
+          if (cx + rx < 0 || cx - rx > p.w || cy + ry < 0 || cy - ry > p.h) continue;
+          const spot = p.c.createRadialGradient(cx, cy, 0, cx, cy, rx);
+          spot.addColorStop(0, `rgba(${rgb},${alpha})`); spot.addColorStop(1, `rgba(${rgb},0)`);
+          p.c.save(); p.c.translate(cx, cy); p.c.scale(1, ry / rx); p.c.translate(-cx, -cy);
+          p.c.fillStyle = spot; p.c.beginPath(); p.c.arc(cx, cy, rx, 0, Math.PI * 2); p.c.fill(); p.c.restore();
+        }
+      }
+      function stencil(p, text, x, y, size, color) {
+        p.c.font = `bold ${size}px Consolas, "Courier New", monospace`;
+        p.c.textAlign = 'center'; p.c.textBaseline = 'middle'; p.c.fillStyle = color; p.c.fillText(text, x, y);
+      }
+      // Weathering pass: grime, rust and worn edges on the color, then a normal map from the height layer.
+      function finish(p, { grime = 0.35, rust = 0.12, cavity = 0.8, wear = 0.15, speckle = 0.07, roughness = 0.015, strength = 6, scale = 4 } = {}) {
+        const { w, h } = p, size = w * h;
+        const cd = p.c.getImageData(0, 0, w, h).data, bd = p.b.getImageData(0, 0, w, h).data, gd = p.g.getImageData(0, 0, w, h).data;
+        const fw = Math.max(8, w >> 2), fh = Math.max(8, h >> 2);
+        const dirt = fbmField(fw, fh, scale, 5, fieldSeed++ * 31), corrosion = fbmField(fw, fh, scale + 2, 4, fieldSeed++ * 31);
+        const speck = fieldSeed++ * 977, heights = new Float32Array(size);
+        for (let i = 0; i < size; i++) heights[i] = bd[i * 4] / 255 + (hashInt(i % w, (i / w) | 0, speck) - 0.5) * roughness;
+        const normal = new Uint8Array(size * 4);
+        for (let y = 0; y < h; y++) {
+          const row = y * w, up = ((y + h - 1) % h) * w, down = ((y + 1) % h) * w;
+          for (let x = 0; x < w; x++) {
+            const i = row + x, k = i * 4;
+            const dx = heights[row + (x + 1) % w] - heights[row + (x + w - 1) % w];
+            const dy = heights[down + x] - heights[up + x];
+            const nx = -dx * strength, ny = -dy * strength, length = Math.sqrt(nx * nx + ny * ny + 1);
+            normal[k] = (nx / length * 0.5 + 0.5) * 255; normal[k + 1] = (ny / length * 0.5 + 0.5) * 255;
+            normal[k + 2] = (0.5 / length + 0.5) * 255; normal[k + 3] = gd[k];
+            const lit = gd[k] / 255, u = x / w * fw, v = y / h * fh;
+            let shade = 1 - grime * smoothstep(0.42, 0.85, sampleField(dirt, fw, fh, u, v)) -
+              cavity * Math.max(0, 0.5 - bd[k] / 255) + (hashInt(x, y, speck + 1) - 0.5) * speckle;
+            shade += (1 - shade) * lit;
+            const rusty = rust * smoothstep(0.55, 0.75, sampleField(corrosion, fw, fh, u, v)) * (1 - lit);
+            const chipped = Math.min(1, Math.sqrt(dx * dx + dy * dy) * 6) * wear * (1 - lit);
+            for (let c = 0; c < 3; c++) {
+              let value = cd[k + c] * shade;
+              value += (RUST[c] * shade - value) * rusty;
+              cd[k + c] = value + (BARE[c] - value) * chipped;
+            }
+          }
+        }
+        return { color: cd, normal, w, h };
+      }
+
+      const textures = {};
+      const make = (name, w, h, base, paint, options) => { const p = painter(w, h, base); paint(p); textures[name] = finish(p, options); };
+      const bulkPanel = (p, x, y, w, h) => {
+        plate(p, x, y, w, h, '#435667', 0.5, 0.64, 8);
+        plate(p, x + 30, y + 30, w - 60, h - 60, '#384a56', 0.64, 0.58, 5);
+        for (let rx = x + 16; rx <= x + w - 16; rx += 46) { rivet(p, rx, y + 15, 4); rivet(p, rx, y + h - 15, 4); }
+      };
+      const conduit = (p) => {
+        fillRect(p, 0, 412, 512, 40, '#131b20', 0.4);
+        groove(p, 0, 413, 512, 413, 3, 0.3); groove(p, 0, 451, 512, 451, 3, 0.3);
+        for (let x = 20; x < 512; x += 64) glow(p, x, 427, 24, 10, (x / 64) % 2 < 1 ? '#5ae8da' : '#3a9fb0', 0.95);
+      };
+      const kickPlate = (p) => {
+        plate(p, 0, 884, 512, 140, '#262d31', 0.5, 0.6, 5);
+        stripes(p, 0, 900, 512, 108, '#c79632', '#1a1d1f', 64, 0.6);
+        groove(p, 0, 898, 512, 898, 3, 0.4); groove(p, 0, 1010, 512, 1010, 3, 0.4);
+      };
+      const pipe = (p, cx, w, color) => {
+        const x = cx - w / 2;
+        const across = (brush, a, b, c) => { const g = brush.createLinearGradient(x, 0, x + w, 0); g.addColorStop(0, a); g.addColorStop(0.38, b); g.addColorStop(1, c); return g; };
+        p.c.fillStyle = across(p.c, '#11181b', color, '#090d0f'); p.c.fillRect(x, 0, w, 884);
+        p.c.fillStyle = 'rgba(225,238,240,0.22)'; p.c.fillRect(x + w * 0.3, 0, Math.max(2, w * 0.07), 884);
+        p.b.fillStyle = across(p.b, gray(0.55), gray(0.95), gray(0.55)); p.b.fillRect(x, 0, w, 884);
+        for (let y = 70; y < 860; y += 230) {
+          p.c.fillStyle = across(p.c, '#182024', '#a2afb3', '#0f1517'); p.c.fillRect(x - 7, y, w + 14, 20);
+          p.b.fillStyle = across(p.b, gray(0.6), gray(1), gray(0.6)); p.b.fillRect(x - 7, y, w + 14, 20);
+          rivet(p, x - 2, y + 10, 3); rivet(p, x + w + 2, y + 10, 3);
+        }
+      };
+      const corrugated = (p, x, y, w, h, color) => {
+        fillRect(p, x, y, w, h, color);
+        for (let sx = x; sx < x + w; sx += 16) {
+          const fold = p.c.createLinearGradient(sx, 0, sx + 16, 0);
+          fold.addColorStop(0, 'rgba(0,0,0,0.28)'); fold.addColorStop(0.5, 'rgba(255,255,255,0.10)'); fold.addColorStop(1, 'rgba(0,0,0,0.28)');
+          p.c.fillStyle = fold; p.c.fillRect(sx, y, 16, h);
+          const lift = p.b.createLinearGradient(sx, 0, sx + 16, 0);
+          lift.addColorStop(0, gray(0.5)); lift.addColorStop(0.5, gray(0.63)); lift.addColorStop(1, gray(0.5));
+          p.b.fillStyle = lift; p.b.fillRect(sx, y, 16, h);
+        }
+      };
+      const upperBase = (p) => {
+        corrugated(p, 20, 0, 472, 768, '#3d4e5a');
+        plate(p, 20, 360, 472, 48, '#2e3a42', 0.5, 0.66, 6);
+        for (const x of [-20, 492]) plate(p, x, 0, 40, 768, '#29343b', 0.5, 0.7, 6);
+        for (let y = 24; y < 768; y += 48) { rivet(p, 8, y, 4); rivet(p, 504, y, 4); }
+        for (let x = 52; x < 480; x += 52) { rivet(p, x, 372, 3.5); rivet(p, x, 396, 3.5); }
+        groove(p, 0, 1, 512, 1, 3, 0.35); groove(p, 0, 767, 512, 767, 3, 0.35);
+      };
+      const tread = (p, x, y, w, h) => {
+        for (let ty = y + 14; ty < y + h - 10; ty += 28) for (let tx = x + 14; tx < x + w - 10; tx += 28) {
+          const angle = ((tx - x) / 28 + (ty - y) / 28) % 2 < 1 ? Math.PI / 4 : -Math.PI / 4;
+          for (const [brush, style] of [[p.c, 'rgba(150,166,172,0.32)'], [p.b, gray(0.74)]]) {
+            brush.save(); brush.translate(tx, ty); brush.rotate(angle); brush.fillStyle = style;
+            brush.beginPath(); brush.ellipse(0, 0, 10, 3, 0, 0, Math.PI * 2); brush.fill(); brush.restore();
+          }
+        }
+      };
+      const QUADS = [[0, 0], [256, 0], [0, 256], [256, 256]];
+
+      make('wallLower', 512, 1024, '#27333b', p => {
+        bulkPanel(p, 10, 16, 492, 386); bulkPanel(p, 10, 462, 492, 410); conduit(p); kickPlate(p);
+        streaks(p, 26, '96,48,26', 20, 700, 0.2); streaks(p, 18, '10,14,16', 400, 860, 0.25); scratches(p, 140);
+      }, { grime: 0.4, rust: 0.22 });
+      make('wallVent', 512, 1024, '#27333b', p => {
+        bulkPanel(p, 10, 16, 492, 386);
+        plate(p, 10, 462, 492, 410, '#3c4e5b', 0.5, 0.64, 8);
+        fillRect(p, 52, 504, 408, 328, '#5e2c10', 0.12);
+        p.g.fillStyle = gray(0.6); p.g.fillRect(52, 504, 408, 328);
+        for (let y = 510; y < 826; y += 24) {
+          const slat = p.c.createLinearGradient(0, y, 0, y + 15);
+          slat.addColorStop(0, '#8399a4'); slat.addColorStop(1, '#1e282e');
+          p.c.fillStyle = slat; p.c.fillRect(52, y, 408, 15);
+          const lift = p.b.createLinearGradient(0, y, 0, y + 15);
+          lift.addColorStop(0, gray(0.8)); lift.addColorStop(1, gray(0.34));
+          p.b.fillStyle = lift; p.b.fillRect(52, y, 408, 15);
+          p.g.fillStyle = '#000'; p.g.fillRect(52, y, 408, 15);
+        }
+        for (const x of [52, 252, 452]) { fillRect(p, x, 504, 8, 328, '#2b363d', 0.7); p.g.fillStyle = '#000'; p.g.fillRect(x, 504, 8, 328); }
+        stencil(p, 'AIR INTAKE 04', 256, 484, 18, 'rgba(214,170,70,0.85)');
+        conduit(p); kickPlate(p);
+        streaks(p, 20, '96,48,26', 20, 500, 0.2); scratches(p, 120);
+      }, { grime: 0.45, rust: 0.2 });
+      make('wallDoor', 512, 1024, '#27333b', p => {
+        plate(p, 34, 24, 444, 856, '#30383d', 0.5, 0.7, 9);
+        stripes(p, 52, 44, 408, 26, '#cf9c34', '#191c1e', 40, 0.66);
+        stripes(p, 52, 44, 24, 818, '#cf9c34', '#191c1e', 40, 0.66);
+        stripes(p, 436, 44, 24, 818, '#cf9c34', '#191c1e', 40, 0.66);
+        for (const x of [84, 258]) {
+          plate(p, x, 84, 170, 780, '#4b5b66', 0.6, 0.66, 5);
+          for (const y of [190, 420, 650]) {
+            plate(p, x + 12, y, 146, 34, '#5a6c78', 0.66, 0.74, 4);
+            rivet(p, x + 24, y + 17, 4); rivet(p, x + 146, y + 17, 4);
+          }
+        }
+        for (const [brush, style] of [[p.c, '#0a0f12'], [p.b, gray(0.3)]]) {
+          brush.strokeStyle = style; brush.lineWidth = 5; brush.beginPath(); brush.moveTo(256, 84);
+          for (let y = 84; y < 864; y += 60) { brush.lineTo(274, y + 30); brush.lineTo(238, y + 30); brush.lineTo(256, y + 60); }
+          brush.stroke();
+        }
+        stencil(p, 'SEALED', 256, 560, 36, 'rgba(232,206,140,0.72)');
+        glow(p, 226, 27, 60, 12, '#ff4b3a', 1);
+        kickPlate(p);
+        streaks(p, 18, '96,48,26', 30, 600, 0.18); scratches(p, 130);
+      }, { grime: 0.4, rust: 0.18 });
+      make('wallPipes', 512, 1024, '#27333b', p => {
+        bulkPanel(p, 10, 16, 492, 386); bulkPanel(p, 10, 462, 492, 410); conduit(p); kickPlate(p);
+        pipe(p, 130, 52, '#6f7d84'); pipe(p, 214, 30, '#8c6b3a'); pipe(p, 392, 64, '#5d6c73');
+        for (const [brush, style, line] of [[p.c, '#a8402c', 8], [p.b, gray(0.98), 8]]) {
+          brush.strokeStyle = style; brush.lineWidth = line;
+          brush.beginPath(); brush.arc(392, 560, 38, 0, Math.PI * 2); brush.stroke();
+          brush.beginPath(); brush.moveTo(354, 560); brush.lineTo(430, 560); brush.moveTo(392, 522); brush.lineTo(392, 598); brush.stroke();
+        }
+        rivet(p, 392, 560, 9, '#b4483a');
+        fillRect(p, 274, 268, 60, 60, '#262f33', 0.75);
+        p.c.fillStyle = '#d6d2c2'; p.c.beginPath(); p.c.arc(304, 298, 22, 0, Math.PI * 2); p.c.fill();
+        p.c.strokeStyle = '#b8352a'; p.c.lineWidth = 3; p.c.beginPath(); p.c.moveTo(304, 298); p.c.lineTo(318, 284); p.c.stroke();
+        glow(p, 326, 334, 8, 8, '#6dff8a', 1);
+        streaks(p, 22, '96,48,26', 20, 700, 0.22); scratches(p, 120);
+      }, { grime: 0.4, rust: 0.25 });
+      make('wallUpper', 512, 768, '#2b3740', p => {
+        upperBase(p);
+        streaks(p, 30, '20,26,30', 0, 700, 0.3); streaks(p, 12, '96,48,26', 0, 600, 0.18); scratches(p, 90);
+      }, { grime: 0.4, rust: 0.14 });
+      make('wallWindows', 512, 768, '#2b3740', p => {
+        upperBase(p);
+        for (const x of [60, 272]) {
+          plate(p, x, 96, 180, 560, '#2a343a', 0.5, 0.7, 7);
+          const glass = p.c.createLinearGradient(0, 112, 0, 640);
+          glass.addColorStop(0, '#22596b'); glass.addColorStop(1, '#0a1820');
+          p.c.fillStyle = glass; p.c.fillRect(x + 16, 112, 148, 528);
+          p.b.fillStyle = gray(0.28); p.b.fillRect(x + 16, 112, 148, 528);
+          const light = p.g.createLinearGradient(0, 112, 0, 640);
+          light.addColorStop(0, gray(0.75)); light.addColorStop(1, gray(0.25));
+          p.g.fillStyle = light; p.g.fillRect(x + 16, 112, 148, 528);
+          for (let i = 0; i < 3; i++) glow(p, x + 24 + rnd() * 100, 300 + rnd() * 260, between(14, 40), between(8, 20), '#e3a85c', 0.95);
+          for (const [bx, by, bw, bh] of [[x + 86, 112, 8, 528], [x + 16, 370, 148, 8]]) {
+            fillRect(p, bx, by, bw, bh, '#1d262b', 0.6); p.g.fillStyle = '#000'; p.g.fillRect(bx, by, bw, bh);
+          }
+          p.c.save(); p.c.beginPath(); p.c.rect(x + 16, 112, 148, 528); p.c.clip();
+          p.c.fillStyle = 'rgba(200,235,255,0.09)'; p.c.beginPath();
+          p.c.moveTo(x + 40, 112); p.c.lineTo(x + 100, 112); p.c.lineTo(x + 16, 330); p.c.lineTo(x + 16, 240); p.c.fill(); p.c.restore();
+        }
+        streaks(p, 24, '20,26,30', 0, 700, 0.3); scratches(p, 70);
+      }, { grime: 0.4, rust: 0.12 });
+      make('wallSign', 512, 768, '#2b3740', p => {
+        upperBase(p);
+        plate(p, 56, 150, 400, 220, '#c49a2f', 0.5, 0.58, 4);
+        p.c.strokeStyle = '#17191a'; p.c.lineWidth = 8; p.c.strokeRect(72, 166, 368, 188);
+        stencil(p, 'KEEP CLEAR', 256, 232, 62, '#17191a');
+        stencil(p, 'SECTOR 9 ▶', 256, 316, 34, '#17191a');
+        streaks(p, 24, '20,26,30', 0, 700, 0.3); scratches(p, 160, 0.35);
+      }, { grime: 0.45, wear: 0.25 });
+      make('crown', 512, 256, '#1b2328', p => {
+        plate(p, 0, 0, 512, 70, '#2c373e', 0.5, 0.72, 6);
+        for (let x = 16; x < 512; x += 32) rivet(p, x, 35, 4);
+        plate(p, 0, 120, 512, 76, '#222b30', 0.5, 0.6, 5);
+        for (let x = 0; x < 512; x += 64) glow(p, x + 5, 142, 54, 30, '#8ef6ff', 1);
+        plate(p, 0, 222, 512, 34, '#2f3b43', 0.5, 0.62, 4);
+        streaks(p, 14, '20,26,30', 60, 200, 0.3);
+      }, { grime: 0.35, rust: 0.1 });
+      make('column', 512, 512, '#262f34', p => {
+        for (const x of [16, 296]) plate(p, x, 60, 200, 436, '#36434b', 0.5, 0.62, 7);
+        plate(p, 0, 0, 512, 44, '#3a464d', 0.5, 0.7, 6);
+        for (let x = 20; x < 512; x += 40) rivet(p, x, 22, 4.5);
+        plate(p, 232, 52, 48, 452, '#1a2125', 0.5, 0.58, 4);
+        for (let y = 66; y < 490; y += 36) glow(p, 244, y, 24, 26, '#ffb24a', 1);
+        for (const x of [30, 310]) stripes(p, x, 450, 172, 30, '#c99a35', '#1b1e20', 30, 0.64);
+        streaks(p, 22, '96,48,26', 50, 400, 0.2); scratches(p, 120);
+      }, { grime: 0.4, rust: 0.18 });
+      make('reactor', 512, 512, '#0c1215', p => {
+        for (const [x, y] of QUADS) {
+          plate(p, x + 6, y + 6, 244, 244, '#1d282c', 0.5, 0.64, 7);
+          for (const sy of [52, 112, 172]) {
+            glow(p, x + 34, y + sy, 188, 30, '#3dffc6', 1); fillRect(p, x + 34, y + sy, 188, 30, null, 0.2);
+            for (let gx = x + 34; gx < x + 222; gx += 12) { fillRect(p, gx, y + sy, 4, 30, '#0d1416', 0.66); p.g.fillStyle = '#000'; p.g.fillRect(gx, y + sy, 4, 30); }
+          }
+          for (const [rx, ry] of [[18, 18], [238, 18], [18, 238], [238, 238]]) rivet(p, x + rx, y + ry, 5);
+        }
+      }, { grime: 0.3, rust: 0.05 });
+      make('hazard', 256, 256, '#d2a332', p => {
+        stripes(p, 0, 0, 256, 256, '#d2a332', '#17191b', 64, 0.55); scratches(p, 120, 0.4);
+      }, { grime: 0.5, wear: 0.3, rust: 0.12 });
+      make('girder', 512, 192, '#9a7426', p => {
+        fillRect(p, 0, 30, 512, 132, '#0f0e0b', 0.15);
+        for (const [brush, style] of [[p.c, '#a88227'], [p.b, gray(0.66)]]) {
+          brush.strokeStyle = style; brush.lineWidth = 20; brush.beginPath();
+          for (let x = -128; x <= 640; x += 128) { brush.moveTo(x, 30); brush.lineTo(x + 64, 162); brush.lineTo(x + 128, 30); }
+          brush.stroke();
+        }
+        for (let x = 0; x <= 512; x += 128) fillRect(p, x - 9, 30, 18, 132, '#987321', 0.64);
+        plate(p, 0, 0, 512, 32, '#b98f2c', 0.5, 0.74, 5); plate(p, 0, 160, 512, 32, '#b98f2c', 0.5, 0.74, 5);
+        for (let x = 16; x < 512; x += 32) { rivet(p, x, 16, 4, '#c9b27a'); rivet(p, x, 176, 4, '#c9b27a'); }
+        scratches(p, 140, 0.35);
+      }, { grime: 0.45, rust: 0.25, wear: 0.3 });
+      make('floorPlate', 512, 512, '#1d2428', p => {
+        for (const [x, y] of QUADS) {
+          plate(p, x + 4, y + 4, 248, 248, '#3a464c', 0.5, 0.6, 5);
+          tread(p, x + 4, y + 4, 248, 248);
+          for (const [rx, ry] of [[14, 14], [242, 14], [14, 242], [242, 242]]) rivet(p, x + rx, y + ry, 4.5);
+        }
+        for (let i = 0; i < 9; i++) stain(p, rnd() * 512, rnd() * 512, between(14, 60), between(8, 30), '8,10,9', between(0.15, 0.35));
+        scratches(p, 220, 0.3);
+      }, { grime: 0.45, rust: 0.12, wear: 0.2 });
+      make('floorGrate', 512, 512, '#14181a', p => {
+        for (const [x, y] of QUADS) {
+          fillRect(p, x + 18, y + 18, 220, 220, '#2c1204', 0.1);
+          p.g.fillStyle = gray(0.7); p.g.fillRect(x + 18, y + 18, 220, 220);
+          for (let gy = y + 22; gy < y + 238; gy += 12) { fillRect(p, x + 18, gy, 220, 7, '#5c686e', 0.64); p.g.fillStyle = '#000'; p.g.fillRect(x + 18, gy, 220, 7); }
+          for (let gx = x + 18; gx < x + 238; gx += 55) { fillRect(p, gx, y + 18, 8, 220, '#4d5a60', 0.7); p.g.fillStyle = '#000'; p.g.fillRect(gx, y + 18, 8, 220); }
+        }
+        for (const v of [-18, 238, 494]) { plate(p, v, 0, 36, 512, '#3c474d', 0.5, 0.72, 5); plate(p, 0, v, 512, 36, '#3c474d', 0.5, 0.72, 5); }
+        for (const v of [0, 256]) for (let t = 24; t < 512; t += 58) { rivet(p, v, t, 4); rivet(p, t, v, 4); }
+        for (let i = 0; i < 6; i++) stain(p, rnd() * 512, rnd() * 512, between(20, 70), between(10, 40), '8,10,9', between(0.15, 0.3));
+        scratches(p, 120, 0.3);
+      }, { grime: 0.4, rust: 0.06, wear: 0.2 });
+      make('floorPad', 512, 512, '#22292d', p => {
+        for (const [x, y] of QUADS) plate(p, x + 3, y + 3, 250, 250, '#323b40', 0.5, 0.58, 4);
+        for (const [x, y, w, h] of [[0, 0, 512, 14], [0, 498, 512, 14], [0, 0, 14, 512], [498, 0, 14, 512]]) fillRect(p, x, y, w, h, '#d0a137');
+        p.c.fillStyle = 'rgba(222,228,226,0.5)';
+        for (const offset of [0, 80]) {
+          p.c.beginPath(); p.c.moveTo(160, 130 + offset); p.c.lineTo(256, 210 + offset); p.c.lineTo(352, 130 + offset);
+          p.c.lineTo(352, 172 + offset); p.c.lineTo(256, 252 + offset); p.c.lineTo(160, 172 + offset); p.c.closePath(); p.c.fill();
+        }
+        for (const [x, y] of [[0, 0], [500, 0], [0, 500], [500, 500]]) glow(p, x, y, 12, 12, '#ffe2a0', 1);
+        for (let i = 0; i < 8; i++) stain(p, rnd() * 512, rnd() * 512, between(20, 60), between(10, 30), '8,10,9', between(0.15, 0.3));
+        scratches(p, 200, 0.3);
+      }, { grime: 0.45, wear: 0.25 });
+      make('floorFoundry', 512, 512, '#1e1a18', p => {
+        for (const [x, y] of QUADS) {
+          plate(p, x + 4, y + 4, 248, 248, '#3a312c', 0.5, 0.6, 6);
+          for (const [rx, ry] of [[16, 16], [240, 16], [16, 240], [240, 240]]) rivet(p, x + rx, y + ry, 5, '#7d7570');
+        }
+        for (let i = 0; i < 7; i++) stain(p, rnd() * 512, rnd() * 512, between(40, 110), between(30, 80), '12,8,6', 0.45);
+        for (let i = 0; i < 6; i++) stain(p, rnd() * 512, rnd() * 512, between(30, 80), between(20, 60), '70,80,140', 0.12);
+        for (let i = 0; i < 5; i++) {
+          let x = between(60, 450), y = between(60, 450), angle = rnd() * Math.PI * 2;
+          const points = [[x, y]];
+          for (let s = 0; s < 12; s++) { angle += between(-0.7, 0.7); x += Math.cos(angle) * between(8, 22); y += Math.sin(angle) * between(8, 22); points.push([x, y]); }
+          for (const [brush, style, line] of [[p.c, 'rgba(255,110,30,0.22)', 12], [p.b, gray(0.3), 3], [p.c, '#ffb15a', 2.5], [p.g, '#fff', 3.5]]) {
+            brush.strokeStyle = style; brush.lineWidth = line; brush.lineJoin = 'round'; brush.beginPath();
+            points.forEach(([px, py], j) => j ? brush.lineTo(px, py) : brush.moveTo(px, py)); brush.stroke();
+          }
+        }
+        scratches(p, 160, 0.3);
+      }, { grime: 0.5, rust: 0.1, wear: 0.15 });
+      make('barrel', 512, 384, '#a3412b', p => {
+        const paint = p.c.createLinearGradient(0, 0, 0, 384);
+        paint.addColorStop(0, '#b44b30'); paint.addColorStop(1, '#8a3521');
+        p.c.fillStyle = paint; p.c.fillRect(0, 0, 512, 384);
+        plate(p, 0, 0, 512, 24, '#5d2b20', 0.5, 0.74, 5); plate(p, 0, 360, 512, 24, '#5d2b20', 0.5, 0.74, 5);
+        for (const y of [100, 270]) plate(p, 0, y, 512, 16, '#b65639', 0.5, 0.72, 4);
+        plate(p, 56, 132, 400, 122, '#e2ac46', 0.5, 0.53, 2);
+        p.c.strokeStyle = '#161616'; p.c.lineWidth = 5; p.c.strokeRect(64, 140, 384, 106);
+        p.c.save(); p.c.translate(122, 193); p.c.rotate(Math.PI / 4);
+        p.c.fillStyle = '#161616'; p.c.fillRect(-30, -30, 60, 60); p.c.fillStyle = '#e2ac46'; p.c.fillRect(-24, -24, 48, 48); p.c.restore();
+        p.c.fillStyle = '#161616'; p.c.beginPath(); p.c.moveTo(122, 170);
+        p.c.quadraticCurveTo(142, 196, 129, 212); p.c.quadraticCurveTo(122, 218, 115, 212); p.c.quadraticCurveTo(104, 194, 122, 170); p.c.fill();
+        stencil(p, 'DANGER', 300, 182, 52, '#161616');
+        stencil(p, 'EXPLOSIVE · KEEP CLEAR', 300, 226, 17, '#161616');
+        groove(p, 506, 24, 506, 360, 3, 0.4);
+        for (let i = 0; i < 7; i++) dent(p, rnd() * 512, between(30, 350), between(10, 26));
+        streaks(p, 14, '70,30,16', 20, 300, 0.35); scratches(p, 160, 0.45);
+      }, { grime: 0.3, rust: 0.25, wear: 0.35 });
+      make('barrelLid', 256, 256, '#7a3022', p => {
+        for (let r = 128; r > 0; r -= 2) {
+          const t = r / 128, rim = t > 0.9 ? 0.75 : t > 0.84 ? 0.35 : Math.abs(t - 0.55) < 0.025 || Math.abs(t - 0.32) < 0.025 ? 0.64 : 0.5;
+          p.b.fillStyle = gray(rim); p.b.beginPath(); p.b.arc(128, 128, r, 0, Math.PI * 2); p.b.fill();
+          p.c.fillStyle = t > 0.84 ? '#4c2219' : rim > 0.6 ? '#9d4430' : '#843323';
+          p.c.beginPath(); p.c.arc(128, 128, r, 0, Math.PI * 2); p.c.fill();
+        }
+        rivet(p, 172, 92, 15, '#9aa3a6'); rivet(p, 84, 164, 9, '#9aa3a6');
+        stencil(p, 'VOLATILE FUEL', 128, 196, 14, 'rgba(240,210,150,0.55)');
+        scratches(p, 60, 0.4);
+      }, { grime: 0.35, rust: 0.2, wear: 0.3 });
+      make('drone', 256, 256, '#3b121b', p => {
+        for (const [x, y] of [[0, 0], [128, 0], [0, 128], [128, 128]]) {
+          plate(p, x + 4, y + 4, 120, 120, '#6e2234', 0.5, 0.64, 6);
+          for (const [rx, ry] of [[12, 12], [116, 12], [12, 116], [116, 116]]) rivet(p, x + rx, y + ry, 3.5, '#a3757c');
+        }
+        for (let i = 0; i < 4; i++) fillRect(p, 150, 30 + i * 14, 70, 6, '#160609', 0.3);
+        for (const [brush, style] of [[p.c, '#ff4a4a'], [p.g, '#fff'], [p.b, gray(0.4)]]) {
+          brush.strokeStyle = style; brush.lineWidth = 3; brush.beginPath();
+          brush.moveTo(0, 128); brush.lineTo(256, 128); brush.moveTo(128, 0); brush.lineTo(128, 256); brush.stroke();
+        }
+        scratches(p, 80, 0.3);
+      }, { grime: 0.25, rust: 0.05, wear: 0.3 });
+      make('ceiling', 512, 512, '#1a2024', p => {
+        for (const [x, y] of QUADS) {
+          plate(p, x + 4, y + 4, 248, 248, '#2d373d', 0.5, 0.6, 6);
+          plate(p, x + 88, y + 40, 80, 176, '#151b1e', 0.6, 0.45, 4);
+          glow(p, x + 98, y + 50, 60, 156, '#d4f1ff', 0.95);
+          for (let ly = y + 66; ly < y + 200; ly += 26) fillRect(p, x + 98, ly, 60, 4, '#3a4a52');
+          for (const [rx, ry] of [[16, 16], [240, 16], [16, 240], [240, 240]]) rivet(p, x + rx, y + ry, 4.5);
+        }
+        streaks(p, 16, '20,26,30', 0, 400, 0.25); scratches(p, 80, 0.25);
+      }, { grime: 0.45, rust: 0.12 });
+      const chevrons = (p, color, rows) => {
+        for (const brush of [p.c, p.g]) {
+          brush.fillStyle = brush === p.c ? color : '#fff';
+          for (const [x, y] of rows) {
+            brush.beginPath(); brush.moveTo(x - 40, y); brush.lineTo(x, y - 34); brush.lineTo(x + 40, y);
+            brush.lineTo(x + 40, y + 18); brush.lineTo(x, y - 16); brush.lineTo(x - 40, y + 18); brush.closePath(); brush.fill();
+          }
+        }
+      };
+      make('pickupHealth', 256, 256, '#0f3322', p => {
+        plate(p, 8, 8, 240, 240, '#1f6b45', 0.5, 0.66, 8);
+        glow(p, 104, 40, 48, 176, '#c4ffdb', 1); glow(p, 40, 104, 176, 48, '#c4ffdb', 1);
+      }, { grime: 0.15, rust: 0, wear: 0.2 });
+      make('pickupWeapon', 256, 256, '#3a2208', p => {
+        plate(p, 8, 8, 240, 240, '#8a5418', 0.5, 0.66, 8);
+        chevrons(p, '#ffd890', [[128, 80], [128, 140], [128, 200]]);
+      }, { grime: 0.15, rust: 0, wear: 0.2 });
+      make('exitFrame', 256, 256, '#141a1d', p => {
+        plate(p, 0, 0, 256, 256, '#2a3438', 0.5, 0.64, 8);
+        chevrons(p, '#6dffb4', [[64, 90], [192, 90], [64, 200], [192, 200]]);
+        for (const [rx, ry] of [[14, 14], [242, 14], [14, 242], [242, 242]]) rivet(p, rx, ry, 5);
+      }, { grime: 0.3, rust: 0.05 });
+      // Control consoles: screens of scrolling readouts, status LEDs and button banks above the kick plate.
+      make('wallComputer', 512, 1024, '#27333b', p => {
+        bulkPanel(p, 10, 16, 492, 386); conduit(p);
+        plate(p, 10, 462, 492, 418, '#2f3b42', 0.5, 0.64, 8);
+        for (const x of [36, 270]) {
+          plate(p, x, 492, 206, 176, '#161d21', 0.64, 0.56, 5);
+          fillRect(p, x + 12, 504, 182, 152, '#04110c', 0.5);
+          p.g.fillStyle = gray(0.25); p.g.fillRect(x + 12, 504, 182, 152);
+          for (let y = 514; y < 646; y += 12) {
+            const length = between(30, 160), tint = rnd() > 0.85 ? '#ffc65a' : '#5dff9a';
+            glow(p, x + 20, y, length, 5, tint, 1);
+          }
+        }
+        for (let x = 40; x < 480; x += 22) glow(p, x, 700, 10, 10, ['#ff4a3a', '#ffc65a', '#5dff9a', '#5dff9a'][Math.floor(rnd() * 4)], rnd() > 0.3 ? 1 : 0.2);
+        for (let y = 736; y < 850; y += 30) for (let x = 44; x < 470; x += 36) plate(p, x, y, 26, 18, rnd() > 0.8 ? '#a8402c' : '#56646b', 0.64, 0.72, 3);
+        kickPlate(p);
+        streaks(p, 14, '10,14,16', 400, 860, 0.25); scratches(p, 110);
+      }, { grime: 0.35, rust: 0.12 });
+      make('wallRust', 512, 512, '#3e2a1f', p => {
+        for (const [x, y] of QUADS) {
+          plate(p, x + 5, y + 5, 246, 246, '#5a3d2a', 0.5, 0.63, 7);
+          for (let t = 22; t < 240; t += 27) { rivet(p, x + t, y + 15, 4, '#8a6a52'); rivet(p, x + t, y + 241, 4, '#8a6a52'); }
+        }
+        for (let i = 0; i < 8; i++) stain(p, rnd() * 512, rnd() * 512, between(30, 90), between(20, 60), '20,12,8', between(0.2, 0.4));
+        streaks(p, 40, '120,60,28', 0, 400, 0.35); streaks(p, 20, '12,8,6', 0, 400, 0.3); scratches(p, 140, 0.3);
+      }, { grime: 0.5, rust: 0.45, wear: 0.2 });
+      // Toxic sludge: swirling glowing slime with bubbles; its UVs scroll slowly in the shader.
+      make('floorSludge', 512, 512, '#1d470b', p => {
+        p.g.fillStyle = gray(0.45); p.g.fillRect(0, 0, 512, 512);
+        fillRect(p, 0, 0, 512, 512, null, 0.5);
+        for (let i = 0; i < 26; i++) stain(p, rnd() * 512, rnd() * 512, between(30, 90), between(14, 50), rnd() > 0.5 ? '120,255,60' : '10,40,6', between(0.25, 0.5));
+        for (let i = 0; i < 40; i++) {
+          const x = rnd() * 452 + 30, y = rnd() * 452 + 30, r = between(3, 12);
+          for (const [brush, style] of [[p.c, '#b6ff7a'], [p.g, '#fff']]) { brush.strokeStyle = style; brush.lineWidth = 2; brush.beginPath(); brush.arc(x, y, r, 0, Math.PI * 2); brush.stroke(); }
+          rivet(p, x, y, r, '#5fd832');
+        }
+      }, { grime: 0.15, rust: 0, cavity: 0, wear: 0, strength: 3 });
+      // Molten slag: dark cooling crust broken by bright flowing seams.
+      make('floorLava', 512, 512, '#3a0e04', p => {
+        p.g.fillStyle = gray(0.85); p.g.fillRect(0, 0, 512, 512);
+        fillRect(p, 0, 0, 512, 512, '#ff7a1a');
+        for (let i = 0; i < 18; i++) stain(p, rnd() * 512, rnd() * 512, between(40, 110), between(30, 80), '255,210,90', between(0.3, 0.6));
+        for (let i = 0; i < 26; i++) {
+          const x = rnd() * 452 + 30, y = rnd() * 452 + 30, w = between(30, 90), hgt = between(24, 70);
+          p.c.fillStyle = '#2a0e06'; p.c.beginPath(); p.c.ellipse(x, y, w / 2, hgt / 2, rnd() * Math.PI, 0, Math.PI * 2); p.c.fill();
+          p.g.fillStyle = '#000'; p.g.beginPath(); p.g.ellipse(x, y, w / 2 - 4, hgt / 2 - 4, 0, 0, Math.PI * 2); p.g.fill();
+          p.b.fillStyle = gray(0.62); p.b.beginPath(); p.b.ellipse(x, y, w / 2, hgt / 2, 0, 0, Math.PI * 2); p.b.fill();
+        }
+      }, { grime: 0.1, rust: 0, cavity: 0, wear: 0, strength: 4 });
+      make('gateDoor', 512, 512, '#22282c', p => {
+        plate(p, 0, 0, 512, 512, '#343d43', 0.5, 0.66, 10);
+        for (const [brush, style] of [[p.c, '#4c565d'], [p.b, gray(0.8)]]) {
+          brush.strokeStyle = style; brush.lineWidth = 44; brush.beginPath();
+          brush.moveTo(40, 40); brush.lineTo(472, 400); brush.moveTo(472, 40); brush.lineTo(40, 400); brush.stroke();
+        }
+        for (const y of [30, 210, 400]) plate(p, 20, y, 472, 30, '#56626a', 0.66, 0.78, 4);
+        stripes(p, 20, 436, 472, 60, '#d0a033', '#17191b', 48, 0.6);
+        for (let x = 36; x < 480; x += 40) for (const y of [45, 225, 415]) rivet(p, x, y, 5);
+        glow(p, 236, 112, 40, 22, '#ff4a3a', 1);
+        streaks(p, 20, '96,48,26', 30, 420, 0.25); scratches(p, 160, 0.35);
+      }, { grime: 0.4, rust: 0.2, wear: 0.3 });
+      // A wall panel that looks almost like the others, apart from a faint glowing seam.
+      make('secretPanel', 512, 512, '#27333b', p => {
+        bulkPanel(p, 10, 12, 492, 488);
+        p.c.lineJoin = 'round';
+        for (const [brush, style, line] of [[p.c, 'rgba(120,255,200,0.35)', 3], [p.g, gray(0.5), 2], [p.b, gray(0.35), 2]]) {
+          brush.strokeStyle = style; brush.lineWidth = line; brush.beginPath(); brush.moveTo(250, 40);
+          for (let y = 70; y <= 470; y += 30) brush.lineTo(250 + (y / 30 % 2 ? 9 : -7), y);
+          brush.stroke();
+        }
+        streaks(p, 20, '96,48,26', 20, 400, 0.2); scratches(p, 120);
+      }, { grime: 0.4, rust: 0.2 });
+      make('lock', 256, 256, '#5a120c', p => {
+        plate(p, 8, 8, 240, 240, '#8a2116', 0.5, 0.7, 10);
+        for (const [brush, style] of [[p.c, '#ffb040'], [p.g, '#fff'], [p.b, gray(0.85)]]) { brush.strokeStyle = style; brush.lineWidth = 16; brush.beginPath(); brush.arc(128, 128, 70, 0, Math.PI * 2); brush.stroke(); }
+        fillRect(p, 116, 96, 24, 64, '#0c0605', 0.2);
+        for (const [rx, ry] of [[28, 28], [228, 28], [28, 228], [228, 228]]) rivet(p, rx, ry, 8);
+      }, { grime: 0.2, rust: 0.05, wear: 0.3 });
+      make('chain', 128, 128, '#4d555a', p => {
+        plate(p, 0, 0, 128, 128, '#7a8489', 0.5, 0.8, 20);
+        scratches(p, 40, 0.4);
+      }, { grime: 0.3, rust: 0.3, wear: 0.4 });
+      return textures;
+    }
+
+    const SURFACE_VS = `#version 300 es
+      layout(location = 0) in vec3 aPos;
+      layout(location = 1) in vec3 aNormal;
+      layout(location = 2) in vec2 aUv;
+      layout(location = 3) in float aShade;
+      uniform mat4 uViewProj;
+      uniform mat4 uModel;
+      uniform vec2 uScroll;
+      out vec3 vPos;
+      out vec3 vNormal;
+      out vec2 vUv;
+      out float vShade;
+      void main() {
+        vec4 world = uModel * vec4(aPos, 1.0);
+        vPos = world.xyz; vNormal = mat3(uModel) * aNormal; vUv = aUv + uScroll; vShade = aShade;
+        gl_Position = uViewProj * world;
+      }`;
+    // Normal-mapped surfaces: sky/ground ambient, a low sun, the ship's headlight and up to 16 point lights.
+    const SURFACE_FS = `#version 300 es
+      precision highp float;
+      in vec3 vPos;
+      in vec3 vNormal;
+      in vec2 vUv;
+      in float vShade;
+      uniform sampler2D uAlbedo;
+      uniform sampler2D uDetail;
+      uniform vec3 uCamera, uSunDir, uSunColor, uSkyLight, uGroundLight, uFogColor, uHeadPos, uHeadDir, uTint;
+      uniform float uFlash, uSpecular, uBump, uEmissive, uExposure;
+      uniform vec4 uLights[16];
+      uniform vec3 uLightColors[16];
+      uniform int uLightCount;
+      out vec4 outColor;
+      void main() {
+        vec3 albedo = texture(uAlbedo, vUv).rgb * uTint;
+        vec4 detail = texture(uDetail, vUv);
+        vec3 n = normalize(vNormal);
+        vec3 dp1 = dFdx(vPos), dp2 = dFdy(vPos);
+        vec2 du1 = dFdx(vUv), du2 = dFdy(vUv);
+        vec3 c2 = cross(dp2, n), c1 = cross(n, dp1);
+        vec3 t = c2 * du1.x + c1 * du2.x, b = c2 * du1.y + c1 * du2.y;
+        float frame = inversesqrt(max(max(dot(t, t), dot(b, b)), 1e-20));
+        vec3 bump = detail.xyz * 2.0 - 1.0;
+        vec3 N = normalize((t * bump.x + b * bump.y) * frame * uBump + n * bump.z);
+        vec3 V = normalize(uCamera - vPos);
+        vec3 diffuse = mix(uGroundLight, uSkyLight, N.y * 0.5 + 0.5) * vShade * (0.25 + 0.75 * uExposure);
+        vec3 spec = vec3(0.0);
+        float sun = max(dot(N, uSunDir), 0.0) * uExposure;
+        diffuse += uSunColor * sun * (0.45 + 0.55 * vShade);
+        spec += uSunColor * pow(max(dot(N, normalize(uSunDir + V)), 0.0), 40.0) * sun;
+        vec3 toHead = uHeadPos - vPos;
+        float headDist = length(toHead);
+        vec3 headL = toHead / max(headDist, 0.001);
+        float beam = smoothstep(0.78, 0.97, dot(-headL, uHeadDir)) * pow(clamp(1.0 - headDist / 95.0, 0.0, 1.0), 2.0);
+        float headN = max(dot(N, headL), 0.0);
+        diffuse += vec3(1.0, 0.92, 0.78) * 1.1 * headN * beam;
+        spec += vec3(1.0, 0.92, 0.78) * pow(max(dot(N, normalize(headL + V)), 0.0), 50.0) * headN * beam;
+        for (int i = 0; i < 16; i++) {
+          if (i >= uLightCount) break;
+          vec3 L = uLights[i].xyz - vPos;
+          float d = length(L);
+          L /= max(d, 0.001);
+          float fall = clamp(1.0 - d / uLights[i].w, 0.0, 1.0);
+          fall *= fall;
+          float nl = max(dot(N, L), 0.0);
+          diffuse += uLightColors[i] * nl * fall;
+          spec += uLightColors[i] * pow(max(dot(N, normalize(L + V)), 0.0), 50.0) * nl * fall;
+        }
+        float gloss = uSpecular * (0.3 + dot(albedo, vec3(0.6, 0.9, 0.5)));
+        vec3 color = albedo * diffuse + spec * gloss + albedo * detail.a * uEmissive + uFlash * vec3(1.0, 0.82, 0.65);
+        float dist = length(uCamera - vPos);
+        float haze = (1.0 - smoothstep(${FLOOR.toFixed(1)}, ${(FLOOR + 9).toFixed(1)}, vPos.y)) * smoothstep(25.0, 180.0, dist) * 0.35;
+        color = mix(color, uFogColor, clamp(smoothstep(75.0, 540.0, dist) * 0.94 + haze, 0.0, 1.0));
+        vec3 over = max(color - 0.82, 0.0);
+        outColor = vec4(min(color, 0.82) + over / (1.0 + over * 2.2), 1.0);
+      }`;
+    const SKY_VS = `#version 300 es
+      layout(location = 0) in vec2 aPos;
+      out vec2 vNdc;
+      void main() { vNdc = aPos; gl_Position = vec4(aPos, 0.9999, 1.0); }`;
+    // Dusk sky with drifting clouds, a low sun, faint stars and a banded gas giant.
+    const SKY_FS = `#version 300 es
+      precision highp float;
+      in vec2 vNdc;
+      uniform vec3 uForward, uRight, uUp, uSunDir, uFogColor, uZenith;
+      uniform vec2 uSpread;
+      uniform float uTime;
+      out vec4 outColor;
+      float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float noise(vec2 p) {
+        vec2 i = floor(p), f = fract(p), u = f * f * (3.0 - 2.0 * f);
+        return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
+      }
+      float fbm(vec2 p) { float s = 0.0, a = 0.5; for (int i = 0; i < 5; i++) { s += a * noise(p); p = p * 2.07 + 13.1; a *= 0.5; } return s; }
+      void main() {
+        vec3 dir = normalize(uForward + uRight * vNdc.x * uSpread.x + uUp * vNdc.y * uSpread.y);
+        float h = dir.y;
+        vec3 color = mix(uFogColor, uZenith, pow(clamp(h, 0.0, 1.0), 0.5));
+        color = mix(color, uFogColor * 0.55, smoothstep(0.0, -0.3, h));
+        float sun = max(dot(dir, uSunDir), 0.0);
+        color += vec3(1.0, 0.55, 0.28) * (pow(sun, 5.0) * 0.22 + pow(sun, 60.0) * 0.5) + vec3(1.0, 0.9, 0.75) * smoothstep(0.9994, 0.9997, sun);
+        vec3 planetDir = normalize(vec3(-0.62, 0.4, 0.68));
+        vec3 px = normalize(cross(vec3(0.0, 1.0, 0.0), planetDir)), py = cross(planetDir, px);
+        vec2 q = vec2(dot(dir, px), dot(dir, py)) / 0.17;
+        float r2 = dot(q, q);
+        if (dot(dir, planetDir) > 0.0) {
+          if (r2 < 1.0) {
+            vec3 sphere = vec3(q, sqrt(1.0 - r2));
+            float lit = clamp(dot(sphere, normalize(vec3(0.55, 0.25, 0.8))), 0.0, 1.0);
+            float bands = 0.5 + 0.5 * sin(q.y * 15.0 + noise(q * 4.0) * 3.0);
+            vec3 surface = mix(vec3(0.42, 0.27, 0.2), vec3(0.75, 0.55, 0.38), bands);
+            color = mix(color, surface * (0.08 + lit * 0.95), smoothstep(1.0, 0.97, r2) * 0.92);
+            color += vec3(0.5, 0.65, 0.8) * pow(r2, 6.0) * 0.25 * lit;
+          } else {
+            color += vec3(0.45, 0.55, 0.7) * exp(-(sqrt(r2) - 1.0) * 9.0) * 0.12;
+          }
+        }
+        if (h > 0.0) {
+          float cloud = fbm(dir.xz / (h + 0.15) * 1.1 + vec2(uTime * 0.012, uTime * 0.005));
+          float mask = smoothstep(0.5, 0.82, cloud) * smoothstep(0.0, 0.35, h);
+          color = mix(color, mix(vec3(0.3, 0.36, 0.44), vec3(0.95, 0.62, 0.42), pow(sun, 4.0) * 0.8), mask * 0.6);
+          float star = hash(floor(vec2(atan(dir.z, dir.x), asin(h)) * 220.0));
+          color += vec3(0.8, 0.9, 1.0) * step(0.9975, star) * smoothstep(0.25, 0.7, h) * (1.0 - mask);
+        }
+        outColor = vec4(color, 1.0);
+      }`;
+    const SPRITE_VS = `#version 300 es
+      layout(location = 0) in vec3 aPos;
+      layout(location = 1) in vec2 aUv;
+      layout(location = 2) in vec4 aColor;
+      uniform mat4 uViewProj;
+      uniform vec3 uCamera;
+      out vec2 vUv;
+      out vec4 vColor;
+      out float vFog;
+      void main() { vUv = aUv; vColor = aColor; vFog = smoothstep(60.0, 430.0, distance(aPos, uCamera)); gl_Position = uViewProj * vec4(aPos, 1.0); }`;
+    // Additive glows; streak quads carry u in [2, 3] so they fade across their width only.
+    const SPRITE_FS = `#version 300 es
+      precision highp float;
+      in vec2 vUv;
+      in vec4 vColor;
+      in float vFog;
+      out vec4 outColor;
+      void main() {
+        float glow;
+        if (vUv.x > 1.5) {
+          vec2 p = vec2((vUv.x - 2.5) * 2.0, vUv.y * 2.0 - 1.0);
+          glow = exp(-p.y * p.y * 6.0) * (1.0 - smoothstep(0.6, 1.0, abs(p.x)));
+        } else {
+          vec2 p = vUv * 2.0 - 1.0;
+          float r = dot(p, p);
+          glow = (exp(-r * 7.0) + exp(-r * 2.2) * 0.35) * (1.0 - smoothstep(0.75, 1.0, r));
+        }
+        outColor = vec4(vColor.rgb * vColor.a * glow * (1.0 - vFog * 0.85), 1.0);
+      }`;
+
+    function compile(type, source) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source); gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(shader));
+      return shader;
+    }
+    function createProgram(vertex, fragment) {
+      const program = gl.createProgram();
+      gl.attachShader(program, compile(gl.VERTEX_SHADER, vertex));
+      gl.attachShader(program, compile(gl.FRAGMENT_SHADER, fragment));
+      gl.linkProgram(program);
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
+      const uniforms = {};
+      for (let i = 0; i < gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS); i++) {
+        const name = gl.getActiveUniform(program, i).name;
+        uniforms[name.replace(/\[0\]$/, '')] = gl.getUniformLocation(program, name);
+      }
+      return { program, uniforms };
+    }
+    const SURFACE_LAYOUT = [[0, 3, 0], [1, 3, 12], [2, 2, 24], [3, 1, 32]], SPRITE_LAYOUT = [[0, 3, 0], [1, 2, 12], [2, 4, 20]];
+    function createMesh(data, layout = SURFACE_LAYOUT, usage = gl.STATIC_DRAW) {
+      const vao = gl.createVertexArray(), buffer = gl.createBuffer();
+      gl.bindVertexArray(vao); gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), usage);
+      for (const [location, size, offset] of layout) {
+        gl.enableVertexAttribArray(location); gl.vertexAttribPointer(location, size, gl.FLOAT, false, 36, offset);
+      }
+      gl.bindVertexArray(null);
+      return { vao, buffer, count: data.length / 9 };
+    }
+    const anisotropy = gl.getExtension('EXT_texture_filter_anisotropic');
+    function uploadTexture(data, w, h) {
+      const texture = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
+      gl.generateMipmap(gl.TEXTURE_2D);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+      if (anisotropy) gl.texParameterf(gl.TEXTURE_2D, anisotropy.TEXTURE_MAX_ANISOTROPY_EXT,
+        Math.min(8, gl.getParameter(anisotropy.MAX_TEXTURE_MAX_ANISOTROPY_EXT)));
+      return texture;
+    }
+
+    const surfaceProgram = createProgram(SURFACE_VS, SURFACE_FS);
+    const skyProgram = createProgram(SKY_VS, SKY_FS);
+    const spriteProgram = createProgram(SPRITE_VS, SPRITE_FS);
+    // [specular, bump, emissive] per material.
+    const MATERIAL_SETTINGS = {
+      wallLower: [0.4, 1, 1.8], wallVent: [0.4, 1, 1.6], wallDoor: [0.45, 1, 2.2], wallPipes: [0.55, 1, 2],
+      wallUpper: [0.35, 1, 1.6], wallWindows: [0.6, 1, 1.4], wallSign: [0.3, 1, 1.6], crown: [0.45, 1, 2.4],
+      column: [0.4, 1, 1.3], reactor: [0.5, 1, 2.2], hazard: [0.3, 1, 1], girder: [0.4, 1, 1],
+      floorPlate: [0.5, 1, 1], floorGrate: [0.5, 1, 1.1], floorPad: [0.35, 1, 3], floorFoundry: [0.3, 1, 3],
+      barrel: [0.55, 1, 1], barrelLid: [0.5, 1, 1], drone: [0.7, 1, 3],
+      ceiling: [0.4, 1, 1.5], pickupHealth: [0.6, 1, 2.4], pickupWeapon: [0.6, 1, 2.4], exitFrame: [0.5, 1, 2.6],
+      wallComputer: [0.5, 1, 2.2], wallRust: [0.35, 1, 1.2], floorSludge: [1.2, 0.6, 1.8], gateDoor: [0.5, 1, 2],
+      secretPanel: [0.4, 1, 1.6], lock: [0.6, 1, 2.6], chain: [0.9, 1, 0.5], floorLava: [0.6, 0.8, 2.4],
+    };
+    const materials = {};
+    function loadMaterials() {
+      for (const [name, texture] of Object.entries(createTextures())) {
+        const [specular, bump, emissive] = MATERIAL_SETTINGS[name];
+        materials[name] = { name, specular, bump, emissive,
+          albedo: uploadTexture(texture.color, texture.w, texture.h), detail: uploadTexture(texture.normal, texture.w, texture.h) };
+      }
+    }
+
+    // Turn the cell grid into floors, ceilings, banded walls, steps, corner posts, girders and the exit gate.
+    // Surfaces inside tunnels go in their own groups so the sun and sky can be dimmed there.
+    const LOWER_VARIANTS = [['wallLower', 0.6], ['wallVent', 0.14], ['wallDoor', 0.12], ['wallPipes', 0.14]];
+    const UPPER_VARIANTS = [['wallUpper', 0.68], ['wallWindows', 0.22], ['wallSign', 0.1]];
+    const TEXTURE_HEIGHT = { wallRust: 8 };
+    const pickVariant = (options, value) => { for (const [name, weight] of options) if ((value -= weight) < 0) return name; return options[0][0]; };
+    const radarEdges = [], beacons = [];
+    let levelMeshes = [];
+    function buildLevel(def) {
+      let groups = {};
+      const quad = (name, covered, corners, normal, uvs, shades) => {
+        const key = covered ? `${name}|covered` : name, list = groups[key] || (groups[key] = []);
+        for (const i of [0, 1, 2, 0, 2, 3]) list.push(...corners[i], ...normal, ...uvs[i], shades[i]);
+      };
+      const box = (name, covered, [x0, y0, z0], [x1, y1, z1], uvOf) => {
+        const faces = [
+          [[1, 0, 0], [[x1, y0, z0], [x1, y0, z1], [x1, y1, z1], [x1, y1, z0]]],
+          [[-1, 0, 0], [[x0, y0, z1], [x0, y0, z0], [x0, y1, z0], [x0, y1, z1]]],
+          [[0, 0, 1], [[x1, y0, z1], [x0, y0, z1], [x0, y1, z1], [x1, y1, z1]]],
+          [[0, 0, -1], [[x0, y0, z0], [x1, y0, z0], [x1, y1, z0], [x0, y1, z0]]],
+          [[0, 1, 0], [[x0, y1, z0], [x1, y1, z0], [x1, y1, z1], [x0, y1, z1]]],
+          [[0, -1, 0], [[x0, y0, z1], [x1, y0, z1], [x1, y0, z0], [x0, y0, z0]]],
+        ];
+        for (const [normal, corners] of faces) quad(name, covered, corners, normal, corners.map(p => uvOf(p, normal)), [1, 1, 1, 1]);
+      };
+      const closed = (gx, gz) => cellAt(gx, gz) === 0 ? 1 : 0;
+      const ao = (ix, iz) => 1 - 0.16 * (closed(ix - 1, iz - 1) + closed(ix, iz - 1) + closed(ix - 1, iz) + closed(ix, iz));
+      for (let gz = 0; gz < GRID_D; gz++) for (let gx = 0; gx < GRID_W; gx++) {
+        const material = cellAt(gx, gz);
+        if (!material) continue;
+        const i = gz * GRID_W + gx, floor = floorY[i], ceil = ceilY[i], covered = ceil < WALL_TOP;
+        const x0 = GRID_X0 + gx * CELL, z0 = GRID_Z0 + gz * CELL, x1 = x0 + CELL, z1 = z0 + CELL;
+        const corners = [ao(gx, gz), ao(gx + 1, gz), ao(gx + 1, gz + 1), ao(gx, gz + 1)];
+        quad(FLOOR_MATERIALS[material - 1], covered, [[x0, floor, z0], [x1, floor, z0], [x1, floor, z1], [x0, floor, z1]], [0, 1, 0],
+          [[x0 / 8, z0 / 8], [x1 / 8, z0 / 8], [x1 / 8, z1 / 8], [x0 / 8, z1 / 8]], corners);
+        if (covered) quad('ceiling', true, [[x0, ceil, z1], [x1, ceil, z1], [x1, ceil, z0], [x0, ceil, z0]], [0, -1, 0],
+          [[x0 / 8, z1 / 8], [x1 / 8, z1 / 8], [x1 / 8, z0 / 8], [x0 / 8, z0 / 8]], [corners[3], corners[2], corners[1], corners[0]]);
+        for (const [dx, dz] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+          const nx = gx + dx, nz = gz + dz, solid = closed(nx, nz), n = nz * GRID_W + nx;
+          const normal = [-dx, 0, -dz], right = [dz, 0, -dx];
+          const half = CELL / 2, cx = x0 + half + dx * half, cz = z0 + half + dz * half;
+          const a = [cx - right[0] * half, cz - right[2] * half], b = [cx + right[0] * half, cz + right[2] * half];
+          const ua = (a[0] * right[0] + a[1] * right[2]) / 8, ub = ua + CELL / 8;
+          const cornerA = closed(gx - right[0], gz - right[2]) ? 0.62 : 1, cornerB = closed(gx + right[0], gz + right[2]) ? 0.62 : 1;
+          const tile = Math.floor(ua + 0.25), plane = dx ? cx : cz;
+          const lower = pickVariant(def.walls?.lower || LOWER_VARIANTS, hashInt(tile, plane, dx * 3 + dz + 7));
+          const upper = pickVariant(def.walls?.upper || UPPER_VARIANTS, hashInt(tile, plane, dx * 3 + dz + 91));
+          const lowerSize = TEXTURE_HEIGHT[lower] || 16, upperSize = TEXTURE_HEIGHT[upper] || 12;
+          const shade = (y) => (covered ? 0.75 : 1) * (0.5 + 0.5 * clamp((y - floor) / 22, 0, 1));
+          // A band of wall texture between two heights; v runs down from vTop over vSize units.
+          const band = (name, y0, y1, vTop, vSize) => {
+            if (y1 - y0 < 0.01) return;
+            const v0 = (vTop - y0) / vSize, v1 = (vTop - y1) / vSize;
+            quad(name, covered, [[a[0], y0, a[1]], [b[0], y0, b[1]], [b[0], y1, b[1]], [a[0], y1, a[1]]], normal,
+              [[ua, v0], [ub, v0], [ub, v1], [ua, v1]], [shade(y0) * cornerA, shade(y0) * cornerB, shade(y1) * cornerB, shade(y1) * cornerA]);
+          };
+          // A bulkhead wall rising from `bottom` to `top`: kick plate and panels, upper cladding, then a lit crown.
+          const bulkhead = (kind, bottom, top) => {
+            if (kind === REACTOR) return band('reactor', bottom, top, WALL_TOP, 8);
+            const crown = Math.max(bottom, top - 4);
+            if (kind === COLUMN) band('column', bottom, crown, WALL_TOP, 8);
+            else {
+              const panelTop = Math.min(bottom + 16, crown);
+              band(lower, bottom, panelTop, bottom + lowerSize, lowerSize);
+              band(upper, panelTop, crown, crown, upperSize);
+            }
+            band('crown', crown, top, top, 4);
+          };
+          if (solid) {
+            const inside = nx >= 0 && nz >= 0 && nx < GRID_W && nz < GRID_D;
+            bulkhead(inside ? solidKind[n] : BULKHEAD, floor, ceil);
+            radarEdges.push([a[0], a[1], b[0], b[1]]);
+            continue;
+          }
+          const neighborFloor = floorY[n], neighborCeil = ceilY[n];
+          if (neighborFloor > floor + 0.01) {
+            const top = Math.min(neighborFloor, ceil);
+            band(lower, floor, top, floor + lowerSize, lowerSize);
+            if (neighborFloor - floor > 3) radarEdges.push([a[0], a[1], b[0], b[1]]);
+          }
+          if (neighborCeil < ceil - 0.01) {
+            const bottom = Math.max(neighborCeil, floor);
+            band('crown', bottom, Math.min(bottom + 4, ceil), bottom + 4, 4);
+            band(upper, Math.min(bottom + 4, ceil), ceil, ceil, upperSize);
+          }
+        }
+      }
+      // Hazard-striped posts with amber beacons mark every outside corner, such as doorways and pillars.
+      const post = (name, covered, vx, vz, y0, y1, uSize, vSize, uCenter) => {
+        if (y1 - y0 < 0.01) return;
+        for (const [nx, nz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const right = [-nz, 0, nx], cx = vx + nx * 0.6, cz = vz + nz * 0.6;
+          const a = [cx - right[0] * 0.6, cz - right[2] * 0.6], b = [cx + right[0] * 0.6, cz + right[2] * 0.6];
+          const u0 = uCenter - 0.6 / uSize, u1 = uCenter + 0.6 / uSize, v0 = (WALL_TOP - y0) / vSize, v1 = (WALL_TOP - y1) / vSize;
+          quad(name, covered, [[a[0], y0, a[1]], [b[0], y0, b[1]], [b[0], y1, b[1]], [a[0], y1, a[1]]], [nx, 0, nz],
+            [[u0, v0], [u1, v0], [u1, v1], [u0, v1]], [0.7, 0.7, 1, 1]);
+        }
+      };
+      for (let iz = 1; iz < GRID_D; iz++) for (let ix = 1; ix < GRID_W; ix++) {
+        const cells = [[ix - 1, iz - 1], [ix, iz - 1], [ix - 1, iz], [ix, iz]];
+        const solid = cells.filter(([x, z]) => closed(x, z));
+        if (solid.length !== 1) continue;
+        const spaces = cells.filter(([x, z]) => !closed(x, z)).map(([x, z]) => z * GRID_W + x);
+        const bottom = Math.min(...spaces.map(i => floorY[i])), top = Math.min(...spaces.map(i => ceilY[i])), covered = top < WALL_TOP;
+        const vx = GRID_X0 + ix * CELL, vz = GRID_Z0 + iz * CELL, ox = solid[0][0] < ix ? -1 : 1, oz = solid[0][1] < iz ? -1 : 1;
+        post('hazard', covered, vx, vz, bottom, Math.min(bottom + 6, top), 2, 2, 0.5);
+        post('column', covered, vx, vz, Math.min(bottom + 6, top), top, 8, 8, 0.2);
+        beacons.push({ position: [vx - ox * 0.85, top - (covered ? 1.4 : 2.5), vz - oz * 0.85], phase: hashInt(ix, iz, 5) * Math.PI * 2 });
+      }
+      for (const [x0, y0, z0, x1, y1, z1] of def.girders) {
+        const alongX = x1 - x0 >= z1 - z0, covered = coveredAt((x0 + x1) / 2, (z0 + z1) / 2);
+        const across = (p) => alongX ? (p[2] - z0) / (z1 - z0) : (p[0] - x0) / (x1 - x0);
+        box('girder', covered, [x0, y0, z0], [x1, y1, z1], (p, normal) => {
+          if (normal[1]) return [(alongX ? p[0] : p[2]) / 8, across(p)];
+          const cap = alongX ? normal[0] !== 0 : normal[2] !== 0;
+          return [cap ? across(p) : (alongX ? p[0] : p[2]) / 8, (y1 - p[1]) / (y1 - y0)];
+        });
+      }
+      // The exit gate: a frame of glowing chevron beams standing across the route.
+      const [ex, ey, ez, spansX] = def.exit, covered = coveredAt(ex, ez);
+      const frame = (lo, hi) => {
+        const [a, b] = spansX ? [lo, hi] : [[lo[2], lo[1], lo[0]], [hi[2], hi[1], hi[0]]];
+        box('exitFrame', covered, add([ex, ey, ez], a), add([ex, ey, ez], b), (p, normal) =>
+          normal[1] ? [p[0] / 4, p[2] / 4] : [(p[0] + p[2]) / 4, (ey - p[1]) / 4]);
+      };
+      frame([-8.5, -8.5, -0.8], [-7, 8.5, 0.8]); frame([7, -8.5, -0.8], [8.5, 8.5, 0.8]);
+      frame([-7, 7, -0.8], [7, 8.5, 0.8]); frame([-7, -8.5, -0.8], [7, -7, 0.8]);
+      // Gate doors are meshes of their own so they can sink into the floor when they open.
+      const levelGroups = groups;
+      for (const gate of gates) {
+        const { x0, y0, z0, x1, y1, z1 } = gate.door;
+        groups = {};
+        box(gate.kind === 'secret' ? 'secretPanel' : 'gateDoor', false, [x0, y0, z0], [x1, y1, z1], (p, normal) =>
+          normal[1] ? [p[0] / 8, p[2] / 8] : [(p[0] + p[2]) / 8, (y1 - p[1]) / 8]);
+        gate.mesh = createMesh(Object.values(groups)[0]);
+      }
+      groups = levelGroups;
+      return Object.entries(groups).map(([key, data]) => {
+        const [name, covered] = key.split('|');
+        return { name, exposure: covered ? 0.3 : 1, mesh: createMesh(data) };
+      });
+    }
+    function buildBarrel() {
+      const side = [], lid = [], sides = 20, r = 1.7, h = 3.6;
+      for (let i = 0; i < sides; i++) {
+        const a0 = i / sides * Math.PI * 2, a1 = (i + 1) / sides * Math.PI * 2;
+        const ring = (a, y, u, v, shade) => [Math.cos(a) * r, y, Math.sin(a) * r, Math.cos(a), 0, Math.sin(a), u, v, shade];
+        const corners = [ring(a0, 0, i / sides * 2, 1, 0.6), ring(a1, 0, (i + 1) / sides * 2, 1, 0.6), ring(a1, h, (i + 1) / sides * 2, 0, 1), ring(a0, h, i / sides * 2, 0, 1)];
+        for (const k of [0, 1, 2, 0, 2, 3]) side.push(...corners[k]);
+        lid.push(0, h, 0, 0, 1, 0, 0.5, 0.5, 1,
+          Math.cos(a1) * r, h, Math.sin(a1) * r, 0, 1, 0, 0.5 + Math.cos(a1) * 0.49, 0.5 + Math.sin(a1) * 0.49, 1,
+          Math.cos(a0) * r, h, Math.sin(a0) * r, 0, 1, 0, 0.5 + Math.cos(a0) * 0.49, 0.5 + Math.sin(a0) * 0.49, 1);
+      }
+      return { side: createMesh(side), lid: createMesh(lid) };
+    }
+    // Flat-shaded hull from points and triangles, textured by projecting each face onto its main axis.
+    function faceted(v, tris, uvSize = 3) {
+      const data = [];
+      for (const ids of tris) {
+        const [a, b, c] = ids.map(i => v[i]);
+        let n = normalize(cross(sub(b, a), sub(c, a)));
+        if (dot(n, mul(add(add(a, b), c), 1 / 3)) < 0) n = mul(n, -1);
+        const axis = Math.abs(n[0]) > Math.abs(n[1]) && Math.abs(n[0]) > Math.abs(n[2]) ? 0 : Math.abs(n[1]) > Math.abs(n[2]) ? 1 : 2;
+        for (const p of [a, b, c]) {
+          const [s, t] = [0, 1, 2].filter(k => k !== axis).map(k => p[k] / uvSize + 0.5);
+          data.push(...p, ...n, s, t, 1);
+        }
+      }
+      return createMesh(data);
+    }
+    const HULL_TRIS = [[0, 1, 2], [0, 2, 3], [0, 3, 4], [0, 4, 1], [5, 2, 1], [5, 3, 2], [5, 4, 3], [5, 1, 4], [1, 2, 6], [1, 6, 4], [2, 4, 6], [3, 7, 2], [3, 4, 7], [2, 7, 4]];
+    const barrelMesh = buildBarrel();
+    const enemyMeshes = {
+      drone: faceted([[0, 0, 2.5], [-2.25, 0, 0], [0, 1.6, 0], [2.25, 0, 0], [0, -1.6, 0], [0, 0, -2.25], [-3.8, 0.15, -0.5], [3.8, 0.15, -0.5]], HULL_TRIS),
+      hunter: faceted([[0, 0, 3.3], [-1.1, 0, 0], [0, 0.8, 0], [1.1, 0, 0], [0, -0.6, 0], [0, 0, -2], [-2.6, 0.2, -1.8], [2.6, 0.2, -1.8]], HULL_TRIS),
+    };
+    enemyMeshes.warden = enemyMeshes.drone;
+    enemyMeshes.striker = faceted([[0, 0, 2.2], [-1.6, 0, 0], [0, 1.0, 0], [1.6, 0, 0], [0, -1.0, 0], [0, 0, -2.4], [-4.2, -0.3, -1.2], [4.2, -0.3, -1.2]], HULL_TRIS);
+    enemyMeshes.sentry = faceted([[0, 0.2, 2.2], [-1.4, 0, 0], [0, 1.2, 0], [1.4, 0, 0], [0, -1.1, 0], [0, 0.2, -1.4], [-1.9, -0.4, -0.4], [1.9, -0.4, -0.4]], HULL_TRIS);
+    const boxHull = (hx, hy, hz) => faceted(
+      [[-hx, -hy, -hz], [hx, -hy, -hz], [hx, hy, -hz], [-hx, hy, -hz], [-hx, -hy, hz], [hx, -hy, hz], [hx, hy, hz], [-hx, hy, hz]],
+      [[0, 1, 2], [0, 2, 3], [4, 6, 5], [4, 7, 6], [0, 4, 5], [0, 5, 1], [3, 2, 6], [3, 6, 7], [0, 3, 7], [0, 7, 4], [1, 5, 6], [1, 6, 2]], Math.max(hx, hy, hz) * 2);
+    const pylonMesh = boxHull(0.8, 1.7, 0.8);
+    const lockMesh = boxHull(1.1, 1.1, 0.45), linkMeshes = [boxHull(0.42, 0.16, 0.06), boxHull(0.42, 0.06, 0.16)];
+    const pickupMesh = faceted([[0, 1.7, 0], [0, -1.7, 0], [1.3, 0, 0], [0, 0, 1.3], [-1.3, 0, 0], [0, 0, -1.3]],
+      [[0, 2, 3], [0, 3, 4], [0, 4, 5], [0, 5, 2], [1, 3, 2], [1, 4, 3], [1, 5, 4], [1, 2, 5]], 2.6);
+    const skyMesh = (() => {
+      const vao = gl.createVertexArray(), buffer = gl.createBuffer();
+      gl.bindVertexArray(vao); gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+      gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 8, 0);
+      gl.bindVertexArray(null);
+      return vao;
+    })();
+    const spriteMesh = createMesh([], SPRITE_LAYOUT, gl.DYNAMIC_DRAW);
+
+    function basis(yaw, pitch, roll = 0) {
+      const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
+      const forward = [sy * cp, sp, cy * cp];
+      const flatRight = [cy, 0, -sy], flatUp = [-sy * sp, cp, -cy * sp];
+      return { forward,
+        right: add(mul(flatRight, Math.cos(roll)), mul(flatUp, Math.sin(roll))),
+        up: add(mul(flatUp, Math.cos(roll)), mul(flatRight, -Math.sin(roll))),
+      };
+    }
+
+    function resize() {
+      dpr = window.devicePixelRatio || 1;
+      width = window.innerWidth; height = window.innerHeight;
+      canvas.width = Math.round(width * dpr); canvas.height = Math.round(height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      world.width = Math.round(width * Math.min(dpr, 2)); world.height = Math.round(height * Math.min(dpr, 2));
+      radar.width = Math.round(118 * dpr); radar.height = Math.round(118 * dpr);
+      radarCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    const controlKeys = new Set(['w', 'a', 's', 'd', 'c', 'z', 'q', 'e', 'x', 'p', 'm', 'r', 'f', 'j', ' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright']);
+    window.addEventListener('keydown', (event) => {
+      const key = event.key.toLowerCase();
+      if (controlKeys.has(key)) event.preventDefault();
+      if (key === 'p' && !event.repeat) { paused = !paused; pausedText.classList.toggle('show', paused); }
+      if (key === 'm' && !event.repeat) {
+        musicOn = !musicOn; musicText.textContent = musicOn ? 'ON' : 'OFF'; musicNextTime = 0;
+        if (musicBus) musicBus.gain.setValueAtTime(musicOn ? 1 : 0, audioContext.currentTime);
+      }
+      if (key === 'r' && (destroyed || finished) && !event.repeat) resetGame();
+      if (key !== 'p' && key !== 'r') ensureAudio();
+      keys.add(key);
+    });
+    window.addEventListener('keyup', (event) => keys.delete(event.key.toLowerCase()));
+    window.addEventListener('blur', () => { keys.clear(); mouseFiring = false; });
+    canvas.addEventListener('contextmenu', (event) => event.preventDefault());
+    canvas.addEventListener('pointerdown', (event) => {
+      if (event.button === 2) { missileRequest = true; ensureAudio(); return; }
+      if (event.button !== 0) return;
+      mouseFiring = true;
+      ensureAudio();
+      if (document.pointerLockElement !== canvas) canvas.requestPointerLock();
+    });
+    window.addEventListener('pointerup', (event) => { if (event.button === 0) mouseFiring = false; });
+    document.addEventListener('pointerlockchange', () => { if (document.pointerLockElement !== canvas) mouseFiring = false; });
+    document.addEventListener('mousemove', (event) => {
+      if (document.pointerLockElement !== canvas || paused || destroyed) return;
+      ship.yaw += event.movementX * 0.0025;
+      ship.pitch = clamp(ship.pitch + event.movementY * 0.0025, -1.35, 1.35);
+    });
+    const down = (...names) => names.some(name => keys.has(name));
+
+    function ensureAudio() {
+      const AudioCtor = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtor) return;
+      if (!audioContext) {
+        audioContext = new AudioCtor();
+        musicBus = audioContext.createGain();
+        musicBus.gain.value = musicOn ? 1 : 0;
+        const compressor = audioContext.createDynamicsCompressor();
+        compressor.threshold.value = -20; compressor.knee.value = 12; compressor.ratio.value = 4;
+        compressor.attack.value = 0.004; compressor.release.value = 0.25;
+        musicBus.connect(compressor); compressor.connect(audioContext.destination);
+        musicIn = audioContext.createGain(); musicIn.gain.value = 0.09; musicIn.connect(musicBus);
+        noiseBuffer = audioContext.createBuffer(1, audioContext.sampleRate, audioContext.sampleRate);
+        const samples = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < samples.length; i++) samples[i] = Math.random() * 2 - 1;
+        // A long noise-tail reverb and a dotted-eighth echo give the synths their factory-hall space.
+        const reverb = audioContext.createConvolver(), length = Math.floor(audioContext.sampleRate * 2.8);
+        reverb.buffer = audioContext.createBuffer(2, length, audioContext.sampleRate);
+        for (let channel = 0; channel < 2; channel++) {
+          const tail = reverb.buffer.getChannelData(channel);
+          for (let i = 0; i < length; i++) tail[i] = (Math.random() * 2 - 1) * (1 - i / length) ** 2.6;
+        }
+        reverbIn = audioContext.createGain(); reverbIn.gain.value = 0.5;
+        reverbIn.connect(reverb); reverb.connect(musicIn);
+        const echo = audioContext.createDelay(1), feedback = audioContext.createGain(), tone = audioContext.createBiquadFilter();
+        echo.delayTime.value = MUSIC_STEP * 3; feedback.gain.value = 0.42; tone.type = 'lowpass'; tone.frequency.value = 2200;
+        delayIn = audioContext.createGain(); delayIn.gain.value = 0.45;
+        delayIn.connect(echo); echo.connect(tone); tone.connect(feedback); feedback.connect(echo); tone.connect(musicIn); tone.connect(reverbIn);
+      }
+      if (audioContext.state === 'suspended') audioContext.resume();
+    }
+    function playPew() {
+      if (!audioContext || audioContext.state !== 'running') return;
+      const now = audioContext.currentTime;
+      const oscillator = audioContext.createOscillator();
+      const volume = audioContext.createGain();
+      oscillator.type = 'sawtooth';
+      oscillator.frequency.setValueAtTime(700, now);
+      oscillator.frequency.exponentialRampToValueAtTime(170, now + 0.13);
+      volume.gain.setValueAtTime(0.075, now);
+      volume.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+      oscillator.connect(volume); volume.connect(audioContext.destination);
+      oscillator.start(now); oscillator.stop(now + 0.15);
+    }
+    function synth(freq, endFreq, length, volume, type, when, output = audioContext.destination) {
+      if (!audioContext || audioContext.state !== 'running') return;
+      const oscillator = audioContext.createOscillator(), gain = audioContext.createGain();
+      oscillator.type = type;
+      oscillator.frequency.setValueAtTime(freq, when);
+      oscillator.frequency.exponentialRampToValueAtTime(endFreq, when + length);
+      gain.gain.setValueAtTime(volume, when);
+      gain.gain.exponentialRampToValueAtTime(0.001, when + length);
+      oscillator.connect(gain); gain.connect(output);
+      oscillator.start(when); oscillator.stop(when + length + 0.01);
+    }
+
+    // Music: an original industrial piece in D minor at 122 BPM, built from 16th-note steps.
+    // Eight-bar phrases cycle through intro, drive, assault and breakdown sections, and
+    // nearby hostiles push extra hats, an arpeggio and a brighter bass into the mix.
+    const MUSIC_STEP = 60 / 122 / 4;
+    const midi = (note) => 440 * 2 ** ((note - 69) / 12);
+    const PROGRESSION = [
+      { root: 38, pad: [50, 57, 62, 65], arp: [62, 65, 69, 74] }, // Dm
+      { root: 34, pad: [46, 53, 58, 62], arp: [58, 62, 65, 70] }, // Bb
+      { root: 31, pad: [43, 50, 55, 58], arp: [55, 58, 62, 67] }, // Gm
+      { root: 33, pad: [45, 52, 57, 61], arp: [57, 61, 64, 69] }, // A
+    ];
+    const HOOK = new Map([
+      [0, 0, 74, 2], [0, 2, 77, 2], [0, 4, 81, 4], [0, 8, 79, 2], [0, 10, 77, 2], [0, 12, 76, 4],
+      [1, 0, 77, 4], [1, 4, 74, 4], [1, 8, 69, 8],
+      [2, 0, 74, 2], [2, 2, 77, 2], [2, 4, 82, 4], [2, 8, 81, 2], [2, 10, 79, 2], [2, 12, 77, 4],
+      [3, 0, 79, 4], [3, 4, 77, 4], [3, 8, 74, 8],
+      [4, 0, 70, 2], [4, 2, 74, 2], [4, 4, 79, 4], [4, 8, 77, 2], [4, 10, 74, 2], [4, 12, 70, 4],
+      [5, 0, 72, 4], [5, 4, 74, 4], [5, 8, 67, 8],
+      [6, 0, 73, 2], [6, 2, 76, 2], [6, 4, 81, 4], [6, 8, 79, 2], [6, 10, 76, 2], [6, 12, 73, 4],
+      [7, 0, 76, 4], [7, 4, 73, 2], [7, 6, 76, 2], [7, 8, 81, 8],
+    ].map(([bar, step, note, length]) => [bar * 16 + step, [note, length]]));
+    const ARP_ORDER = [0, 1, 2, 3, 2, 1, 2, 3, 0, 2, 1, 3, 2, 3, 1, 2];
+    // Bass steps are [semitones above the chord root, length in steps, accent].
+    const BASS = {
+      pulse: [[0, 3, 1], null, null, null, [0, 2, 0], null, null, [0, 1, 0], [0, 3, 1], null, null, null, [12, 2, 0], null, [7, 2, 0], null],
+      drive: [[0, 1, 1], [0, 1, 0], [12, 1, 0], [0, 1, 0], [0, 1, 1], [0, 1, 0], [7, 1, 0], [0, 1, 0],
+        [0, 1, 1], [0, 1, 0], [12, 1, 0], [0, 1, 0], [7, 1, 1], [0, 1, 0], [12, 1, 0], [-5, 1, 0]],
+      long: [[0, 14, 1], null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+    };
+    const ALL_STEPS = [...Array(16).keys()];
+    const SECTIONS = {
+      intro: { kick: [0, 8], snare: [], hats: [4, 12], open: [], metal: [], bass: 'pulse', pad: true, arp: false, hook: false },
+      drive: { kick: [0, 4, 8, 12], snare: [4, 12], hats: [2, 6, 10, 14], open: [14], metal: [7], bass: 'drive', pad: true, arp: true, hook: false },
+      assault: { kick: [0, 4, 8, 12], snare: [4, 12], hats: ALL_STEPS, open: [6, 14], metal: [3, 11], bass: 'drive', pad: false, arp: false, hook: true },
+      breakdown: { kick: [], snare: [], hats: [2, 6, 10, 14], open: [], metal: [], bass: 'long', pad: true, arp: 'soft', hook: false, riser: true },
+    };
+    const ARRANGEMENT = ['intro', 'drive', 'assault', 'breakdown', 'drive', 'assault'];
+    function envelope(param, at, attack, peak, length) {
+      param.setValueAtTime(0.0001, at);
+      param.exponentialRampToValueAtTime(peak, at + attack);
+      param.exponentialRampToValueAtTime(0.0001, at + length);
+    }
+    function tone(type, frequency, at, length, output, detune = 0) {
+      const oscillator = audioContext.createOscillator();
+      oscillator.type = type; oscillator.frequency.setValueAtTime(frequency, at); oscillator.detune.value = detune;
+      oscillator.connect(output); oscillator.start(at); oscillator.stop(at + length + 0.05);
+      return oscillator;
+    }
+    function amp(...outputs) { const gain = audioContext.createGain(); for (const output of outputs) gain.connect(output); return gain; }
+    function filter(type, frequency, q, output, at) {
+      const node = audioContext.createBiquadFilter();
+      node.type = type; node.frequency.setValueAtTime(frequency, at); node.Q.value = q; node.connect(output);
+      return node;
+    }
+    function hiss(at, length, output) {
+      const source = audioContext.createBufferSource();
+      source.buffer = noiseBuffer; source.loop = true; source.connect(output);
+      source.start(at, Math.random() * 0.8); source.stop(at + length + 0.05);
+    }
+    function kick(at, volume) {
+      const body = amp(musicIn); envelope(body.gain, at, 0.002, volume, 0.45);
+      tone('sine', 165, at, 0.45, body).frequency.exponentialRampToValueAtTime(44, at + 0.11);
+      const click = amp(musicIn); envelope(click.gain, at, 0.001, volume * 0.25, 0.03);
+      hiss(at, 0.03, filter('highpass', 2500, 0.7, click, at));
+    }
+    function snare(at, volume) {
+      const rattle = amp(musicIn, reverbIn); envelope(rattle.gain, at, 0.002, volume, 0.22);
+      hiss(at, 0.22, filter('bandpass', 1800, 0.6, rattle, at));
+      const body = amp(musicIn); envelope(body.gain, at, 0.002, volume * 0.45, 0.12);
+      tone('triangle', 196, at, 0.12, body).frequency.exponentialRampToValueAtTime(150, at + 0.1);
+    }
+    function hat(at, volume, open) {
+      const length = open ? 0.3 : 0.05, out = amp(musicIn);
+      envelope(out.gain, at, 0.001, volume, length);
+      hiss(at, length, filter('highpass', open ? 6800 : 8200, 0.9, out, at));
+    }
+    function metal(at, volume, pitch) {
+      const out = amp(musicIn, reverbIn); envelope(out.gain, at, 0.001, volume, 0.28);
+      const band = filter('bandpass', 2600 * pitch, 3, out, at);
+      for (const ratio of [1, 1.46, 2.13, 2.87]) tone('square', 380 * pitch * ratio, at, 0.28, band);
+    }
+    function bass(at, frequency, length, volume, cutoff) {
+      const out = amp(musicIn);
+      out.gain.setValueAtTime(0.0001, at); out.gain.exponentialRampToValueAtTime(volume, at + 0.006);
+      out.gain.setValueAtTime(volume, at + Math.max(0.01, length - 0.05)); out.gain.exponentialRampToValueAtTime(0.0001, at + length + 0.04);
+      const low = filter('lowpass', cutoff, 8, out, at);
+      low.frequency.exponentialRampToValueAtTime(Math.max(120, frequency * 1.5), at + Math.min(0.25, length));
+      tone('sawtooth', frequency, at, length + 0.05, low);
+      tone('square', frequency / 2, at, length + 0.05, low, 4);
+    }
+    function pad(at, frequencies, length) {
+      const out = amp(musicIn, reverbIn);
+      out.gain.setValueAtTime(0.0001, at); out.gain.linearRampToValueAtTime(0.045, at + 1.1);
+      out.gain.setValueAtTime(0.045, at + length - 0.4); out.gain.linearRampToValueAtTime(0.0001, at + length + 0.9);
+      const low = filter('lowpass', 500, 0.7, out, at);
+      low.frequency.linearRampToValueAtTime(1600, at + length * 0.5); low.frequency.linearRampToValueAtTime(600, at + length + 0.9);
+      for (const frequency of frequencies) for (const detune of [-8, 8]) tone('sawtooth', frequency, at, length + 1, low, detune);
+    }
+    function lead(at, frequency, length, volume) {
+      const out = amp(musicIn, delayIn);
+      out.gain.setValueAtTime(0.0001, at); out.gain.exponentialRampToValueAtTime(volume, at + 0.012);
+      out.gain.exponentialRampToValueAtTime(volume * 0.55, at + 0.18);
+      out.gain.setValueAtTime(volume * 0.55, at + Math.max(0.2, length - 0.04));
+      out.gain.exponentialRampToValueAtTime(0.0001, at + length + 0.12);
+      const low = filter('lowpass', 2600, 2, out, at);
+      const vibrato = audioContext.createOscillator(), depth = audioContext.createGain();
+      vibrato.frequency.value = 5.2; depth.gain.value = 9; vibrato.connect(depth);
+      for (const [type, detune] of [['sawtooth', -6], ['square', 6]]) depth.connect(tone(type, frequency, at, length + 0.15, low, detune).detune);
+      vibrato.start(at + 0.15); vibrato.stop(at + length + 0.2);
+    }
+    function pluck(at, frequency, volume) {
+      const out = amp(musicIn, delayIn); envelope(out.gain, at, 0.003, volume, 0.16);
+      tone('square', frequency, at, 0.16, filter('lowpass', 1800 + musicIntensity * 1800, 1.5, out, at));
+    }
+    function riser(at, length) {
+      const out = amp(musicIn, reverbIn);
+      out.gain.setValueAtTime(0.0001, at); out.gain.exponentialRampToValueAtTime(0.16, at + length);
+      out.gain.linearRampToValueAtTime(0.0001, at + length + 0.05);
+      const band = filter('bandpass', 300, 2.5, out, at);
+      band.frequency.exponentialRampToValueAtTime(5200, at + length);
+      hiss(at, length + 0.06, band);
+    }
+    function crash(at, volume) {
+      const wash = amp(musicIn, reverbIn); envelope(wash.gain, at, 0.002, volume, 1.8);
+      hiss(at, 1.8, filter('highpass', 4200, 0.6, wash, at));
+      const boom = amp(musicIn); envelope(boom.gain, at, 0.004, volume * 1.4, 1.4);
+      tone('sine', 72, at, 1.4, boom).frequency.exponentialRampToValueAtTime(32, at + 1.2);
+    }
+    function playMusicStep(index, at) {
+      const step = index % 16, bar = Math.floor(index / 16), phrase = Math.floor(bar / 8), barInPhrase = bar % 8;
+      const name = ARRANGEMENT[phrase < ARRANGEMENT.length ? phrase : 1 + (phrase - 1) % (ARRANGEMENT.length - 1)];
+      const section = SECTIONS[name], chord = PROGRESSION[barInPhrase >> 1], fill = barInPhrase === 7, heat = musicIntensity;
+      if (step === 0 && barInPhrase === 0 && phrase > 0 && name !== 'breakdown') crash(at, 0.4);
+      if (section.kick.includes(step) || (fill && section.kick.length > 2 && step === 14)) kick(at, step === 0 ? 0.95 : 0.85);
+      if (section.snare.includes(step)) snare(at, 0.55);
+      else if (fill && section.snare.length && step > 12) snare(at, 0.22 + (step - 12) * 0.1);
+      if (section.open.includes(step)) hat(at, 0.13, true);
+      else if (section.hats.includes(step) || (heat > 0.45 && step % 2 === 1)) hat(at, step % 4 === 2 ? 0.17 : 0.1, false);
+      if (section.metal.includes(step) && (bar % 2 === 0 || step > 8)) metal(at, 0.3, bar % 2 ? 1.12 : 1);
+      const note = BASS[section.bass][step];
+      if (note) bass(at, midi(chord.root + note[0]), note[1] * MUSIC_STEP * 0.92, note[2] ? 0.34 : 0.25, (note[2] ? 1500 : 850) + heat * 900);
+      if (section.pad && step === 0 && barInPhrase % 2 === 0) pad(at, chord.pad.map(midi), MUSIC_STEP * 32);
+      if (section.hook) { const melody = HOOK.get(barInPhrase * 16 + step); if (melody) lead(at, midi(melody[0]), melody[1] * MUSIC_STEP, 0.15); }
+      else if ((section.arp || heat > 0.6) && !(section.arp === 'soft' && step % 2)) pluck(at, midi(chord.arp[ARP_ORDER[step]] + 12), section.arp === 'soft' ? 0.05 : 0.08);
+      if (section.riser && barInPhrase === 6 && step === 0) riser(at, MUSIC_STEP * 32);
+    }
+    function scheduleMusic() {
+      if (!musicOn || paused || destroyed || !audioContext || audioContext.state !== 'running') return;
+      if (musicNextTime < audioContext.currentTime) musicNextTime = audioContext.currentTime + 0.05;
+      while (musicNextTime < audioContext.currentTime + 0.2) {
+        playMusicStep(musicStep, musicNextTime);
+        musicStep++; musicNextTime += MUSIC_STEP;
+      }
+    }
+    function playExplosionSound() {
+      if (!audioContext || audioContext.state !== 'running') return;
+      const at = audioContext.currentTime;
+      synth(125, 34, 0.5, 0.09, 'sawtooth', at);
+      synth(960, 110, 0.18, 0.025, 'square', at);
+    }
+
+    function loadLevel(index, startHealth) {
+      levelIndex = index; level = LEVELS[index];
+      for (const { mesh } of [...levelMeshes, ...gates]) { gl.deleteBuffer(mesh.buffer); gl.deleteVertexArray(mesh.vao); }
+      carve(level); setupGates(level); spawnLevel(level);
+      radarEdges.length = 0; beacons.length = 0;
+      levelMeshes = buildLevel(level);
+      ship.position = level.start.slice(); ship.yaw = level.yaw; ship.pitch = 0; ship.roll = 0; ship.speed = 8; ship.strafe = [0, 0];
+      health = startHealth; levelWeapon = weaponLevel; levelMissiles = missileAmmo; shield = SHIELD_MAX; shieldDelay = 0;
+      missiles.length = 0; enemyMissiles.length = 0; lockTarget = null; lockTimer = 0;
+      barrelsDestroyed = 0; kills = 0; destroyed = false; finished = false; sludgeCooldown = 0; paused = false; mouseFiring = false;
+      impactTimer = 0; hitTimer = 0; muzzleTimer = 0; fireCooldown = 0; wallCooldown = 0; warpTimer = 0;
+      shots.length = 0; enemyShots.length = 0; explosions.length = 0; particles.length = 0;
+      gameOverText.classList.remove('show'); pausedText.classList.remove('show');
+      sectorText.textContent = `${index + 1} / ${LEVELS.length}`; levelText.textContent = level.name;
+      notice(`SECTOR ${index + 1} // ${level.name} ${level.title}`, 3);
+    }
+    function resetGame() {
+      if (finished) { weaponLevel = 1; missileAmmo = 0; loadLevel(0, 100); }
+      else { weaponLevel = levelWeapon; missileAmmo = levelMissiles; loadLevel(levelIndex, 100); }
+    }
+    function damage(amount, label) {
+      if (destroyed || finished || warpTimer > 0) return;
+      // The shield soaks damage first and starts recharging a few seconds after the last hit.
+      shieldDelay = 4;
+      const absorbed = Math.min(shield, amount);
+      shield -= absorbed; amount -= absorbed;
+      if (absorbed > 0) shieldGlow = 1;
+      shieldOnly = amount === 0;
+      health = Math.max(0, Math.round(health - amount));
+      impactTimer = 1.1; impactText.textContent = label;
+      if (health === 0) {
+        destroyed = true; ship.speed = 0;
+        gameOverText.innerHTML = 'SHIP DESTROYED<small>PRESS R TO RESTART THE SECTOR</small>'; gameOverText.classList.add('show');
+      }
+    }
+    function registerHit(message) {
+      hitTimer = 0.34; noticeTimer = 0;
+      statusText.textContent = message;
+    }
+    function notice(message, seconds) {
+      noticeTimer = seconds;
+      statusText.textContent = message;
+    }
+    function segmentHitsSphere(a, b, center, radius) {
+      const ab = sub(b, a), ac = sub(center, a);
+      const t = clamp(dot(ac, ab) / Math.max(dot(ab, ab), 0.0001), 0, 1);
+      const gap = sub(add(a, mul(ab, t)), center);
+      return dot(gap, gap) <= radius * radius;
+    }
+    function sparks(position, count, color, speed) {
+      for (let i = 0; i < count; i++) {
+        const direction = normalize([Math.random() * 2 - 1, Math.random() * 1.4 - 0.2, Math.random() * 2 - 1]);
+        const life = 0.3 + Math.random() * 0.45;
+        particles.push({ position: position.slice(), velocity: mul(direction, speed * (0.35 + Math.random())), life, maxLife: life, color });
+      }
+    }
+
+    function cameraForShip() {
+      return { view: basis(ship.yaw, ship.pitch, ship.roll), position: ship.position };
+    }
+    function focalLength() { return Math.min(width * 0.75, height * 0.9); }
+    function viewProjection(camera) {
+      const { right: r, up: u, forward: f } = camera.view, p = camera.position, focal = focalLength();
+      const sx = 2 * focal / width, sy = 2 * focal / height, near = 0.25, far = 900;
+      const A = (far + near) / (near - far), B = 2 * far * near / (near - far);
+      const tr = -dot(r, p), tu = -dot(u, p), tf = -dot(f, p);
+      return new Float32Array([
+        sx * r[0], sy * u[0], -A * f[0], f[0],
+        sx * r[1], sy * u[1], -A * f[1], f[1],
+        sx * r[2], sy * u[2], -A * f[2], f[2],
+        sx * tr, sy * tu, -A * tf + B, tf,
+      ]);
+    }
+    function modelMatrix(position, yaw = 0, roll = 0, scale = 1) {
+      const cy = Math.cos(yaw) * scale, sy = Math.sin(yaw) * scale, cr = Math.cos(roll), sr = Math.sin(roll);
+      return new Float32Array([cy * cr, sr * scale, -sy * cr, 0, -cy * sr, cr * scale, sy * sr, 0, sy, 0, cy, 0, position[0], position[1], position[2], 1]);
+    }
+    const IDENTITY = modelMatrix([0, 0, 0]), WHITE = [1, 1, 1];
+    const PICKUP_COLORS = { health: [0.35, 1.0, 0.55], weapon: [1.0, 0.62, 0.18], missile: [1.0, 0.3, 0.5] };
+    const exposureAt = (p) => coveredAt(p[0], p[2]) ? 0.3 : 1;
+    const exitCenter = () => level.exit.slice(0, 3);
+    function useMaterial(material, pulse = 1) {
+      const u = surfaceProgram.uniforms;
+      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, material.albedo);
+      gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, material.detail);
+      gl.uniform1f(u.uSpecular, material.specular); gl.uniform1f(u.uBump, material.bump); gl.uniform1f(u.uEmissive, material.emissive * pulse);
+    }
+    function drawMesh(mesh, model = IDENTITY, flash = 0, tint = WHITE, exposure = 1) {
+      const u = surfaceProgram.uniforms;
+      gl.uniformMatrix4fv(u.uModel, false, model); gl.uniform1f(u.uFlash, flash); gl.uniform3fv(u.uTint, tint); gl.uniform1f(u.uExposure, exposure);
+      gl.bindVertexArray(mesh.vao); gl.drawArrays(gl.TRIANGLES, 0, mesh.count);
+    }
+    function gatherLights(camera) {
+      const list = [];
+      for (const shot of shots) list.push([shot.position, 16, [0.25, 0.75, 1.0]]);
+      for (const shot of enemyShots) list.push([shot.position, 12, [1.0, 0.4, 0.15]]);
+      for (const missile of missiles) list.push([missile.position, 14, [1.0, 0.55, 0.2]]);
+      for (const missile of enemyMissiles) list.push([missile.position, 14, [1.0, 0.25, 0.15]]);
+      for (const explosion of explosions) { const k = explosion.life / 0.65; list.push([explosion.position, (30 + 30 * (1 - k)) * explosion.scale, [3.2 * k, 1.6 * k, 0.5 * k]]); }
+      if (muzzleTimer > 0) list.push([add(ship.position, mul(camera.view.forward, 2)), 24, mul([0.4, 0.85, 1.0], muzzleTimer / 0.12 * 1.5)]);
+      for (const enemy of enemies) if (enemy.hp > 0) { const kind = ENEMY_TYPES[enemy.type]; list.push([enemy.position, 10 * kind.scale, mul(kind.eye, 0.85)]); }
+      for (const pickup of pickups) if (!pickup.taken) list.push([pickup.position, 13, PICKUP_COLORS[pickup.type]]);
+      for (const gate of gates) for (const lock of gate.locks) if (lock.hp > 0) list.push([lock.position, 9, [1.0, 0.35, 0.15]]);
+      list.push([exitCenter(), 45, [0.3, 1.2, 0.7]]);
+      const near = list.map(light => [light, dot(sub(light[0], camera.position), sub(light[0], camera.position))])
+        .filter(([light, d]) => d < (light[1] + 160) ** 2).sort((a, b) => a[1] - b[1]).slice(0, 16).map(([light]) => light);
+      const positions = new Float32Array(64), colors = new Float32Array(48);
+      near.forEach(([position, radius, color], i) => { positions.set([...position, radius], i * 4); colors.set(color, i * 3); });
+      return { positions, colors, count: near.length };
+    }
+    function buildSprites(camera) {
+      const data = [];
+      const quad = (corners, uvs, color, alpha) => { for (const i of [0, 1, 2, 0, 2, 3]) data.push(...corners[i], ...uvs[i], ...color, alpha); };
+      const billboard = (position, size, color, alpha) => {
+        const r = mul(camera.view.right, size), u = mul(camera.view.up, size);
+        quad([sub(sub(position, r), u), sub(add(position, r), u), add(add(position, r), u), add(sub(position, r), u)], [[0, 0], [1, 0], [1, 1], [0, 1]], color, alpha);
+      };
+      const streak = (a, b, w, color, alpha) => {
+        const axis = sub(b, a), length = Math.hypot(...axis);
+        if (length < 0.0001) return;
+        const along = mul(axis, 1 / length), side = cross(along, sub(camera.position, a)), sideLength = Math.hypot(...side);
+        if (sideLength < 0.0001) return;
+        const offset = mul(side, w / sideLength), start = sub(a, mul(along, w)), end = add(b, mul(along, w));
+        quad([sub(start, offset), sub(end, offset), add(end, offset), add(start, offset)], [[2, 0], [3, 0], [3, 1], [2, 1]], color, alpha);
+      };
+      const nearby = (position, limit) => dot(sub(position, camera.position), sub(position, camera.position)) < limit * limit;
+      for (const beacon of beacons) {
+        if (!nearby(beacon.position, 240)) continue;
+        const blink = 0.5 + 0.5 * Math.sin(time * 2.4 + beacon.phase);
+        billboard(beacon.position, 0.7, [1.0, 0.65, 0.2], 0.4 + blink * 0.9);
+        billboard(beacon.position, 2.4, [1.0, 0.5, 0.15], 0.1 + blink * 0.16);
+      }
+      for (const enemy of enemies) {
+        if (enemy.hp <= 0 || !nearby(enemy.position, 300)) continue;
+        const kind = ENEMY_TYPES[enemy.type], reach = { hunter: 3.4, striker: 2.3, sentry: 2.3 }[enemy.type] * kind.scale || 2.6 * kind.scale;
+        const eye = add(enemy.position, [Math.sin(enemy.yaw) * reach, 0, Math.cos(enemy.yaw) * reach]);
+        billboard(eye, 0.9 * kind.scale, kind.eye, 1.4 + enemy.flash * 2);
+        billboard(eye, 2.8 * kind.scale, mul(kind.eye, 0.6), 0.35 + enemy.flash);
+      }
+      for (const pickup of pickups) {
+        if (pickup.taken || !nearby(pickup.position, 260)) continue;
+        const pulse = 0.75 + 0.25 * Math.sin(time * 4 + pickup.phase);
+        billboard(pickup.position, 1.6, PICKUP_COLORS[pickup.type], 1.1 * pulse);
+        billboard(pickup.position, 4.2, PICKUP_COLORS[pickup.type], 0.3 * pulse);
+      }
+      const gate = exitCenter(), spansX = level.exit[3];
+      billboard(gate, 8, [0.2, 1.0, 0.6], 0.45);
+      streak(gate, add(gate, [0, 80, 0]), 1.8, [0.3, 1.0, 0.6], 0.45);
+      for (let k = 0; k < 12; k++) {
+        const angle = time * 1.6 + k * Math.PI / 6, r = 4.8 + Math.sin(time * 3 + k) * 0.6;
+        billboard(add(gate, spansX ? [Math.cos(angle) * r, Math.sin(angle) * r, 0] : [0, Math.sin(angle) * r, Math.cos(angle) * r]), 1.1, [0.5, 1.0, 0.75], 0.9);
+      }
+      for (const shot of shots) {
+        const width = 0.45 + (shot.damage - 1) * 0.2;
+        streak(sub(shot.position, mul(shot.velocity, 0.06)), shot.position, width, shot.damage > 1 ? [0.75, 0.6, 1.0] : [0.35, 0.9, 1.0], 1.6);
+        billboard(shot.position, width * 2, [0.8, 1.0, 1.0], 1.2);
+      }
+      for (const [group, body, flame] of [[missiles, [1.0, 0.9, 0.7], [1.0, 0.45, 0.15]], [enemyMissiles, [1.0, 0.55, 0.45], [1.0, 0.2, 0.1]]]) {
+        for (const missile of group) {
+          const back = mul(normalize(missile.velocity), -1.8);
+          streak(add(missile.position, back), missile.position, 0.3, body, 1.4);
+          billboard(missile.position, 0.7, body, 1.3);
+          billboard(add(missile.position, back), 1.5 + Math.random() * 0.5, flame, 0.9);
+        }
+      }
+      for (const shot of enemyShots) {
+        streak(sub(shot.position, mul(shot.velocity, 0.12)), shot.position, 0.5, [1.0, 0.45, 0.2], 1.6);
+        billboard(shot.position, 1.1, [1.0, 0.8, 0.5], 1.2);
+      }
+      for (const explosion of explosions) {
+        const k = 1 - explosion.life / 0.65, size = (4 + k * 13) * explosion.scale;
+        billboard(explosion.position, size, [1.0, 0.45, 0.12], (1 - k) * 1.4);
+        billboard(explosion.position, size * 0.55, [1.0, 0.85, 0.5], (1 - k) ** 2 * 2);
+        billboard(add(explosion.position, [0, k * 4, 0]), (3 + k * 9) * explosion.scale, [0.9, 0.3, 0.08], (1 - k) * 0.8);
+      }
+      for (const spark of particles) streak(sub(spark.position, mul(spark.velocity, 0.035)), spark.position, 0.12, spark.color, spark.life / spark.maxLife * 2);
+      return data;
+    }
+    function render() {
+      const camera = cameraForShip(), viewProj = viewProjection(camera), focal = focalLength(), sky = level.sky;
+      gl.viewport(0, 0, world.width, world.height);
+      gl.clear(gl.DEPTH_BUFFER_BIT);
+      gl.disable(gl.DEPTH_TEST); gl.depthMask(false); gl.disable(gl.BLEND);
+      gl.useProgram(skyProgram.program);
+      const s = skyProgram.uniforms;
+      gl.uniform3fv(s.uForward, camera.view.forward); gl.uniform3fv(s.uRight, camera.view.right); gl.uniform3fv(s.uUp, camera.view.up);
+      gl.uniform2f(s.uSpread, width / 2 / focal, height / 2 / focal); gl.uniform3fv(s.uSunDir, sky.sunDir);
+      gl.uniform3fv(s.uFogColor, sky.fog); gl.uniform3fv(s.uZenith, sky.zenith); gl.uniform1f(s.uTime, time);
+      gl.bindVertexArray(skyMesh); gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+      gl.enable(gl.DEPTH_TEST); gl.depthMask(true);
+      gl.useProgram(surfaceProgram.program);
+      const u = surfaceProgram.uniforms, lights = gatherLights(camera);
+      gl.uniformMatrix4fv(u.uViewProj, false, viewProj);
+      gl.uniform1i(u.uAlbedo, 0); gl.uniform1i(u.uDetail, 1);
+      gl.uniform3fv(u.uCamera, camera.position); gl.uniform3fv(u.uSunDir, sky.sunDir);
+      gl.uniform3fv(u.uSunColor, sky.sun); gl.uniform3f(u.uSkyLight, 0.46, 0.54, 0.66); gl.uniform3f(u.uGroundLight, 0.17, 0.16, 0.17);
+      gl.uniform3fv(u.uFogColor, sky.fog); gl.uniform3fv(u.uHeadPos, camera.position); gl.uniform3fv(u.uHeadDir, camera.view.forward);
+      gl.uniform4fv(u.uLights, lights.positions); gl.uniform3fv(u.uLightColors, lights.colors); gl.uniform1i(u.uLightCount, lights.count);
+      const reactorPulse = 1 + 0.3 * Math.sin(time * 2.2), gatePulse = 1 + 0.35 * Math.sin(time * 5);
+      for (const { name, exposure, mesh } of levelMeshes) {
+        useMaterial(materials[name], name === 'reactor' ? reactorPulse : name === 'exitFrame' ? gatePulse : 1);
+        if (name === 'floorSludge') gl.uniform2f(u.uScroll, time * 0.012, time * 0.02);
+        if (name === 'floorLava') gl.uniform2f(u.uScroll, time * 0.006, time * 0.01);
+        drawMesh(mesh, IDENTITY, 0, level.tint || WHITE, exposure);
+        gl.uniform2f(u.uScroll, 0, 0);
+      }
+      // Gate doors sink into the floor as they open; their padlocks and chains hang on the near face.
+      for (const gate of gates) {
+        if (gate.open >= 1) continue;
+        const height = gate.door.y1 - gate.door.y0, eased = gate.open * gate.open * (3 - 2 * gate.open);
+        useMaterial(materials[gate.kind === 'secret' ? 'secretPanel' : 'gateDoor']);
+        drawMesh(gate.mesh, modelMatrix([0, -(height + 0.5) * eased, 0]), gate.flash * 0.5, level.tint || WHITE, gate.exposure);
+        useMaterial(materials.chain);
+        for (const lock of gate.locks) if (lock.hp > 0) for (const link of lock.links)
+          drawMesh(linkMeshes[link.flat], modelMatrix(link.position, gate.yaw, link.roll), lock.flash * 0.3, WHITE, gate.exposure);
+        useMaterial(materials.lock, 1 + 0.4 * Math.sin(time * 6));
+        for (const lock of gate.locks) if (lock.hp > 0) drawMesh(lockMesh, modelMatrix(lock.position, gate.yaw), lock.flash, WHITE, gate.exposure);
+      }
+      const near = (p, limit) => dot(sub(p, camera.position), sub(p, camera.position)) < limit * limit;
+      const liveBarrels = barrels.filter(barrel => !barrel.exploded && near(barrel.position, 300))
+        .map(barrel => [modelMatrix([barrel.position[0], barrel.floor, barrel.position[2]], barrel.spin),
+          barrel.flash + (barrel.hp < 2 ? 0.08 + 0.06 * Math.sin(time * 10) : 0), exposureAt(barrel.position)]);
+      useMaterial(materials.barrel);
+      for (const [model, flash, exposure] of liveBarrels) drawMesh(barrelMesh.side, model, flash, WHITE, exposure);
+      useMaterial(materials.barrelLid);
+      for (const [model, flash, exposure] of liveBarrels) drawMesh(barrelMesh.lid, model, flash, WHITE, exposure);
+      useMaterial(materials.drone);
+      for (const enemy of enemies) {
+        if (enemy.hp <= 0 || !near(enemy.position, 400)) continue;
+        const kind = ENEMY_TYPES[enemy.type];
+        if (enemy.type === 'sentry') { useMaterial(materials.hazard); drawMesh(pylonMesh, modelMatrix([enemy.base[0], enemy.base[1] - 1.8, enemy.base[2]]), 0, WHITE, exposureAt(enemy.position)); useMaterial(materials.drone); }
+        drawMesh(enemyMeshes[enemy.type], modelMatrix(enemy.position, enemy.yaw, enemy.type === 'sentry' ? 0 : Math.sin(time * 1.7 + enemy.phase) * 0.25, kind.scale),
+          enemy.flash * 0.8, kind.tint, exposureAt(enemy.position));
+      }
+      for (const pickup of pickups) {
+        if (pickup.taken || !near(pickup.position, 300)) continue;
+        useMaterial(materials[pickup.type === 'health' ? 'pickupHealth' : 'pickupWeapon']);
+        drawMesh(pickupMesh, modelMatrix(add(pickup.position, [0, Math.sin(time * 2 + pickup.phase) * 0.4, 0]), time * 1.5 + pickup.phase), 0,
+          pickup.type === 'missile' ? [1.3, 0.5, 0.85] : WHITE, exposureAt(pickup.position));
+      }
+
+      const sprites = buildSprites(camera);
+      if (sprites.length) {
+        gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE); gl.depthMask(false);
+        gl.useProgram(spriteProgram.program);
+        gl.uniformMatrix4fv(spriteProgram.uniforms.uViewProj, false, viewProj);
+        gl.uniform3fv(spriteProgram.uniforms.uCamera, camera.position);
+        gl.bindVertexArray(spriteMesh.vao); gl.bindBuffer(gl.ARRAY_BUFFER, spriteMesh.buffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(sprites), gl.DYNAMIC_DRAW);
+        gl.drawArrays(gl.TRIANGLES, 0, sprites.length / 9);
+        gl.disable(gl.BLEND); gl.depthMask(true);
+      }
+      gl.bindVertexArray(null);
+    }
+
+    function drawRadar() {
+      const r = radarCtx, cx = 59, cy = 59;
+      r.clearRect(0,0,118,118);
+      r.fillStyle = '#06141a'; r.beginPath(); r.arc(cx,cy,56,0,Math.PI*2); r.fill();
+      const cos = Math.cos(ship.yaw), sin = Math.sin(ship.yaw), sx = ship.position[0], sz = ship.position[2];
+      r.save(); r.beginPath(); r.arc(cx,cy,51,0,Math.PI*2); r.clip();
+      r.strokeStyle = 'rgba(120,200,210,0.6)'; r.lineWidth = 1.2; r.beginPath();
+      for (const [ax, az, bx, bz] of radarEdges) {
+        const dx = ax - sx, dz = az - sz;
+        if (dx * dx + dz * dz > 110 * 110) continue;
+        const ex = bx - sx, ez = bz - sz;
+        r.moveTo(cx + (cos*dx - sin*dz) * 0.55, cy - (sin*dx + cos*dz) * 0.55);
+        r.lineTo(cx + (cos*ex - sin*ez) * 0.55, cy - (sin*ex + cos*ez) * 0.55);
+      }
+      r.stroke(); r.restore();
+      r.strokeStyle = '#326674'; r.lineWidth = 1;
+      for (const radius of [17,34,51]) { r.beginPath(); r.arc(cx,cy,radius,0,Math.PI*2); r.stroke(); }
+      r.beginPath(); r.moveTo(cx,4); r.lineTo(cx,114); r.moveTo(4,cy); r.lineTo(114,cy); r.stroke();
+      const angle = time * 1.7;
+      r.strokeStyle = '#5bdbba88'; r.lineWidth = 2;
+      r.beginPath(); r.moveTo(cx,cy); r.lineTo(cx + Math.sin(angle)*52,cy - Math.cos(angle)*52); r.stroke();
+      // Marks outside the radar range are pinned to the rim when `pin` is set, so the exit always shows its bearing.
+      const mark = (position,color,size,pin = false) => {
+        const dx = position[0]-sx, dz = position[2]-sz;
+        let right = (cos*dx-sin*dz)*0.55, ahead = (sin*dx+cos*dz)*0.55;
+        const reach = Math.hypot(right, ahead);
+        if (reach > 51) { if (!pin) return; right *= 50 / reach; ahead *= 50 / reach; }
+        r.fillStyle = color; r.beginPath(); r.arc(cx + right,cy - ahead,size,0,Math.PI*2); r.fill();
+      };
+      for (const barrel of barrels) if (!barrel.exploded) mark(barrel.position,'#e8a05e',1.8);
+      for (const pickup of pickups) if (!pickup.taken) mark(pickup.position, pickup.type === 'health' ? '#6dffa0' : '#ffc45a', 2.4);
+      for (const enemy of enemies) if (enemy.hp > 0) mark(enemy.position, ENEMY_TYPES[enemy.type].radar, enemy.type === 'warden' ? 3.4 : 2.6);
+      r.save(); r.beginPath(); r.arc(cx,cy,51,0,Math.PI*2); r.clip();
+      r.strokeStyle = '#ff9a3a'; r.lineWidth = 2.2; r.beginPath();
+      for (const gate of gates) {
+        if (gate.kind !== 'chain' || gate.open > 0.85) continue;
+        const corners = [[gate.x0, gate.z0], [gate.x1, gate.z0], [gate.x1, gate.z1], [gate.x0, gate.z1]].map(([x, z]) => {
+          const dx = x - sx, dz = z - sz; return [cx + (cos*dx - sin*dz) * 0.55, cy - (sin*dx + cos*dz) * 0.55];
+        });
+        r.moveTo(...corners[3]); for (const corner of corners) r.lineTo(...corner);
+      }
+      r.stroke(); r.restore();
+      if (Math.sin(time * 6) > -0.3) mark(exitCenter(), '#5dffb0', 3.6, true);
+      r.fillStyle = '#bcf8e8'; r.beginPath(); r.moveTo(cx,cy-5); r.lineTo(cx-4,cy+4); r.lineTo(cx+4,cy+4); r.closePath(); r.fill();
+    }
+    function drawReticle() {
+      const x = width / 2, y = height / 2;
+      ctx.strokeStyle = hitTimer > 0 ? '#ffd493' : muzzleTimer > 0 ? '#ffffff' : 'rgba(123,227,244,0.68)'; ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x - 25, y); ctx.lineTo(x - 9, y);
+      ctx.moveTo(x + 9, y); ctx.lineTo(x + 25, y);
+      ctx.moveTo(x, y - 25); ctx.lineTo(x, y - 9);
+      ctx.moveTo(x, y + 9); ctx.lineTo(x, y + 25);
+      ctx.stroke();
+      ctx.fillStyle = '#a9f1ff'; ctx.fillRect(x - 1, y - 1, 2, 2);
+      if (hitTimer > 0) {
+        ctx.strokeStyle = '#ffc679'; ctx.lineWidth = 2; ctx.beginPath();
+        for (const [sx,sy] of [[-11,-11],[11,-11],[-11,11],[11,11]]) {
+          ctx.moveTo(x+sx*0.65,y+sy); ctx.lineTo(x+sx,y+sy);
+          ctx.lineTo(x+sx,y+sy*0.65);
+        }
+        ctx.stroke();
+      }
+      if (muzzleTimer > 0) {
+        ctx.save(); ctx.shadowColor = '#8cf5ff'; ctx.shadowBlur = 20;
+        ctx.strokeStyle = `rgba(160,245,255,${muzzleTimer / 0.12})`; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(width * 0.33, height); ctx.lineTo(x - 8, y + 8);
+        ctx.moveTo(width * 0.67, height); ctx.lineTo(x + 8, y + 8); ctx.stroke();
+        ctx.restore();
+      }
+    }
+    // The neutron cannon gets faster, then twin-barrelled, then triple-barrelled with heavier bolts.
+    const WEAPONS = [
+      { name: 'MK I', cooldown: 0.16, damage: 1, guns: [0] },
+      { name: 'MK II', cooldown: 0.11, damage: 1, guns: [0] },
+      { name: 'MK III', cooldown: 0.11, damage: 1, guns: [-0.7, 0.7] },
+      { name: 'MK IV', cooldown: 0.1, damage: 2, guns: [-0.8, 0, 0.8] },
+    ];
+    function hurtEnemy(enemy, amount) {
+      if (enemy.hp <= 0) return;
+      enemy.hp = Math.max(0, enemy.hp - amount); enemy.flash = 1; enemy.active = true;
+      if (enemy.hp > 0) { registerHit('TARGET HIT'); return; }
+      kills++;
+      registerHit({ warden: 'WARDEN DESTROYED', hunter: 'HUNTER DOWN', striker: 'STRIKER DOWN', sentry: 'SENTRY DESTROYED' }[enemy.type] || 'DRONE DOWN');
+      const scale = ENEMY_TYPES[enemy.type].scale;
+      explosions.push({ position: enemy.position.slice(), life: 0.65, scale });
+      sparks(enemy.position, Math.round(22 * scale), [1.0, 0.45, 0.35], 20);
+      playExplosionSound();
+    }
+    // A square around the enemy being locked (amber, shrinking) or locked (red), and around every
+    // enemy a missile in flight is tracking (green).
+    function drawTargets() {
+      const camera = cameraForShip(), view = camera.view, focal = focalLength();
+      const square = (enemy, color, label, progress) => {
+        const delta = sub(enemy.position, camera.position), depth = dot(delta, view.forward);
+        if (depth < 1) return;
+        const x = width / 2 + dot(delta, view.right) * focal / depth, y = height / 2 - dot(delta, view.up) * focal / depth;
+        const size = clamp(ENEMY_TYPES[enemy.type].radius * 1.7 * focal / depth, 16, 140) * (1 + (1 - progress) * 1.5);
+        ctx.strokeStyle = color; ctx.lineWidth = 1.6; ctx.strokeRect(x - size / 2, y - size / 2, size, size);
+        ctx.fillStyle = color; ctx.font = '10px Consolas, monospace'; ctx.textAlign = 'center'; ctx.fillText(label, x, y - size / 2 - 6);
+      };
+      if (lockTarget && missileAmmo > 0 && !destroyed) {
+        const progress = clamp(lockTimer / LOCK_TIME, 0, 1);
+        square(lockTarget, progress >= 1 ? '#ff5a4a' : 'rgba(255,190,90,0.85)', progress >= 1 ? 'LOCKED' : 'LOCKING', progress);
+      }
+      for (const missile of missiles) if (missile.target && missile.target.hp > 0) square(missile.target, '#7dffb0', 'TRACKING', 1);
+    }
+    function explodeBarrel(barrel) {
+      if (barrel.exploded) return;
+      barrel.exploded = true; barrelsDestroyed++;
+      registerHit('BARREL DETONATED');
+      const center = add(barrel.position, [0, 0.4, 0]);
+      explosions.push({ position: center, life: 0.65, scale: 1 });
+      sparks(center, 26, [1.0, 0.6, 0.2], 22);
+      playExplosionSound();
+      const toShip = sub(ship.position, barrel.position);
+      if (dot(toShip,toShip) < 11 * 11) damage(22, 'BARREL BLAST');
+      for (const enemy of enemies) if (enemy.hp > 0 && Math.hypot(...sub(enemy.position, center)) < 9) hurtEnemy(enemy, 2);
+      for (const other of barrels) {
+        if (other.exploded) continue;
+        const delta = sub(other.position,barrel.position);
+        if (dot(delta,delta) < 6.5 * 6.5) explodeBarrel(other);
+      }
+    }
+    function playGate() {
+      if (!audioContext || audioContext.state !== 'running') return;
+      const at = audioContext.currentTime;
+      synth(70, 38, 1.6, 0.1, 'sawtooth', at); synth(140, 90, 0.5, 0.03, 'square', at + 1.1);
+    }
+    function openGate(gate, message) {
+      gate.opening = true;
+      notice(message, 2);
+      playGate();
+    }
+    // A padlock bursts and its chains shower sparks; the last lock on a gate opens it.
+    function breakLock(gate, lock) {
+      explosions.push({ position: lock.position.slice(), life: 0.65, scale: 0.35 });
+      sparks(lock.position, 20, [1.0, 0.6, 0.25], 16);
+      lock.links.forEach((link, k) => { if (k % 3 === 0) sparks(link.position, 2, [1.0, 0.75, 0.4], 6); });
+      playExplosionSound();
+      const left = gate.locks.filter(other => other.hp > 0).length;
+      if (left) notice(`CHAIN SEVERED // ${left} LOCK LEFT`, 1.6);
+      else openGate(gate, 'CHAINS CUT // GATE OPENING');
+    }
+    function playPickup(type) {
+      if (!audioContext || audioContext.state !== 'running') return;
+      const at = audioContext.currentTime;
+      (type === 'health' ? [523, 659, 784] : [392, 523, 784, 1046]).forEach((note, i) => synth(note, note * 1.01, 0.2, 0.05, 'triangle', at + i * 0.07));
+    }
+    function playWarp() {
+      if (!audioContext || audioContext.state !== 'running') return;
+      const at = audioContext.currentTime;
+      synth(110, 1760, 1.3, 0.07, 'sawtooth', at); synth(220, 3520, 1.3, 0.025, 'square', at);
+    }
+    function finishGame() {
+      finished = true; ship.speed = 0;
+      gameOverText.innerHTML = 'ALL SECTORS CLEAR<small>PRESS R TO FLY AGAIN FROM SECTOR 1</small>'; gameOverText.classList.add('show');
+    }
+    function updateEnemies(dt) {
+      let hostilesNear = 0;
+      for (const enemy of enemies) {
+        enemy.flash = Math.max(0, enemy.flash - dt * 5);
+        if (enemy.hp <= 0) continue;
+        const kind = ENEMY_TYPES[enemy.type];
+        if (enemy.type === 'hunter' && enemy.active) {
+          // Hunters steer straight for the ship, bouncing off walls one axis at a time.
+          const chase = sub(ship.position, enemy.position), reach = Math.hypot(...chase) || 1;
+          enemy.velocity = add(enemy.velocity, mul(sub(mul(chase, 17 / reach), enemy.velocity), Math.min(1, dt * 1.8)));
+          for (let axis = 0; axis < 3; axis++) {
+            const next = enemy.position.slice(); next[axis] += enemy.velocity[axis] * dt;
+            if (freeAt(next[0], next[1], next[2], 1.4) && walkable(next[0], next[2], 1.4) && !insideGirder(next, 1.2)) enemy.position = next;
+            else enemy.velocity[axis] *= -0.3;
+          }
+        } else if (enemy.type === 'warden') {
+          enemy.position = add(enemy.base, [Math.sin(time * 0.6 + enemy.phase) * 2.4, Math.cos(time * 0.8 + enemy.phase) * 1.2, 0]);
+        } else if (enemy.type === 'sentry') {
+          enemy.position = enemy.base.slice();
+        } else {
+          enemy.position = add(enemy.base, [Math.sin(time * 1.2 + enemy.phase) * 1.3, Math.cos(time * 1.4 + enemy.phase) * 1.1, 0]);
+        }
+        const toPlayer = sub(ship.position, enemy.position), distance = Math.hypot(...toPlayer);
+        const facing = Math.atan2(toPlayer[0], toPlayer[2]) - enemy.yaw;
+        enemy.yaw += clamp(Math.atan2(Math.sin(facing), Math.cos(facing)), -dt * 2.5, dt * 2.5);
+        enemy.cooldown -= dt;
+        const visible = distance < (enemy.type === 'warden' ? 110 : 85) && lineOfSight(enemy.position);
+        if (visible) enemy.active = true;
+        if (visible && distance < 70) hostilesNear++;
+        const aim = mul(toPlayer, 1 / distance);
+        if (enemy.burst > 0) {
+          enemy.burstTimer -= dt;
+          if (enemy.burstTimer <= 0) {
+            enemyShots.push({ position: add(enemy.position, mul(aim, 2.4)), velocity: mul(aim, 34), life: 4, damage: 8 });
+            enemy.burst--; enemy.burstTimer = 0.16;
+          }
+        }
+        if (visible && distance > 6 && enemy.cooldown <= 0 && enemy.type !== 'hunter') {
+          if (enemy.type === 'striker') {
+            enemyMissiles.push({ position: add(enemy.position, [0, -0.8, 0]), velocity: mul(normalize(add(aim, [0, 0.35, 0])), 20), life: 6.5 });
+            enemy.cooldown = 4.5 + random() * 1.5;
+            playMissileLaunch(0.6);
+          } else if (enemy.type === 'sentry') {
+            enemy.burst = 3; enemy.burstTimer = 0;
+            enemy.cooldown = 2.6 + random() * 0.6;
+          } else if (enemy.type === 'warden') {
+            for (const spread of [-0.12, 0, 0.12]) {
+              const c = Math.cos(spread), s = Math.sin(spread);
+              enemyShots.push({ position: add(enemy.position, mul(aim, 3)), velocity: mul([aim[0] * c + aim[2] * s, aim[1], -aim[0] * s + aim[2] * c], 24), life: 5, damage: 10 });
+            }
+            enemy.cooldown = 2.4 + random() * 0.6;
+          } else {
+            enemyShots.push({ position: enemy.position.slice(), velocity: mul(aim, 28), life: 4, damage: 12 });
+            enemy.cooldown = 2.2 + random() * 0.8;
+          }
+        }
+        if (distance < kind.radius + 0.6) {
+          if (enemy.type === 'warden' || enemy.type === 'sentry') {
+            if (wallCooldown === 0) { damage(kind.ram, enemy.type === 'warden' ? 'WARDEN IMPACT' : 'SENTRY IMPACT'); wallCooldown = 0.9; ship.speed *= 0.3; }
+          } else {
+            damage(kind.ram, enemy.type === 'hunter' ? 'HUNTER RAM' : enemy.type === 'striker' ? 'STRIKER IMPACT' : 'DRONE IMPACT');
+            enemy.hp = 0; explosions.push({ position: enemy.position.slice(), life: 0.65, scale: kind.scale }); playExplosionSound();
+          }
+        }
+      }
+      musicIntensity += ((hostilesNear ? 1 : 0) - musicIntensity) * Math.min(1, dt * 0.8);
+    }
+    // Turn a direction toward another by at most maxAngle radians.
+    function steer(direction, wanted, maxAngle) {
+      const angle = Math.acos(clamp(dot(direction, wanted), -1, 1));
+      if (angle <= maxAngle) return wanted;
+      const t = maxAngle / angle;
+      return normalize(add(mul(direction, 1 - t), mul(wanted, t)));
+    }
+    // The enemy nearest the reticle within a narrow cone, in range and in sight.
+    function acquireTarget(view) {
+      let best = null, bestDot = Math.cos(0.3);
+      for (const enemy of enemies) {
+        if (enemy.hp <= 0) continue;
+        const to = sub(enemy.position, ship.position), distance = Math.hypot(...to);
+        if (distance > 160 || distance < 4) continue;
+        const facing = dot(to, view.forward) / distance;
+        if (facing > bestDot && lineOfSight(enemy.position)) { best = enemy; bestDot = facing; }
+      }
+      return best;
+    }
+    function playMissileLaunch(volume = 1) {
+      if (!audioContext || audioContext.state !== 'running') return;
+      const at = audioContext.currentTime;
+      synth(180, 520, 0.35, 0.05 * volume, 'sawtooth', at); synth(90, 60, 0.5, 0.06 * volume, 'square', at);
+    }
+    function detonateMissile(position, direct) {
+      explosions.push({ position: position.slice(), life: 0.65, scale: 0.7 });
+      sparks(position, 18, [1.0, 0.6, 0.25], 18);
+      playExplosionSound();
+      for (const enemy of enemies) {
+        if (enemy.hp <= 0) continue;
+        const gap = Math.hypot(...sub(enemy.position, position));
+        if (enemy === direct) hurtEnemy(enemy, 5);
+        else if (gap < 7) hurtEnemy(enemy, 2);
+      }
+      for (const barrel of barrels) if (!barrel.exploded && Math.hypot(...sub(barrel.position, position)) < 5) explodeBarrel(barrel);
+    }
+    function updateMissiles(dt, view) {
+      // Lock-on: hold an enemy near the reticle for LOCK_TIME seconds.
+      const candidate = missileAmmo > 0 ? acquireTarget(view) : null;
+      if (candidate && candidate === lockTarget) lockTimer += dt;
+      else { lockTarget = candidate; lockTimer = 0; }
+      missileCooldown = Math.max(0, missileCooldown - dt);
+      if ((missileRequest || down('c')) && missileCooldown === 0 && missileAmmo > 0) {
+        missileAmmo--; missileCooldown = 0.6;
+        missiles.push({ position: add(add(ship.position, mul(view.forward, 2)), mul(view.up, -0.8)), velocity: mul(view.forward, 40), target: lockTarget, life: 4.5 });
+        playMissileLaunch();
+      }
+      missileRequest = false;
+      for (let i = missiles.length - 1; i >= 0; i--) {
+        const missile = missiles[i], previous = missile.position;
+        missile.life -= dt;
+        if (missile.target && missile.target.hp <= 0) missile.target = null;
+        let direction = normalize(missile.velocity);
+        if (missile.target) direction = steer(direction, normalize(sub(missile.target.position, missile.position)), 3.2 * dt);
+        missile.velocity = mul(direction, Math.min(80, Math.hypot(...missile.velocity) + 60 * dt));
+        missile.position = add(missile.position, mul(missile.velocity, dt));
+        if (Math.random() < 0.7) particles.push({ position: previous.slice(), velocity: [Math.random() - 0.5, Math.random() + 0.5, Math.random() - 0.5], life: 0.35, maxLife: 0.35, color: [1.0, 0.5, 0.2] });
+        const struck = enemies.find(enemy => enemy.hp > 0 && segmentHitsSphere(previous, missile.position, enemy.position, ENEMY_TYPES[enemy.type].radius + 0.6));
+        const barrel = barrels.find(b => !b.exploded && segmentHitsSphere(previous, missile.position, b.position, 2.3));
+        const blocked = !freeAt(...missile.position) || insideGirder(missile.position);
+        if (struck || barrel || blocked || missile.life <= 0) {
+          detonateMissile(blocked ? previous : missile.position, struck);
+          missiles.splice(i, 1);
+        }
+      }
+      // Striker missiles chase the ship with a wide turning circle; they can be shot down.
+      let warning = false;
+      for (let i = enemyMissiles.length - 1; i >= 0; i--) {
+        const missile = enemyMissiles[i], previous = missile.position;
+        missile.life -= dt;
+        const wanted = normalize(sub(ship.position, missile.position));
+        missile.velocity = mul(steer(normalize(missile.velocity), wanted, 1.5 * dt), Math.min(32, Math.hypot(...missile.velocity) + 20 * dt));
+        missile.position = add(missile.position, mul(missile.velocity, dt));
+        if (Math.random() < 0.6) particles.push({ position: previous.slice(), velocity: [Math.random() - 0.5, Math.random() + 0.5, Math.random() - 0.5], life: 0.3, maxLife: 0.3, color: [1.0, 0.3, 0.15] });
+        if (Math.hypot(...sub(ship.position, missile.position)) < 70) warning = true;
+        const hit = segmentHitsSphere(previous, missile.position, ship.position, 1.8);
+        if (hit) damage(18, 'MISSILE HIT');
+        if (hit || missile.life <= 0 || !freeAt(...missile.position) || insideGirder(missile.position)) {
+          explosions.push({ position: missile.position.slice(), life: 0.65, scale: 0.5 });
+          sparks(missile.position, 12, [1.0, 0.4, 0.2], 14);
+          if (!hit) playExplosionSound();
+          enemyMissiles.splice(i, 1);
+        }
+      }
+      warningText.style.opacity = warning && Math.sin(time * 14) > 0 ? '1' : '0';
+    }
+    function updateCombat(dt) {
+      fireCooldown = Math.max(0, fireCooldown - dt);
+      muzzleTimer = Math.max(0, muzzleTimer - dt);
+      const view = basis(ship.yaw, ship.pitch, ship.roll), weapon = WEAPONS[weaponLevel - 1];
+      if ((mouseFiring || down('f', 'j')) && fireCooldown === 0) {
+        for (const offset of weapon.guns) {
+          // Side barrels angle in slightly so their bolts cross near the reticle.
+          const direction = normalize(sub(mul(view.forward, 60), mul(view.right, offset)));
+          shots.push({ position: add(add(ship.position, mul(view.forward, 1.5)), mul(view.right, offset)), velocity: mul(direction, 140), life: 1.8, damage: weapon.damage });
+        }
+        fireCooldown = weapon.cooldown;
+        muzzleTimer = 0.12;
+        playPew();
+      }
+      updateEnemies(dt);
+      updateMissiles(dt, view);
+      for (let i = shots.length - 1; i >= 0; i--) {
+        const shot = shots[i], previous = shot.position;
+        shot.position = add(shot.position, mul(shot.velocity, dt));
+        shot.life -= dt;
+        let hit = false;
+        for (const enemy of enemies) {
+          if (enemy.hp > 0 && segmentHitsSphere(previous, shot.position, enemy.position, ENEMY_TYPES[enemy.type].radius)) {
+            sparks(shot.position, 8, [1.0, 0.5, 0.4], 14);
+            hurtEnemy(enemy, shot.damage);
+            hit = true; break;
+          }
+        }
+        for (let m = enemyMissiles.length - 1; m >= 0 && !hit; m--) {
+          if (!segmentHitsSphere(previous, shot.position, enemyMissiles[m].position, 1.4)) continue;
+          explosions.push({ position: enemyMissiles[m].position.slice(), life: 0.65, scale: 0.45 });
+          sparks(enemyMissiles[m].position, 12, [1.0, 0.5, 0.2], 14);
+          enemyMissiles.splice(m, 1); registerHit('MISSILE DOWN'); hit = true;
+        }
+        for (const gate of gates) for (const lock of gate.locks) {
+          if (hit || lock.hp <= 0 || !segmentHitsSphere(previous, shot.position, lock.position, 1.5)) continue;
+          lock.hp -= shot.damage; lock.flash = 1; hit = true;
+          sparks(shot.position, 8, [1.0, 0.6, 0.3], 12);
+          if (lock.hp > 0) registerHit('LOCK HIT');
+          else breakLock(gate, lock);
+        }
+        for (const barrel of barrels) {
+          if (hit) break;
+          if (!barrel.exploded && segmentHitsSphere(previous, shot.position, barrel.position, 2.3)) {
+            barrel.hp -= shot.damage; barrel.flash = 0.6;
+            if (barrel.hp <= 0) explodeBarrel(barrel);
+            else { registerHit('BARREL HIT'); sparks(shot.position, 8, [1.0, 0.7, 0.3], 12); }
+            hit = true; break;
+          }
+        }
+        if (!hit && (!freeAt(...shot.position) || insideGirder(shot.position))) {
+          const gate = gateAt(shot.position);
+          if (gate && gate.kind === 'secret') {
+            gate.hp -= shot.damage; gate.flash = 1;
+            if (gate.hp <= 0) openGate(gate, 'SECRET AREA FOUND');
+          }
+          sparks(previous, 7, [0.5, 0.9, 1.0], 12); hit = true;
+        }
+        if (hit || shot.life <= 0) shots.splice(i, 1);
+      }
+      for (let i = enemyShots.length - 1; i >= 0; i--) {
+        const shot = enemyShots[i], previous = shot.position;
+        shot.position = add(shot.position,mul(shot.velocity,dt)); shot.life -= dt;
+        if (segmentHitsSphere(previous,shot.position,ship.position,1.5)) {
+          damage(shot.damage,'HOSTILE FIRE'); enemyShots.splice(i,1);
+        } else if (shot.life <= 0 || !freeAt(...shot.position) || insideGirder(shot.position)) {
+          if (shot.life > 0) sparks(previous, 5, [1.0, 0.5, 0.2], 9);
+          enemyShots.splice(i,1);
+        }
+      }
+      for (const barrel of barrels) barrel.flash = Math.max(0, barrel.flash - dt * 4);
+      for (const gate of gates) {
+        gate.flash = Math.max(0, gate.flash - dt * 4);
+        for (const lock of gate.locks) lock.flash = Math.max(0, lock.flash - dt * 4);
+        if (!gate.opening || gate.open >= 1) continue;
+        gate.open = Math.min(1, gate.open + dt / 1.6);
+        if (gate.open > 0.85) fillCells([gate.x0, gate.z0, gate.x1, gate.z1], i => { sealed[i] = 0; });
+      }
+      for (let i = explosions.length - 1; i >= 0; i--) {
+        explosions[i].life -= dt;
+        if (explosions[i].life <= 0) explosions.splice(i,1);
+      }
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const spark = particles[i];
+        spark.life -= dt;
+        if (spark.life <= 0 || !isOpen(spark.position[0], spark.position[2])) { particles.splice(i, 1); continue; }
+        spark.velocity[1] -= 24 * dt;
+        spark.position = add(spark.position, mul(spark.velocity, dt));
+        const floor = floorAt(spark.position[0], spark.position[2]);
+        if (spark.position[1] < floor + 0.1) { spark.position[1] = floor + 0.1; spark.velocity = [spark.velocity[0] * 0.6, -spark.velocity[1] * 0.35, spark.velocity[2] * 0.6]; }
+      }
+      for (const pickup of pickups) {
+        if (pickup.taken || Math.hypot(...sub(pickup.position, ship.position)) > 3.6) continue;
+        pickup.taken = true;
+        sparks(pickup.position, 18, PICKUP_COLORS[pickup.type], 10);
+        playPickup(pickup.type);
+        if (pickup.type === 'health') { health = Math.min(100, health + 35); notice('HULL REPAIRED +35', 1.6); }
+        else if (pickup.type === 'missile') { missileAmmo = Math.min(MISSILE_MAX, missileAmmo + 6); notice('SEEKER MISSILES +6 // C OR RIGHT CLICK', 2); }
+        else if (weaponLevel < WEAPONS.length) { weaponLevel++; notice(`NEUTRON CANNON UPGRADED // ${WEAPONS[weaponLevel - 1].name}`, 1.8); }
+        else { health = Math.min(100, health + 15); notice('CANNON AT MAXIMUM // HULL +15', 1.6); }
+      }
+      if (Math.hypot(...sub(exitCenter(), ship.position)) < 7) { warpTimer = 1.3; notice('SECTOR CLEAR // WARPING', 2); playWarp(); }
+    }
+    function update(dt) {
+      warpGlow = warpTimer > 0 ? 1 - warpTimer / 1.3 : Math.max(0, warpGlow - dt * 1.4);
+      warpFlash.style.opacity = String(warpGlow);
+      if (paused || destroyed || finished) return;
+      time += dt;
+      noticeTimer = Math.max(0, noticeTimer - dt);
+      statusText.style.opacity = String(clamp(Math.max(hitTimer * 3, noticeTimer * 2), 0, 1));
+      if (warpTimer > 0) {
+        // The gate pulls the ship in while the screen whites out, then the next sector loads.
+        warpTimer = Math.max(0, warpTimer - dt);
+        ship.position = add(ship.position, mul(sub(exitCenter(), ship.position), Math.min(1, dt * 3)));
+        if (warpTimer === 0) {
+          if (levelIndex + 1 < LEVELS.length) loadLevel(levelIndex + 1, Math.min(100, health + 25));
+          else finishGame();
+        }
+        return;
+      }
+      const previous = ship.position;
+      const turn = Number(down('arrowright')) - Number(down('arrowleft'));
+      const climb = Number(down('arrowdown')) - Number(down('arrowup'));
+      const bank = Number(down('e')) - Number(down('q'));
+      const slideX = Number(down('d')) - Number(down('a')), slideY = Number(down('w')) - Number(down('s'));
+      ship.yaw += turn * dt * 1.2;
+      ship.pitch = clamp(ship.pitch + climb * dt * 0.9, -1.35, 1.35);
+      ship.roll += bank * dt * 1.4;
+      ship.roll += (-(turn * 0.35 + slideX * 0.2) - ship.roll) * Math.min(1, dt * 0.7);
+      ship.speed = clamp(ship.speed + (Number(down('x', ' ')) * 18 - Number(down('z')) * 24) * dt, 0, 45);
+      // Strafing slides along the view's right and up axes, easing in and out.
+      const easing = Math.min(1, dt * 6), view = basis(ship.yaw, ship.pitch, ship.roll);
+      ship.strafe = [ship.strafe[0] + (slideX * STRAFE_SPEED - ship.strafe[0]) * easing, ship.strafe[1] + (slideY * STRAFE_SPEED - ship.strafe[1]) * easing];
+      ship.position = add(ship.position, add(mul(view.forward, ship.speed * dt),
+        add(mul(view.right, ship.strafe[0] * dt), mul(view.up, ship.strafe[1] * dt))));
+      wallCooldown = Math.max(0, wallCooldown - dt);
+      const fits = (p) => shipFits(p) && !insideGirder(p, 0.8);
+      if (!fits(ship.position)) {
+        // Slide along whatever was hit: keep the horizontal move, or else the vertical one.
+        const [x, y, z] = ship.position, girder = insideGirder(ship.position, 0.8), covered = coveredAt(x, z);
+        const label = girder ? 'GIRDER IMPACT' : !walkable(x, z, 0.7) ? 'WALL IMPACT' : y > SKY_LIMIT - 0.01 && !covered ? 'ALTITUDE LIMIT'
+          : covered && y > floorAt(x, z) + 5 ? 'CEILING IMPACT' : 'HULL SCRAPE';
+        const slideXZ = [x, previous[1], z], slideUp = [previous[0], y, previous[2]];
+        ship.position = fits(slideXZ) ? slideXZ : fits(slideUp) ? slideUp : previous.slice();
+        ship.speed *= 0.55; ship.strafe = [ship.strafe[0] * 0.3, ship.strafe[1] * 0.3];
+        if (wallCooldown === 0) { damage(10, label); wallCooldown = 0.9; }
+      }
+      sludgeCooldown = Math.max(0, sludgeCooldown - dt);
+      const hazard = hazardAt(ship.position[0], ship.position[2]);
+      if (hazard && ship.position[1] < floorAt(ship.position[0], ship.position[2]) + 4.5 && sludgeCooldown === 0) {
+        damage(hazard === LAVA ? 7 : 5, hazard === LAVA ? 'MOLTEN SLAG' : 'TOXIC SLUDGE'); sludgeCooldown = 0.6;
+      }
+      shieldDelay = Math.max(0, shieldDelay - dt);
+      if (shieldDelay === 0) shield = Math.min(SHIELD_MAX, shield + SHIELD_MAX * 0.07 * dt);
+      shieldGlow = Math.max(0, shieldGlow - dt * 2.5);
+      impactTimer = Math.max(0, impactTimer - dt);
+      hitTimer = Math.max(0, hitTimer - dt);
+      updateCombat(dt);
+      impactText.style.opacity = String(clamp(impactTimer, 0, 1));
+      damageFlash.style.opacity = shieldOnly ? '0' : String(clamp(impactTimer * 0.55, 0, 0.55));
+      shieldFlash.style.opacity = String(clamp(shieldGlow * 0.8, 0, 0.8));
+      shieldText.textContent = String(Math.floor(shield / SHIELD_MAX * 100));
+      shieldBar.style.width = `${shield / SHIELD_MAX * 100}%`;
+      missileText.textContent = String(missileAmmo);
+      speedText.textContent = ship.speed.toFixed(1);
+      headingText.textContent = String(Math.round((ship.yaw * 180 / Math.PI % 360 + 360) % 360)).padStart(3, '0');
+      altitudeText.textContent = String(Math.round(ship.position[1]));
+      barrelText.textContent = `${barrelsDestroyed} / ${barrels.length}`;
+      killText.textContent = `${kills} / ${enemies.length}`;
+      cannonText.textContent = WEAPONS[weaponLevel - 1].name;
+      healthText.textContent = String(health);
+      healthBar.style.width = `${health}%`;
+      healthBar.style.background = health > 35 ? '#69e4c2' : '#ff786a';
+      speedBar.style.width = `${ship.speed / 45 * 100}%`;
+      const zone = zoneAt(ship.position[0], ship.position[2]);
+      if (zone && zoneText.textContent !== zone.name) zoneText.textContent = zone.name;
+    }
+    function frame(now) {
+      const dt = clamp((now - lastTime) / 1000, 0, 0.05); lastTime = now;
+      update(dt);
+      scheduleMusic();
+      render();
+      ctx.clearRect(0, 0, width, height);
+      drawReticle();
+      drawTargets();
+      drawRadar();
+      requestAnimationFrame(frame);
+    }
+    // Painting the textures takes about a second, so show the HUD with a notice first.
+    statusText.textContent = 'FORGING SURFACES'; statusText.style.opacity = '1';
+    requestAnimationFrame(() => setTimeout(() => {
+      loadMaterials();
+      loadLevel(0, 100);
+      lastTime = performance.now();
+      requestAnimationFrame(frame);
+    }, 30));
+  })();
+  </script>
+</body>
+</html>
