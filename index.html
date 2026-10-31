@@ -126,7 +126,7 @@
     <div class="damage-flash" id="damageFlash"></div>
     <div class="shield-flash" id="shieldFlash"></div>
     <div class="warning" id="warningText">MISSILE WARNING</div>
-    <div class="boss" id="bossBar">OMEGA SENTINEL<div class="meter"><span id="bossMeter"></span></div><small id="bossState">SHIELDED</small></div>
+    <div class="boss" id="bossBar"><span id="bossName">OMEGA SENTINEL</span><div class="meter"><span id="bossMeter"></span></div><small id="bossState">SHIELDED</small></div>
     <div class="warp" id="warpFlash"></div>
     <div class="paused" id="pausedText">PAUSED</div>
     <div class="impact" id="impactText">HULL IMPACT</div>
@@ -194,7 +194,7 @@
     const speedBar = document.getElementById('speedBar');
     const pausedText = document.getElementById('pausedText');
     const cockpitPanel = document.querySelector('.cockpit');
-    const bossBar = document.getElementById('bossBar'), bossMeter = document.getElementById('bossMeter'), bossState = document.getElementById('bossState');
+    const bossName = document.getElementById('bossName'), bossBar = document.getElementById('bossBar'), bossMeter = document.getElementById('bossMeter'), bossState = document.getElementById('bossState');
     const impactText = document.getElementById('impactText');
     const statusText = document.getElementById('statusText');
     const damageFlash = document.getElementById('damageFlash');
@@ -787,9 +787,15 @@
       mine: { hp: 1, radius: 1.4, scale: 0.6, tint: [1.4, 0.55, 0.35], eye: [1.0, 0.3, 0.1], ram: 20, radar: '#ff7040', sight: 60, name: 'MINE' },
       sentinel: { hp: 60, radius: 7, scale: 2.6, tint: [1.3, 0.55, 0.9], eye: [1.0, 0.3, 0.6], ram: 30, radar: '#ff5a9a', sight: 170, name: 'SENTINEL', bump: true, boss: 'OMEGA SENTINEL' },
       pylon: { hp: 6, radius: 2.6, scale: 1, tint: [0.6, 0.9, 1.5], eye: [0.4, 0.8, 1.0], ram: 20, radar: '#7fb8ff', sight: 85, name: 'PYLON', bump: true },
+      carrier: { hp: 90, radius: 7.5, scale: 2.8, tint: [0.85, 1.15, 0.7], eye: [0.6, 1.0, 0.4], ram: 30, radar: '#a8ff6a', sight: 170, name: 'CARRIER', bump: true, boss: 'VOID CARRIER' },
+      herald: { hp: 150, radius: 8, scale: 3.2, tint: [0.95, 0.5, 1.5], eye: [0.85, 0.4, 1.0], ram: 34, radar: '#e070ff', sight: 190, name: 'HERALD', bump: true, boss: 'VOID HERALD', lance: 22 },
+      node: { hp: 8, radius: 2.4, scale: 1.1, tint: [0.95, 0.6, 1.6], eye: [0.8, 0.5, 1.0], ram: 20, radar: '#c99aff', sight: 130, name: 'NODE', bump: true },
     };
+    // A boss with guards cannot be hurt while any of them stand: the sentinel's pylons and the herald's orbiting nodes.
+    const GUARDS = { sentinel: 'pylon', herald: 'node' };
+    const guardsLeft = (boss) => enemies.filter(e => e.type === GUARDS[boss.type] && e.hp > 0).length;
     // Enemies get a little tougher in each later sector; bosses and their parts, mites and mines do not.
-    const toughness = (type) => ENEMY_TYPES[type].boss || ['pylon', 'mite', 'mine'].includes(type) ? 1 : 1 + 0.05 * levelIndex;
+    const toughness = (type) => ENEMY_TYPES[type].boss || ['pylon', 'node', 'mite', 'mine'].includes(type) ? 1 : 1 + 0.05 * levelIndex;
     // The sentinel cannot be hurt while any of its shield pylons stand.
     const pylonsLeft = () => enemies.filter(e => e.type === 'pylon' && e.hp > 0).length;
     const barrels = [], enemies = [], pickups = [];
@@ -2043,6 +2049,9 @@
     enemyMeshes.brood = crown(5, 2.0, 2.7, 2.6, 2.1);
     enemyMeshes.mite = enemyMeshes.hunter;
     enemyMeshes.mine = crown(4, 0.55, 1.2, 1.2, 1.2);
+    enemyMeshes.herald = crown(8, 1.9, 3.6, 2.4, 3.0);
+    enemyMeshes.node = crown(3, 0.7, 1.4, 1.6, 1.6);
+    enemyMeshes.carrier = faceted([[0, 0, 5], [-3, 0, 0], [0, 1.4, 0], [3, 0, 0], [0, -1.2, 0], [0, 0, -5], [-5.5, 0.3, -3.5], [5.5, 0.3, -3.5]], HULL_TRIS);
     const boxHull = (hx, hy, hz) => faceted(
       [[-hx, -hy, -hz], [hx, -hy, -hz], [hx, hy, -hz], [-hx, hy, -hz], [-hx, -hy, hz], [hx, -hy, hz], [hx, hy, hz], [-hx, hy, hz]],
       [[0, 1, 2], [0, 2, 3], [4, 6, 5], [4, 7, 6], [0, 4, 5], [0, 5, 1], [3, 2, 6], [3, 6, 7], [0, 3, 7], [0, 7, 4], [1, 5, 6], [1, 6, 2]], Math.max(hx, hy, hz) * 2);
@@ -2825,20 +2834,25 @@
           streak([x, vent.position[1] + rise, z], [x, vent.position[1] + rise + 3.5, z], 0.12, [1.0, 0.65, 0.3], 0.9 * (1 - rise / 40));
         }
       }
-      const sentinel = enemies.find(e => e.type === 'sentinel' && e.hp > 0);
+      const sentinel = enemies.find(e => e.type === 'sentinel' && e.hp > 0), herald = enemies.find(e => e.type === 'herald' && e.hp > 0);
       for (const enemy of enemies) {
-        if (enemy.hp <= 0 || !nearby(enemy.position, 300)) continue;
-        if (enemy.type === 'sentinel') {
-          const pulse = 0.8 + 0.2 * Math.sin(time * 5);
-          billboard(enemy.position, 3.2 * pulse, [1.0, 0.35, 0.65], 1.6 + enemy.flash * 2);
-          billboard(enemy.position, 9 * pulse, [1.0, 0.25, 0.5], 0.3 + enemy.flash);
-          if (pylonsLeft() > 0) billboard(enemy.position, 12, [0.3, 0.6, 1.0], 0.22 + (enemy.shieldHit || 0) * 0.5);
+        if (enemy.hp <= 0 || !nearby(enemy.position, 320)) continue;
+        if (ENEMY_TYPES[enemy.type].boss) {
+          const pulse = 0.8 + 0.2 * Math.sin(time * 5), core = enemy.type === 'herald' ? [0.85, 0.35, 1.0] : enemy.type === 'carrier' ? [0.6, 1.0, 0.4] : [1.0, 0.35, 0.65];
+          billboard(enemy.position, 3.2 * pulse, core, 1.6 + enemy.flash * 2);
+          billboard(enemy.position, 9 * pulse, mul(core, 0.8), 0.3 + enemy.flash);
+          if (GUARDS[enemy.type] && guardsLeft(enemy) > 0) billboard(enemy.position, 13, [0.3, 0.6, 1.0], 0.22 + (enemy.shieldHit || 0) * 0.5);
+          if (enemy.charge > 0) {
+            const due = 1 - enemy.charge / 1.25, end = add(enemy.position, mul(normalize(sub(enemy.aimPoint, enemy.position)), 220));
+            streak(enemy.position, end, 0.1 + due * 0.3, [1.0, 0.2, 0.6], 0.5 + due * 1.4 + (Math.sin(time * 40) > 0 ? 0.3 : 0));
+          }
           enemy.shieldHit = Math.max(0, (enemy.shieldHit || 0) - 0.05);
           continue;
         }
-        if (enemy.type === 'pylon') {
-          billboard(add(enemy.position, [0, 4.4, 0]), 1.4, ENEMY_TYPES.pylon.eye, 1.6 + enemy.flash * 2);
-          if (sentinel) streak(add(enemy.position, [0, 4.4, 0]), sentinel.position, 0.3, [0.35, 0.65, 1.0], 0.55 + 0.25 * Math.sin(time * 9 + enemy.phase));
+        if (enemy.type === 'pylon' || enemy.type === 'node') {
+          const top = enemy.type === 'pylon' ? add(enemy.position, [0, 4.4, 0]) : enemy.position, master = enemy.type === 'pylon' ? sentinel : herald;
+          billboard(top, 1.4, ENEMY_TYPES[enemy.type].eye, 1.6 + enemy.flash * 2);
+          if (master) streak(top, master.position, 0.3, enemy.type === 'pylon' ? [0.35, 0.65, 1.0] : [0.7, 0.4, 1.0], 0.55 + 0.25 * Math.sin(time * 9 + enemy.phase));
           continue;
         }
         const kind = ENEMY_TYPES[enemy.type];
@@ -3164,9 +3178,9 @@
     }
     function hurtEnemy(enemy, amount) {
       if (enemy.hp <= 0) return;
-      if (enemy.type === 'sentinel' && pylonsLeft() > 0) {
+      if (GUARDS[enemy.type] && guardsLeft(enemy) > 0) {
         enemy.flash = 0.35; enemy.active = true; enemy.shieldHit = 1;
-        registerHit('CORE SHIELDED // DESTROY THE PYLONS'); return;
+        registerHit(enemy.type === 'herald' ? 'HERALD SHIELDED // DESTROY THE NODES' : 'CORE SHIELDED // DESTROY THE PYLONS'); return;
       }
       if (enemy.shieldedBy && enemy.shieldedBy.hp > 0) {
         enemy.flash = 0.3; enemy.shieldHit = 1; if (!enemy.active) alert(enemy);
@@ -3177,17 +3191,17 @@
       if (enemy.hp > 0) { registerHit('TARGET HIT'); return; }
       if (!enemy.summoned) kills++;
       if (enemy.type === 'mine') { detonateMine(enemy); registerHit('MINE DESTROYED'); return; }
-      if (enemy.type === 'pylon') {
-        const left = pylonsLeft();
-        registerHit(left ? `PYLON DESTROYED // ${left} LEFT` : 'CORE SHIELD DOWN');
+      if (enemy.type === 'pylon' || enemy.type === 'node') {
+        const left = enemies.filter(e => e.type === enemy.type && e.hp > 0).length;
+        registerHit(left ? `${ENEMY_TYPES[enemy.type].name} DESTROYED // ${left} LEFT` : enemy.type === 'node' ? 'HERALD SHIELD DOWN' : 'CORE SHIELD DOWN');
         explosions.push({ position: enemy.position.slice(), life: 0.65, scale: 1.3 });
         sparks(enemy.position, 30, [0.5, 0.8, 1.0], 20); playExplosionSound();
         return;
       }
-      if (enemy.type === 'sentinel') {
+      if (ENEMY_TYPES[enemy.type].boss) {
         // A chain of blasts across the hull, then one big one that opens the boss gate.
-        registerHit('OMEGA SENTINEL CRITICAL');
-        bossBlast = { position: enemy.position.slice(), timer: 1.8, next: 0 };
+        registerHit(`${ENEMY_TYPES[enemy.type].boss} CRITICAL`);
+        bossBlast = { position: enemy.position.slice(), timer: 1.8, next: 0, name: ENEMY_TYPES[enemy.type].boss };
         return;
       }
       const kind = ENEMY_TYPES[enemy.type], scale = kind.scale;
@@ -3293,7 +3307,7 @@
       return normalize(sub(add(ship.position, mul(shipVelocity, t * DIFFICULTIES[save.difficulty].lead)), from));
     };
     const fireBolt = (from, direction, speed, amount, extra) => enemyShots.push({ position: from, velocity: mul(direction, speed), life: 4, damage: amount, ...extra });
-    const SPINNERS = { sentinel: 0.45, pylon: 1.2, aegis: 1.6, mine: 2.4 };
+    const SPINNERS = { sentinel: 0.45, pylon: 1.2, aegis: 1.6, mine: 2.4, herald: 0.3, node: 1.8 };
     // A hostile that spots the ship wakes the others close to it; hunters and mites only wake when they see it.
     function alert(enemy) {
       enemy.active = true;
@@ -3354,6 +3368,23 @@
         case 'sentinel':
           enemy.position = add(enemy.base, [Math.sin(time * 0.35 + enemy.phase) * 16, Math.sin(time * 0.7) * 2.5, Math.sin(time * 0.5) * 6]);
           return;
+        case 'carrier':
+          enemy.position = add(enemy.base, [Math.sin(time * 0.25 + enemy.phase) * 24, Math.sin(time * 0.5) * 3, Math.cos(time * 0.25 + enemy.phase) * 8]);
+          return;
+        case 'herald': {
+          // The herald drifts in a slow figure eight; it rises higher once its nodes are gone.
+          const lift = guardsLeft(enemy) ? 0 : 6;
+          enemy.position = add(enemy.base, [Math.sin(time * 0.3 + enemy.phase) * 22, lift + Math.sin(time * 0.6) * 5, Math.sin(time * 0.6 + enemy.phase) * 10]);
+          return;
+        }
+        case 'node': {
+          // Nodes circle the herald in a tilted ring, evenly spaced by their spawn order.
+          enemy.owner ||= enemies.find(e => e.type === 'herald');
+          if (!enemy.owner || enemy.owner.hp <= 0) return bob(enemy, 1.3, 1.1);
+          const slot = enemies.filter(e => e.type === 'node').indexOf(enemy), a = time * 0.7 + slot * Math.PI * 2 / 3;
+          enemy.position = add(enemy.owner.position, [Math.cos(a) * 17, Math.sin(a * 2) * 4, Math.sin(a) * 17]);
+          return;
+        }
         default: return bob(enemy, 1.3, 1.1);
       }
     }
@@ -3362,6 +3393,9 @@
       const below = (drop) => { const spot = add(enemy.position, [0, -drop, 0]); return freeAt(...spot, 1) ? spot : enemy.position.slice(); };
       switch (enemy.type) {
         case 'sentinel': return sentinelAttack(enemy, aim);
+        case 'carrier': return carrierAttack(enemy, aim);
+        case 'herald': return heraldAttack(enemy, aim, distance);
+        case 'node': fireBolt(enemy.position.slice(), leadAim(enemy.position, 26), 26, 8); enemy.cooldown = 2.4 + random(); return;
         case 'striker':
           enemyMissiles.push({ position: add(enemy.position, [0, -0.8, 0]), velocity: mul(normalize(add(aim, [0, 0.35, 0])), 20), life: 6.5 });
           enemy.cooldown = 4.5 + random() * 1.5;
@@ -3433,7 +3467,7 @@
           // The lancer's aiming beam trails the ship; when the charge completes it fires a fast bolt down the beam.
           enemy.aimPoint = add(enemy.aimPoint, mul(sub(ship.position, enemy.aimPoint), Math.min(1, dt * 1.7)));
           if (!visible) { enemy.charge = 0; enemy.cooldown = 1.5; }
-          else if ((enemy.charge -= dt) <= 0) { fireBolt(enemy.position.slice(), normalize(sub(enemy.aimPoint, enemy.position)), 105, 16, { kind: 'lance', life: 2.5 }); playLance(distance); }
+          else if ((enemy.charge -= dt) <= 0) { fireBolt(enemy.position.slice(), normalize(sub(enemy.aimPoint, enemy.position)), 105, kind.lance || 16, { kind: 'lance', life: 2.5 }); playLance(distance); }
         }
         if (visible && distance > 6 && enemy.cooldown <= 0) attack(enemy, aim, distance);
         if (enemy.type === 'mine') {
@@ -3456,7 +3490,7 @@
     // The sentinel fans bolts at the ship and adds homing missiles, more of them once its shield is down;
     // below 40% it fires faster and calls in hunters.
     function sentinelAttack(enemy, aim) {
-      const shielded = pylonsLeft() > 0, enraged = enemy.hp <= ENEMY_TYPES.sentinel.hp * 0.4;
+      const shielded = guardsLeft(enemy) > 0, enraged = enemy.hp <= enemy.maxHp * 0.4;
       for (let k = -3; k <= 3; k++) {
         const c = Math.cos(k * 0.13), s = Math.sin(k * 0.13);
         enemyShots.push({ position: add(enemy.position, mul(aim, 7)), velocity: mul([aim[0] * c + aim[2] * s, aim[1], -aim[0] * s + aim[2] * c], 26), life: 6, damage: 8 });
@@ -3476,6 +3510,46 @@
         notice('SENTINEL CALLS HUNTERS', 1.6);
       }
       enemy.cooldown = enraged ? 1.9 : 2.8;
+    }
+    // The carrier fires a fan of bolts and a missile pair, and every other volley launches two skimmers from its
+    // bays (four at most); badly hurt, it launches mites instead and fires faster.
+    function carrierAttack(enemy, aim) {
+      const hurt = enemy.hp <= enemy.maxHp * 0.4, side = normalize([aim[2], 0, -aim[0]]);
+      for (let k = -2; k <= 2; k++) {
+        const c = Math.cos(k * 0.1), s = Math.sin(k * 0.1);
+        fireBolt(add(enemy.position, mul(aim, 7)), [aim[0] * c + aim[2] * s, aim[1], -aim[0] * s + aim[2] * c], 28, 9, { life: 5 });
+      }
+      for (const offset of [-6, 6]) enemyMissiles.push({ position: add(enemy.position, add(mul(side, offset), [0, -2, 0])), velocity: mul(normalize(add(aim, [0, 0.4, 0])), 20), life: 6.5 });
+      playMissileLaunch(0.8);
+      enemy.volleys = (enemy.volleys || 0) + 1;
+      if (enemy.volleys % 2 === 0 && enemies.filter(e => e.owner === enemy && e.hp > 0).length < 4) {
+        for (const offset of [-5, 5]) { const spot = add(enemy.position, [offset, -4, 0]); summon(hurt ? 'mite' : 'skimmer', freeAt(...spot, 1.5) ? spot : enemy.position.slice(), enemy); }
+        notice('CARRIER LAUNCHING', 1.4);
+      }
+      enemy.cooldown = hurt ? 2.2 : 3;
+    }
+    // The herald alternates a spinning ring of bolts with a charged beam shot. With its nodes down it adds homing
+    // missiles, and below a third of its hull it fires faster and calls skimmers.
+    function heraldAttack(enemy, aim, distance) {
+      const shielded = guardsLeft(enemy) > 0, enraged = enemy.hp <= enemy.maxHp / 3;
+      enemy.volleys = (enemy.volleys || 0) + 1;
+      if (enemy.volleys % 2) {
+        const count = enraged ? 22 : 16, spin = time * 0.7;
+        for (let k = 0; k < count; k++) {
+          const a = spin + k / count * Math.PI * 2, direction = normalize([Math.cos(a), aim[1] * 0.6 + Math.sin(a * 3) * 0.12, Math.sin(a)]);
+          fireBolt(add(enemy.position, mul(direction, 8)), direction, 19, 9, { life: 7 });
+        }
+      } else { enemy.charge = 1.25; enemy.aimPoint = ship.position.slice(); playCharge(distance); }
+      if (!shielded && enemy.volleys % 3 === 0) {
+        const side = normalize([aim[2], 0, -aim[0]]);
+        for (const offset of [-7, 7]) enemyMissiles.push({ position: add(enemy.position, add(mul(side, offset), [0, -2, 0])), velocity: mul(normalize(add(aim, [0, 0.35, 0])), 20), life: 6.5 });
+        playMissileLaunch(0.8);
+      }
+      if (enraged && enemy.volleys % 4 === 0 && enemies.filter(e => e.owner === enemy && e.hp > 0).length < 4) {
+        for (const offset of [-7, 7]) { const spot = add(enemy.position, [offset, -4, 0]); summon('skimmer', freeAt(...spot, 1.5) ? spot : enemy.position.slice(), enemy); }
+        notice('HERALD CALLS SKIMMERS', 1.6);
+      }
+      enemy.cooldown = enraged ? 1.6 : shielded ? 2.6 : 2.1;
     }
     // Turn a direction toward another by at most maxAngle radians.
     function steer(direction, wanted, maxAngle) {
@@ -3714,7 +3788,7 @@
         if (bossBlast.timer <= 0) {
           explosions.push({ position: bossBlast.position, life: 0.65, scale: 3.2 });
           sparks(bossBlast.position, 60, [1.0, 0.45, 0.6], 28); playExplosionSound();
-          for (const gate of gates) if (gate.kind === 'boss') openGate(gate, 'OMEGA SENTINEL DESTROYED // ASCENT OPEN');
+          for (const gate of gates) if (gate.kind === 'boss') openGate(gate, `${bossBlast.name} DESTROYED // WAY OPEN`);
           bossBlast = null;
         }
       }
@@ -3833,12 +3907,14 @@
       if (zone) visitedZones.add(zone.name);
       revealTimer -= dt;
       if (revealTimer <= 0) { revealMap(); revealTimer = 0.2; }
-      const boss = enemies.find(e => e.type === 'sentinel');
-      bossBar.classList.toggle('show', !!boss && boss.active && boss.hp > 0);
-      if (boss && boss.active && boss.hp > 0) {
-        const left = pylonsLeft();
-        bossMeter.style.width = `${boss.hp / ENEMY_TYPES.sentinel.hp * 100}%`;
-        bossState.textContent = left ? `SHIELDED // ${left} PYLON${left > 1 ? 'S' : ''} LEFT` : boss.hp <= ENEMY_TYPES.sentinel.hp * 0.4 ? 'CORE CRITICAL' : 'SHIELD DOWN';
+      const boss = enemies.find(e => ENEMY_TYPES[e.type].boss && !e.summoned), fighting = !!boss && boss.active && boss.hp > 0;
+      bossBar.classList.toggle('show', fighting);
+      setTrack(fighting ? 'boss' : level.music || 'relay');
+      if (fighting) {
+        const left = GUARDS[boss.type] ? guardsLeft(boss) : 0, part = GUARDS[boss.type] === 'node' ? 'NODE' : 'PYLON';
+        bossName.textContent = ENEMY_TYPES[boss.type].boss;
+        bossMeter.style.width = `${boss.hp / boss.maxHp * 100}%`;
+        bossState.textContent = left ? `SHIELDED // ${left} ${part}${left > 1 ? 'S' : ''} LEFT` : boss.hp <= boss.maxHp * 0.4 ? 'CORE CRITICAL' : GUARDS[boss.type] ? 'SHIELD DOWN' : 'ENGAGED';
       }
     }
     function frame(now) {
