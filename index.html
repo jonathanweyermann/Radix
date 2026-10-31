@@ -104,6 +104,14 @@
     .menu .sectors button { display: flex; justify-content: space-between; gap: 10px; text-align: left; }
     .menu .sectors small { color: #f0a65c; font-size: 10px; white-space: nowrap; }
     .menu .sectors button:disabled small { color: inherit; }
+    .menu .arsenal { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 6px; text-align: left; }
+    .menu .tier { border: 1px solid #22404c; background: #08131c; padding: 6px 9px; color: #4d6470; }
+    .menu .tier b { display: block; font-size: 11px; font-weight: normal; letter-spacing: .14em; }
+    .menu .tier small { display: block; margin-top: 3px; font-size: 10px; letter-spacing: .04em; line-height: 1.4; }
+    .menu .tier.got { border-color: #3f7f90; color: #8a9ca6; }
+    .menu .tier.got b { color: #f0a65c; }
+    .menu .tier.now { border-color: #75edff; background: #14394a; }
+    .menu .tier.now b { color: #fff; }
     .menu p { margin: 18px 0 0; color: #8a9ca6; font-size: 10px; line-height: 1.6; letter-spacing: .08em; }
     @media (max-width: 700px) { .top { left: 16px; right: 16px; top: 16px; } .brand { font-size: 11px; } .mission { display: none; } .cockpit { height: 155px; padding: 11px 12px 28px; grid-template-columns: 1fr 100px 1fr; gap: 6px; } .panel { padding: 6px; border-width: 2px; } .panel-row { font-size: 9px; } .panel-title { font-size: 9px; } #radar { width: 82px; height: 82px; } .readouts { display: none; } .controls { left: 10px; right: 10px; font-size: 8px; } }
   </style>
@@ -150,6 +158,8 @@
       <div class="row" id="difficultyRow"></div>
       <h2>SECTOR SELECT</h2>
       <div class="sectors" id="sectorList"></div>
+      <h2>ARSENAL // TIER LIST</h2>
+      <div class="arsenal" id="arsenalList"></div>
       <p id="menuNote">Sectors unlock as you reach them, and start with the cannon and missiles you last entered them with. Press Esc during flight to open this menu.</p>
       <p id="touchNote" hidden>Touch: drag the left stick to steer; push up to climb (PITCH flips this), and the nose levels out when you let go. Hold THRUST or BRAKE to change speed; it stays where you leave it. Hold FIRE to shoot, tap MSL for a missile.</p>
     </div>
@@ -200,7 +210,7 @@
     let width = 0, height = 0, dpr = 1, lastTime = performance.now(), time = 0, paused = false, impactTimer = 0, hitTimer = 0, muzzleTimer = 0, fireCooldown = 0, wallCooldown = 0, health = 100, barrelsDestroyed = 0, kills = 0, destroyed = false, mouseFiring = false, audioContext = null, musicBus = null, musicOn = true, musicStep = 0, musicNextTime = 0;
     let musicIn = null, reverbIn = null, delayIn = null, noiseBuffer = null, musicIntensity = 0;
     let shield = 34, shieldDelay = 0, shieldGlow = 0, shieldOnly = false, missileAmmo = 0, levelMissiles = 0, missileCooldown = 0, missileRequest = false, lockTarget = null, lockTimer = 0;
-    let sludgeCooldown = 0, weaponLevel = 1, levelWeapon = 1, finished = false, warpTimer = 0, warpGlow = 0, noticeTimer = 0;
+    let sludgeCooldown = 0, weaponLevel = 1, levelWeapon = 1, launcherLevel = 1, levelLauncher = 1, railCount = 0, finished = false, warpTimer = 0, warpGlow = 0, noticeTimer = 0;
     let seed = 0x5eed;
     const random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 0x100000000; };
     const range = (a, b) => a + random() * (b - a);
@@ -796,7 +806,7 @@
             addEnemy(type, x, y, z); return true;
           });
         }
-        for (const type of ['health', 'weapon', 'missile']) scatter(zone[type] || 0, 3, (x, z) => {
+        for (const type of ['health', 'weapon', 'missile', 'launcher']) scatter(zone[type] || 0, 3, (x, z) => {
           if (!walkable(x, z, 3) || !flatAt(x, z, 2) || hazardAt(x, z) || fromStart(x, z) < 25 ||
             barrels.some(b => Math.hypot(b.position[0] - x, b.position[2] - z) < 4)) return false;
           pickups.push({ type, position: [x, floorAt(x, z) + 3, z], taken: false, phase: range(0, Math.PI * 2) });
@@ -2009,18 +2019,24 @@
       }
       if (audioContext.state === 'suspended') audioContext.resume();
     }
-    function playPew() {
+    function playPew(plasma) {
       if (!audioContext || audioContext.state !== 'running') return;
       const now = audioContext.currentTime;
       const oscillator = audioContext.createOscillator();
       const volume = audioContext.createGain();
       oscillator.type = 'sawtooth';
-      oscillator.frequency.setValueAtTime(700, now);
-      oscillator.frequency.exponentialRampToValueAtTime(170, now + 0.13);
+      oscillator.frequency.setValueAtTime(plasma ? 420 : 700, now);
+      oscillator.frequency.exponentialRampToValueAtTime(plasma ? 90 : 170, now + 0.13);
       volume.gain.setValueAtTime(0.075, now);
       volume.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
       oscillator.connect(volume); volume.connect(audioContext.destination);
       oscillator.start(now); oscillator.stop(now + 0.15);
+      if (plasma) synth(160, 60, 0.18, 0.06, 'sine', now);
+    }
+    function playRail() {
+      if (!audioContext || audioContext.state !== 'running') return;
+      const now = audioContext.currentTime;
+      synth(2600, 240, 0.28, 0.05, 'square', now); synth(900, 70, 0.4, 0.07, 'sawtooth', now);
     }
     function synth(freq, endFreq, length, volume, type, when, output = audioContext.destination) {
       if (!audioContext || audioContext.state !== 'running') return;
@@ -2202,7 +2218,7 @@
       radarEdges.length = 0; beacons.length = 0;
       levelMeshes = buildLevel(level);
       ship.position = level.start.slice(); ship.yaw = level.yaw; ship.pitch = 0; ship.roll = 0; ship.speed = 8; ship.strafe = [0, 0];
-      health = startHealth; levelWeapon = weaponLevel; levelMissiles = missileAmmo; shield = SHIELD_MAX; shieldDelay = 0;
+      health = startHealth; levelWeapon = weaponLevel; levelMissiles = missileAmmo; levelLauncher = launcherLevel; rails.length = 0; railCount = 0; shield = SHIELD_MAX; shieldDelay = 0;
       missiles.length = 0; enemyMissiles.length = 0; lockTarget = null; lockTimer = 0;
       barrelsDestroyed = 0; kills = 0; destroyed = false; finished = false; sludgeCooldown = 0; paused = menuOpen; mouseFiring = false;
       impactTimer = 0; hitTimer = 0; muzzleTimer = 0; fireCooldown = 0; wallCooldown = 0; warpTimer = 0;
@@ -2210,7 +2226,7 @@
       gameOverText.classList.remove('show'); pausedText.classList.remove('show');
       bossBlast = null; resetMap();
       sectorText.textContent = `${index + 1} / ${LEVELS.length}`; levelText.textContent = level.name;
-      save.sectors[index] = { weapon: weaponLevel, missiles: missileAmmo }; save.last = index; writeSave();
+      save.sectors[index] = { weapon: weaponLevel, missiles: missileAmmo, launcher: launcherLevel }; save.last = index; noteArsenal();
       notice(`SECTOR ${index + 1} // ${level.name} ${level.title}`, 3);
     }
     // Difficulty scales how many enemies each zone spawns and how much damage reaches the ship.
@@ -2226,12 +2242,18 @@
     if (!DIFFICULTIES[save.difficulty]) save.difficulty = 'normal';
     if (!(save.last >= 0 && save.last < LEVELS.length && save.sectors[save.last])) save.last = 0;
     const writeSave = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch { /* storage may be blocked */ } };
+    // The arsenal remembers the best cannon and launcher tiers ever reached, for the menu's tier list.
+    function noteArsenal() {
+      const best = save.best || (save.best = { weapon: 1, launcher: 1 });
+      best.weapon = Math.max(best.weapon, weaponLevel); best.launcher = Math.max(best.launcher, launcherLevel);
+      writeSave();
+    }
     const menu = document.getElementById('menu'), resumeButton = document.getElementById('resumeButton');
-    const sectorList = document.getElementById('sectorList'), difficultyRow = document.getElementById('difficultyRow'), menuNote = document.getElementById('menuNote');
+    const sectorList = document.getElementById('sectorList'), arsenalList = document.getElementById('arsenalList'), difficultyRow = document.getElementById('difficultyRow'), menuNote = document.getElementById('menuNote');
     let menuOpen = false, menuOpenedAt = 0, started = false;
     function startSector(index) {
       const kit = save.sectors[index] || { weapon: 1, missiles: 0 };
-      weaponLevel = kit.weapon; missileAmmo = kit.missiles;
+      weaponLevel = clamp(kit.weapon, 1, WEAPONS.length); missileAmmo = kit.missiles; launcherLevel = clamp(kit.launcher || 1, 1, LAUNCHERS.length);
       loadLevel(index, 100);
     }
     function renderMenu() {
@@ -2248,11 +2270,21 @@
         });
         return button;
       }));
+      const best = save.best || { weapon: 1, launcher: 1 };
+      const tier = (kind, label, info, got, now) => {
+        const item = document.createElement('div'), head = document.createElement('b'), body = document.createElement('small');
+        item.className = `tier${got ? ' got' : ''}${now ? ' now' : ''}`;
+        head.textContent = got ? label : `${kind} // ???`; body.textContent = got ? info : 'Not found yet.';
+        item.append(head, body); return item;
+      };
+      arsenalList.replaceChildren(
+        ...WEAPONS.map((w, i) => tier(w.name, `${w.name} ${w.title}`, w.info, i < best.weapon, i === weaponLevel - 1)),
+        ...LAUNCHERS.map((l, i) => tier(`LAUNCHER ${i + 1}`, l.name, l.info, i < best.launcher, i === launcherLevel - 1)));
       sectorList.replaceChildren(...LEVELS.map((def, i) => {
         const button = document.createElement('button'), kit = save.sectors[i];
         const label = document.createElement('span'), detail = document.createElement('small');
         label.textContent = `${i + 1}. ${def.name} ${def.title}`;
-        detail.textContent = kit ? `${WEAPONS[kit.weapon - 1].name} / ${kit.missiles} MSL` : i === 0 ? 'MK I / 0 MSL' : 'LOCKED';
+        detail.textContent = kit ? `${WEAPONS[clamp(kit.weapon, 1, WEAPONS.length) - 1].name} / ${kit.missiles} MSL` : i === 0 ? 'MK I / 0 MSL' : 'LOCKED';
         button.append(label, detail); button.disabled = !kit && i > 0;
         button.addEventListener('click', () => { startSector(i); closeMenu(); });
         return button;
@@ -2280,10 +2312,10 @@
       if (!enter) return;
       Promise.resolve(enter.call(root)).then(() => screen.orientation?.lock?.('landscape')).catch(() => {});
     });
-    document.getElementById('newGameButton').addEventListener('click', () => { weaponLevel = 1; missileAmmo = 0; loadLevel(0, 100); closeMenu(); });
+    document.getElementById('newGameButton').addEventListener('click', () => { weaponLevel = 1; missileAmmo = 0; launcherLevel = 1; loadLevel(0, 100); closeMenu(); });
     function resetGame() {
-      if (finished) { weaponLevel = 1; missileAmmo = 0; loadLevel(0, 100); }
-      else { weaponLevel = levelWeapon; missileAmmo = levelMissiles; loadLevel(levelIndex, 100); }
+      if (finished) { weaponLevel = 1; missileAmmo = 0; launcherLevel = 1; loadLevel(0, 100); }
+      else { weaponLevel = levelWeapon; missileAmmo = levelMissiles; launcherLevel = levelLauncher; loadLevel(levelIndex, 100); }
     }
     function damage(amount, label) {
       if (destroyed || finished || warpTimer > 0) return;
@@ -2344,7 +2376,7 @@
       return new Float32Array([cy * cr, sr * scale, -sy * cr, 0, -cy * sr, cr * scale, sy * sr, 0, sy, 0, cy, 0, position[0], position[1], position[2], 1]);
     }
     const IDENTITY = modelMatrix([0, 0, 0]), WHITE = [1, 1, 1];
-    const PICKUP_COLORS = { health: [0.35, 1.0, 0.55], weapon: [1.0, 0.62, 0.18], missile: [1.0, 0.3, 0.5] };
+    const PICKUP_COLORS = { health: [0.35, 1.0, 0.55], weapon: [1.0, 0.62, 0.18], missile: [1.0, 0.3, 0.5], launcher: [0.7, 0.45, 1.0] };
     const exposureAt = (p) => coveredAt(p[0], p[2]) ? 0.3 : 1;
     const exitCenter = () => level.exit.slice(0, 3);
     function useMaterial(material, pulse = 1) {
@@ -2360,7 +2392,8 @@
     }
     function gatherLights(camera) {
       const list = [];
-      for (const shot of shots) list.push([shot.position, 16, [0.25, 0.75, 1.0]]);
+      for (const shot of shots) list.push([shot.position, 16, shot.kind === 'plasma' ? [0.9, 0.35, 1.0] : [0.25, 0.75, 1.0]]);
+      for (const rail of rails) list.push([rail.to, 30, mul([0.5, 0.85, 1.0], rail.life / 0.22 * 2)]);
       for (const shot of enemyShots) list.push([shot.position, 12, [1.0, 0.4, 0.15]]);
       for (const missile of missiles) list.push([missile.position, 14, [1.0, 0.55, 0.2]]);
       for (const missile of enemyMissiles) list.push([missile.position, 14, [1.0, 0.25, 0.15]]);
@@ -2433,9 +2466,21 @@
         billboard(add(gate, spansX ? [Math.cos(angle) * r, Math.sin(angle) * r, 0] : [0, Math.sin(angle) * r, Math.cos(angle) * r]), 1.1, [0.5, 1.0, 0.75], 0.9);
       }
       for (const shot of shots) {
+        if (shot.kind === 'plasma') {
+          streak(sub(shot.position, mul(shot.velocity, 0.05)), shot.position, 0.8, [1.0, 0.4, 0.95], 1.5);
+          billboard(shot.position, 1.6, [1.0, 0.75, 1.0], 1.4);
+          billboard(shot.position, 3.2, [0.9, 0.3, 1.0], 0.35);
+          continue;
+        }
         const width = 0.45 + (shot.damage - 1) * 0.2;
         streak(sub(shot.position, mul(shot.velocity, 0.06)), shot.position, width, shot.damage > 1 ? [0.75, 0.6, 1.0] : [0.35, 0.9, 1.0], 1.6);
         billboard(shot.position, width * 2, [0.8, 1.0, 1.0], 1.2);
+      }
+      for (const rail of rails) {
+        const k = rail.life / 0.22;
+        streak(rail.from, rail.to, 0.35 * k + 0.1, [0.85, 1.0, 1.0], 2.2 * k);
+        streak(rail.from, rail.to, 1.6 * k, [0.3, 0.7, 1.0], 0.7 * k);
+        billboard(rail.to, 3 * k, [0.6, 0.9, 1.0], 1.5 * k);
       }
       for (const [group, body, flame] of [[missiles, [1.0, 0.9, 0.7], [1.0, 0.45, 0.15]], [enemyMissiles, [1.0, 0.55, 0.45], [1.0, 0.2, 0.1]]]) {
         for (const missile of group) {
@@ -2518,8 +2563,8 @@
       for (const pickup of pickups) {
         if (pickup.taken || !near(pickup.position, 300)) continue;
         useMaterial(materials[pickup.type === 'health' ? 'pickupHealth' : 'pickupWeapon']);
-        drawMesh(pickupMesh, modelMatrix(add(pickup.position, [0, Math.sin(time * 2 + pickup.phase) * 0.4, 0]), time * 1.5 + pickup.phase), 0,
-          pickup.type === 'missile' ? [1.3, 0.5, 0.85] : WHITE, exposureAt(pickup.position));
+        drawMesh(pickupMesh, modelMatrix(add(pickup.position, [0, Math.sin(time * 2 + pickup.phase) * 0.4, 0]), time * 1.5 + pickup.phase, 0, pickup.type === 'launcher' ? 1.3 : 1), 0,
+          pickup.type === 'missile' ? [1.3, 0.5, 0.85] : pickup.type === 'launcher' ? [0.8, 0.55, 1.6] : WHITE, exposureAt(pickup.position));
       }
 
       const sprites = buildSprites(camera);
@@ -2566,7 +2611,7 @@
         r.fillStyle = color; r.beginPath(); r.arc(cx + right,cy - ahead,size,0,Math.PI*2); r.fill();
       };
       for (const barrel of barrels) if (!barrel.exploded) mark(barrel.position,'#e8a05e',1.8);
-      for (const pickup of pickups) if (!pickup.taken) mark(pickup.position, pickup.type === 'health' ? '#6dffa0' : '#ffc45a', 2.4);
+      for (const pickup of pickups) if (!pickup.taken) mark(pickup.position, pickup.type === 'health' ? '#6dffa0' : pickup.type === 'launcher' ? '#d9a6ff' : '#ffc45a', 2.4);
       for (const enemy of enemies) if (enemy.hp > 0) mark(enemy.position, ENEMY_TYPES[enemy.type].radar, enemy.type === 'sentinel' ? 4.6 : enemy.type === 'warden' ? 3.4 : 2.6);
       r.save(); r.beginPath(); r.arc(cx,cy,51,0,Math.PI*2); r.clip();
       r.strokeStyle = '#ff9a3a'; r.lineWidth = 2.2; r.beginPath();
@@ -2607,13 +2652,25 @@
         ctx.restore();
       }
     }
-    // The neutron cannon gets faster, then twin-barrelled, then triple-barrelled with heavier bolts.
+    // The neutron cannon's tiers. Each bolt is [barrel offset, outward angle, damage, kind]: plain bolts converge
+    // on the reticle, angled ones fan out, plasma bolts pierce up to three targets and splash, and the lance
+    // adds an instant rail beam every few volleys.
     const WEAPONS = [
-      { name: 'MK I', cooldown: 0.16, damage: 1, guns: [0] },
-      { name: 'MK II', cooldown: 0.11, damage: 1, guns: [0] },
-      { name: 'MK III', cooldown: 0.11, damage: 1, guns: [-0.7, 0.7] },
-      { name: 'MK IV', cooldown: 0.1, damage: 2, guns: [-0.8, 0, 0.8] },
+      { name: 'MK I', title: 'PULSE', cooldown: 0.16, bolts: [[0, 0, 1]], info: 'Single neutron bolt.' },
+      { name: 'MK II', title: 'RAPID', cooldown: 0.1, bolts: [[0, 0, 1]], info: 'Faster cycling single bolt.' },
+      { name: 'MK III', title: 'TWIN', cooldown: 0.1, bolts: [[-0.7, 0, 1], [0.7, 0, 1]], info: 'Two barrels crossing at the reticle.' },
+      { name: 'MK IV', title: 'TRIDENT', cooldown: 0.1, bolts: [[-0.8, 0, 2], [0, 0, 2], [0.8, 0, 2]], info: 'Three heavy bolts.' },
+      { name: 'MK V', title: 'SCATTER', cooldown: 0.1, bolts: [[-0.8, 0, 2], [0, 0, 2], [0.8, 0, 2], [-1, -0.09, 1], [1, 0.09, 1]], info: 'Trident plus two fanned bolts for swarms.' },
+      { name: 'MK VI', title: 'PLASMA', cooldown: 0.12, bolts: [[-0.9, 0, 4, 'plasma'], [0, 0, 2], [0.9, 0, 4, 'plasma']], info: 'Plasma bolts pierce three targets and splash.' },
+      { name: 'MK VII', title: 'LANCE', cooldown: 0.12, bolts: [[-0.9, 0, 4, 'plasma'], [0, 0, 2], [0.9, 0, 4, 'plasma']], rail: { every: 3, damage: 8 }, info: 'Plasma plus a rail beam through everything in line.' },
     ];
+    // Missile launcher tiers fire more seekers for each missile spent, each at a different target where it can.
+    const LAUNCHERS = [
+      { name: 'SEEKER', salvo: 1, info: 'One homing missile per shot.' },
+      { name: 'TWIN SEEKER', salvo: 2, info: 'Two missiles per shot; the second finds another target.' },
+      { name: 'SWARM POD', salvo: 4, info: 'Four missiles per shot at up to four targets.' },
+    ];
+    const rails = [];
     let bossBlast = null;
     // The map: cells are painted into an offscreen grid image as they come into view, then drawn over the view while Tab is toggled on.
     const MAP_PX = 4, explored = new Uint8Array(GRID_W * GRID_D), visitedZones = new Set();
@@ -2914,6 +2971,48 @@
       }
       for (const barrel of barrels) if (!barrel.exploded && Math.hypot(...sub(barrel.position, position)) < 5) explodeBarrel(barrel);
     }
+    // Plasma bursts on impact, hurting everything close by apart from what it hit directly.
+    function plasmaSplash(position, skip) {
+      sparks(position, 10, [0.9, 0.5, 1.0], 12);
+      for (const enemy of enemies)
+        if (enemy.hp > 0 && enemy !== skip && Math.hypot(...sub(enemy.position, position)) < 4.5 + ENEMY_TYPES[enemy.type].radius) hurtEnemy(enemy, 2);
+    }
+    // The lance's rail: an instant beam out to the first wall that hurts everything along it.
+    function fireRail(view, amount) {
+      const from = add(ship.position, mul(view.forward, 1.5));
+      let reach = 1.5;
+      while (reach < 260) { const p = add(ship.position, mul(view.forward, reach)); if (!freeAt(...p) || insideGirder(p)) break; reach += 0.8; }
+      const to = add(ship.position, mul(view.forward, reach));
+      rails.push({ from, to, life: 0.22 });
+      for (const enemy of enemies)
+        if (enemy.hp > 0 && segmentHitsSphere(from, to, enemy.position, ENEMY_TYPES[enemy.type].radius + 0.4)) { sparks(enemy.position, 10, [0.7, 0.9, 1.0], 16); hurtEnemy(enemy, amount); }
+      for (const barrel of barrels) if (!barrel.exploded && segmentHitsSphere(from, to, barrel.position, 2.3)) explodeBarrel(barrel);
+      for (let m = enemyMissiles.length - 1; m >= 0; m--) {
+        if (!segmentHitsSphere(from, to, enemyMissiles[m].position, 1.6)) continue;
+        explosions.push({ position: enemyMissiles[m].position.slice(), life: 0.65, scale: 0.45 });
+        enemyMissiles.splice(m, 1);
+      }
+      for (const gate of gates) for (const lock of gate.locks) {
+        if (lock.hp <= 0 || !segmentHitsSphere(from, to, lock.position, 1.5)) continue;
+        lock.hp -= amount; lock.flash = 1;
+        if (lock.hp <= 0) breakLock(gate, lock);
+      }
+      const gate = gateAt(to);
+      if (gate && gate.kind === 'secret' && !gate.opening) { gate.hp -= amount; gate.flash = 1; if (gate.hp <= 0) openGate(gate, 'SECRET AREA FOUND'); }
+      sparks(to, 14, [0.6, 0.9, 1.0], 16);
+      playRail();
+    }
+    // The locked target first, then other enemies in a wider cone ahead, nearest the reticle first.
+    function salvoTargets(view, count) {
+      const list = lockTarget ? [lockTarget] : [];
+      const others = enemies.filter(enemy => {
+        if (enemy.hp <= 0 || enemy === lockTarget) return false;
+        const to = sub(enemy.position, ship.position), distance = Math.hypot(...to);
+        return distance < 160 && distance > 4 && dot(to, view.forward) / distance > Math.cos(0.6) && lineOfSight(enemy.position);
+      }).map(enemy => [enemy, dot(normalize(sub(enemy.position, ship.position)), view.forward)]).sort((a, b) => b[1] - a[1]);
+      for (const [enemy] of others) if (list.length < count) list.push(enemy);
+      return list;
+    }
     function updateMissiles(dt, view) {
       // Lock-on: hold an enemy near the reticle for LOCK_TIME seconds.
       const candidate = missileAmmo > 0 ? acquireTarget(view) : null;
@@ -2922,7 +3021,14 @@
       missileCooldown = Math.max(0, missileCooldown - dt);
       if ((missileRequest || down('c')) && missileCooldown === 0 && missileAmmo > 0) {
         missileAmmo--; missileCooldown = 0.6;
-        missiles.push({ position: add(add(ship.position, mul(view.forward, 2)), mul(view.up, -0.8)), velocity: mul(view.forward, 40), target: lockTarget, life: 4.5 });
+        const salvo = LAUNCHERS[launcherLevel - 1].salvo, targets = salvoTargets(view, salvo);
+        for (let k = 0; k < salvo; k++) {
+          // A salvo leaves the pods in a fan, then each missile curls onto its own target.
+          const spread = salvo > 1 ? k / (salvo - 1) * 2 - 1 : 0, lift = salvo > 2 ? (k % 2 ? 0.16 : -0.1) : 0;
+          const launch = normalize(add(view.forward, add(mul(view.right, spread * 0.35), mul(view.up, lift))));
+          missiles.push({ position: add(add(ship.position, mul(view.forward, 2)), add(mul(view.up, -0.8), mul(view.right, spread * 1.2))),
+            velocity: mul(launch, 40), target: targets.length ? targets[k % targets.length] : null, life: 4.5 });
+        }
         playMissileLaunch();
       }
       missileRequest = false;
@@ -2969,15 +3075,18 @@
       muzzleTimer = Math.max(0, muzzleTimer - dt);
       const view = basis(ship.yaw, ship.pitch, ship.roll), weapon = WEAPONS[weaponLevel - 1];
       if ((mouseFiring || down('f', 'j') || touch.fire) && fireCooldown === 0) {
-        for (const offset of weapon.guns) {
-          // Side barrels angle in slightly so their bolts cross near the reticle.
-          const direction = normalize(sub(mul(view.forward, 60), mul(view.right, offset)));
-          shots.push({ position: add(add(ship.position, mul(view.forward, 1.5)), mul(view.right, offset)), velocity: mul(direction, 140), life: 1.8, damage: weapon.damage });
+        for (const [offset, angle, amount, kind] of weapon.bolts) {
+          // Side barrels angle in slightly so their bolts cross near the reticle; fanned barrels angle outward.
+          const direction = normalize(add(mul(view.forward, 60), mul(view.right, angle ? angle * 60 : -offset)));
+          shots.push({ position: add(add(ship.position, mul(view.forward, 1.5)), mul(view.right, offset)), velocity: mul(direction, kind === 'plasma' ? 120 : 140),
+            life: 1.8, damage: amount, kind, pierce: kind === 'plasma' ? 2 : 0 });
         }
+        if (weapon.rail && ++railCount % weapon.rail.every === 0) fireRail(view, weapon.rail.damage);
         fireCooldown = weapon.cooldown;
         muzzleTimer = 0.12;
-        playPew();
+        playPew(weapon.bolts.some(bolt => bolt[3] === 'plasma'));
       }
+      for (let i = rails.length - 1; i >= 0; i--) if ((rails[i].life -= dt) <= 0) rails.splice(i, 1);
       updateEnemies(dt);
       updateMissiles(dt, view);
       for (let i = shots.length - 1; i >= 0; i--) {
@@ -2986,9 +3095,11 @@
         shot.life -= dt;
         let hit = false;
         for (const enemy of enemies) {
-          if (enemy.hp > 0 && segmentHitsSphere(previous, shot.position, enemy.position, ENEMY_TYPES[enemy.type].radius)) {
+          if (enemy.hp > 0 && !shot.struck?.includes(enemy) && segmentHitsSphere(previous, shot.position, enemy.position, ENEMY_TYPES[enemy.type].radius)) {
             sparks(shot.position, 8, [1.0, 0.5, 0.4], 14);
             hurtEnemy(enemy, shot.damage);
+            if (shot.kind === 'plasma') plasmaSplash(shot.position, enemy);
+            if (shot.pierce > 0) { shot.pierce--; (shot.struck ||= []).push(enemy); continue; }
             hit = true; break;
           }
         }
@@ -3020,6 +3131,7 @@
             gate.hp -= shot.damage; gate.flash = 1;
             if (gate.hp <= 0) openGate(gate, 'SECRET AREA FOUND');
           }
+          if (shot.kind === 'plasma') plasmaSplash(previous, null);
           sparks(previous, 7, [0.5, 0.9, 1.0], 12); hit = true;
         }
         if (hit || shot.life <= 0) shots.splice(i, 1);
@@ -3076,8 +3188,13 @@
         playPickup(pickup.type);
         if (pickup.type === 'health') { health = Math.min(100, health + 35); notice('HULL REPAIRED +35', 1.6); }
         else if (pickup.type === 'missile') { missileAmmo = Math.min(MISSILE_MAX, missileAmmo + 6); notice('SEEKER MISSILES +6 // C OR RIGHT CLICK', 2); }
-        else if (weaponLevel < WEAPONS.length) { weaponLevel++; notice(`NEUTRON CANNON UPGRADED // ${WEAPONS[weaponLevel - 1].name}`, 1.8); }
+        else if (pickup.type === 'launcher') {
+          if (launcherLevel < LAUNCHERS.length) { launcherLevel++; missileAmmo = Math.min(MISSILE_MAX, missileAmmo + 4); notice(`LAUNCHER UPGRADED // ${LAUNCHERS[launcherLevel - 1].name} // MISSILES +4`, 2.2); }
+          else { missileAmmo = Math.min(MISSILE_MAX, missileAmmo + 6); notice('LAUNCHER AT MAXIMUM // MISSILES +6', 1.6); }
+        }
+        else if (weaponLevel < WEAPONS.length) { weaponLevel++; notice(`NEUTRON CANNON UPGRADED // ${WEAPONS[weaponLevel - 1].name} ${WEAPONS[weaponLevel - 1].title}`, 2.2); }
         else { health = Math.min(100, health + 15); notice('CANNON AT MAXIMUM // HULL +15', 1.6); }
+        noteArsenal();
       }
       if (Math.hypot(...sub(exitCenter(), ship.position)) < 7) { warpTimer = 1.3; notice('SECTOR CLEAR // WARPING', 2); playWarp(); }
     }
@@ -3143,7 +3260,7 @@
       shieldFlash.style.opacity = String(clamp(shieldGlow * 0.8, 0, 0.8));
       shieldText.textContent = String(Math.floor(shield / SHIELD_MAX * 100));
       shieldBar.style.width = `${shield / SHIELD_MAX * 100}%`;
-      missileText.textContent = String(missileAmmo);
+      missileText.textContent = launcherLevel > 1 ? `${missileAmmo} x${LAUNCHERS[launcherLevel - 1].salvo}` : String(missileAmmo);
       speedText.textContent = ship.speed.toFixed(1);
       headingText.textContent = String(Math.round((ship.yaw * 180 / Math.PI % 360 + 360) % 360)).padStart(3, '0');
       altitudeText.textContent = String(Math.round(ship.position[1]));
