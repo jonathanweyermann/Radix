@@ -55,6 +55,22 @@
     .tr { top: 12px; right: 12px; border-width: 1px 1px 0 0; }
     .bl { bottom: 12px; left: 12px; border-width: 0 0 1px 1px; }
     .br { bottom: 12px; right: 12px; border-width: 0 1px 1px 0; }
+    .menu { position: fixed; inset: 0; display: none; place-items: center; overflow-y: auto; padding: 16px; background: radial-gradient(#06121cc4, #02060bf0); }
+    .menu.show { display: grid; }
+    .menu-box { width: min(620px, 100%); text-align: center; }
+    .menu h1 { margin: 0; color: #65e9ff; font-size: 26px; letter-spacing: .4em; text-shadow: 0 0 14px #3be8ff88; }
+    .menu h1 small { display: block; margin-top: 8px; color: #a8b8cb; font-size: 11px; font-weight: normal; letter-spacing: .32em; }
+    .menu h2 { margin: 24px 0 10px; color: #f0a65c; font-size: 11px; font-weight: normal; letter-spacing: .24em; }
+    .menu button { font: inherit; font-size: 11px; letter-spacing: .14em; color: #d7f9ff; background: #0b1a24; border: 1px solid #3f7f90; padding: 8px 12px; cursor: pointer; }
+    .menu button:hover:not(:disabled), .menu button:focus-visible, .menu button.on { background: #14394a; border-color: #75edff; color: #fff; outline: none; }
+    .menu button:disabled { color: #4d6470; border-color: #22404c; cursor: default; }
+    .menu .row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+    .menu .primary { padding: 11px 24px; font-size: 13px; border-color: #75edff; }
+    .menu .sectors { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 6px; }
+    .menu .sectors button { display: flex; justify-content: space-between; gap: 10px; text-align: left; }
+    .menu .sectors small { color: #f0a65c; font-size: 10px; white-space: nowrap; }
+    .menu .sectors button:disabled small { color: inherit; }
+    .menu p { margin: 18px 0 0; color: #8a9ca6; font-size: 10px; line-height: 1.6; letter-spacing: .08em; }
     @media (max-width: 700px) { .top { left: 16px; right: 16px; top: 16px; } .brand { font-size: 11px; } .mission { display: none; } .cockpit { height: 155px; padding: 11px 12px 28px; grid-template-columns: 1fr 100px 1fr; gap: 6px; } .panel { padding: 6px; border-width: 2px; } .panel-row { font-size: 9px; } .panel-title { font-size: 9px; } #radar { width: 82px; height: 82px; } .readouts { display: none; } .controls { left: 10px; right: 10px; font-size: 8px; } }
   </style>
 </head>
@@ -78,6 +94,17 @@
       <div class="radar-wrap"><canvas id="radar" width="118" height="118"></canvas><div class="readouts">SPEED<strong id="speedText">8.0</strong>HEADING<strong id="headingText">000</strong>ALT<strong id="altitudeText">-4</strong></div></div>
       <div class="panel"><div class="panel-title">SHIP STATUS</div><div class="hull shield">SHIELD <strong id="shieldText">100</strong>%<div class="meter"><span id="shieldBar"></span></div></div><div class="hull">HULL <strong id="healthText">100</strong>%<div class="meter"><span id="healthBar"></span></div></div><div class="speed">THRUST<div class="meter"><span id="speedBar"></span></div></div></div>
       <div class="controls"><b>MOUSE</b> STEER / FIRE &nbsp; <b>WASD</b> STRAFE &nbsp; <b>↑/↓</b> PITCH &nbsp; <b>←/→</b> TURN &nbsp; <b>Q/E</b> ROLL &nbsp; <b>X</b> ACCELERATE &nbsp; <b>Z</b> BRAKE &nbsp; <b>F/J</b> FIRE &nbsp; <b>C/RMB</b> MISSILE &nbsp; <b>P</b> PAUSE &nbsp; <b>M</b> MUSIC</div>
+    </div>
+  </div>
+  <div class="menu" id="menu" role="dialog" aria-label="Game menu">
+    <div class="menu-box">
+      <h1>RADIX<small>BEYOND THE VOID</small></h1>
+      <div class="row" style="margin-top: 26px"><button class="primary" id="resumeButton">RESUME</button><button class="primary" id="newGameButton">NEW GAME</button></div>
+      <h2>DIFFICULTY</h2>
+      <div class="row" id="difficultyRow"></div>
+      <h2>SECTOR SELECT</h2>
+      <div class="sectors" id="sectorList"></div>
+      <p id="menuNote">Sectors unlock as you reach them, and start with the cannon and missiles you last entered them with. Press Esc during flight to open this menu.</p>
     </div>
   </div>
   <script>
@@ -701,7 +728,7 @@
         }
         for (const [type, field] of [['drone', 'drones'], ['hunter', 'hunters'], ['warden', 'wardens'], ['striker', 'strikers'], ['sentry', 'turrets']]) {
           const margin = type === 'warden' ? 6 : 4;
-          scatter(zone[field] || 0, margin, (x, z) => {
+          scatter(Math.round((zone[field] || 0) * DIFFICULTIES[save.difficulty].enemies), margin, (x, z) => {
             const i = cellIndex(x, z);
             if (i < 0 || ceilY[i] - floorY[i] < 9) return false;
             if (type === 'sentry' && (!flatAt(x, z, 3) || hazardAt(x, z))) return false;
@@ -1755,6 +1782,8 @@
     const controlKeys = new Set(['w', 'a', 's', 'd', 'c', 'z', 'q', 'e', 'x', 'p', 'm', 'r', 'f', 'j', ' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright']);
     window.addEventListener('keydown', (event) => {
       const key = event.key.toLowerCase();
+      if (menuOpen) { if (key === 'escape' && performance.now() - menuOpenedAt > 300) closeMenu(); return; }
+      if (key === 'escape' && !event.repeat) { openMenu(); return; }
       if (controlKeys.has(key)) event.preventDefault();
       if (key === 'p' && !event.repeat) { paused = !paused; pausedText.classList.toggle('show', paused); }
       if (key === 'm' && !event.repeat) {
@@ -1773,10 +1802,14 @@
       if (event.button !== 0) return;
       mouseFiring = true;
       ensureAudio();
-      if (document.pointerLockElement !== canvas) canvas.requestPointerLock();
+      if (document.pointerLockElement !== canvas && !menuOpen) canvas.requestPointerLock();
     });
     window.addEventListener('pointerup', (event) => { if (event.button === 0) mouseFiring = false; });
-    document.addEventListener('pointerlockchange', () => { if (document.pointerLockElement !== canvas) mouseFiring = false; });
+    document.addEventListener('pointerlockchange', () => {
+      if (document.pointerLockElement === canvas) return;
+      mouseFiring = false;
+      if (started && !menuOpen && !destroyed && !finished) openMenu();
+    });
     document.addEventListener('mousemove', (event) => {
       if (document.pointerLockElement !== canvas || paused || destroyed) return;
       ship.yaw += event.movementX * 0.0025;
@@ -2010,19 +2043,78 @@
       ship.position = level.start.slice(); ship.yaw = level.yaw; ship.pitch = 0; ship.roll = 0; ship.speed = 8; ship.strafe = [0, 0];
       health = startHealth; levelWeapon = weaponLevel; levelMissiles = missileAmmo; shield = SHIELD_MAX; shieldDelay = 0;
       missiles.length = 0; enemyMissiles.length = 0; lockTarget = null; lockTimer = 0;
-      barrelsDestroyed = 0; kills = 0; destroyed = false; finished = false; sludgeCooldown = 0; paused = false; mouseFiring = false;
+      barrelsDestroyed = 0; kills = 0; destroyed = false; finished = false; sludgeCooldown = 0; paused = menuOpen; mouseFiring = false;
       impactTimer = 0; hitTimer = 0; muzzleTimer = 0; fireCooldown = 0; wallCooldown = 0; warpTimer = 0;
       shots.length = 0; enemyShots.length = 0; explosions.length = 0; particles.length = 0;
       gameOverText.classList.remove('show'); pausedText.classList.remove('show');
       sectorText.textContent = `${index + 1} / ${LEVELS.length}`; levelText.textContent = level.name;
+      save.sectors[index] = { weapon: weaponLevel, missiles: missileAmmo }; save.last = index; writeSave();
       notice(`SECTOR ${index + 1} // ${level.name} ${level.title}`, 3);
     }
+    // Difficulty scales how many enemies each zone spawns and how much damage reaches the ship.
+    const DIFFICULTIES = {
+      easy: { label: 'EASY', enemies: 0.65, damage: 0.6 },
+      normal: { label: 'NORMAL', enemies: 1, damage: 1 },
+      hard: { label: 'HARD', enemies: 1.3, damage: 1.35 },
+    };
+    // Progress is kept in localStorage: the difficulty, the last sector flown, and the loadout each reached sector was entered with.
+    const SAVE_KEY = 'radix-beyond-the-void';
+    const save = (() => { try { return JSON.parse(localStorage.getItem(SAVE_KEY)) || {}; } catch { return {}; } })();
+    if (!save.sectors || typeof save.sectors !== 'object') save.sectors = {};
+    if (!DIFFICULTIES[save.difficulty]) save.difficulty = 'normal';
+    if (!(save.last >= 0 && save.last < LEVELS.length && save.sectors[save.last])) save.last = 0;
+    const writeSave = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch { /* storage may be blocked */ } };
+    const menu = document.getElementById('menu'), resumeButton = document.getElementById('resumeButton');
+    const sectorList = document.getElementById('sectorList'), difficultyRow = document.getElementById('difficultyRow'), menuNote = document.getElementById('menuNote');
+    let menuOpen = false, menuOpenedAt = 0, started = false;
+    function startSector(index) {
+      const kit = save.sectors[index] || { weapon: 1, missiles: 0 };
+      weaponLevel = kit.weapon; missileAmmo = kit.missiles;
+      loadLevel(index, 100);
+    }
+    function renderMenu() {
+      resumeButton.textContent = started ? 'RESUME' : `CONTINUE // SECTOR ${levelIndex + 1}`;
+      difficultyRow.replaceChildren(...Object.entries(DIFFICULTIES).map(([id, { label }]) => {
+        const button = document.createElement('button');
+        button.textContent = label; button.className = id === save.difficulty ? 'on' : '';
+        button.addEventListener('click', () => {
+          save.difficulty = id; writeSave();
+          // Before the first flight, reload the waiting sector so its enemy count matches.
+          if (!started) startSector(levelIndex);
+          else menuNote.textContent = 'Damage changes now; enemy numbers change from the next sector you start.';
+          renderMenu();
+        });
+        return button;
+      }));
+      sectorList.replaceChildren(...LEVELS.map((def, i) => {
+        const button = document.createElement('button'), kit = save.sectors[i];
+        const label = document.createElement('span'), detail = document.createElement('small');
+        label.textContent = `${i + 1}. ${def.name} ${def.title}`;
+        detail.textContent = kit ? `${WEAPONS[kit.weapon - 1].name} / ${kit.missiles} MSL` : i === 0 ? 'MK I / 0 MSL' : 'LOCKED';
+        button.append(label, detail); button.disabled = !kit && i > 0;
+        button.addEventListener('click', () => { startSector(i); closeMenu(); });
+        return button;
+      }));
+    }
+    function openMenu() {
+      menuOpen = true; menuOpenedAt = performance.now(); paused = true; mouseFiring = false; keys.clear();
+      pausedText.classList.remove('show');
+      renderMenu(); menu.classList.add('show'); resumeButton.focus();
+    }
+    function closeMenu() {
+      menuOpen = false; started = true; paused = false; lastTime = performance.now();
+      menu.classList.remove('show'); ensureAudio();
+      try { const request = canvas.requestPointerLock(); if (request && request.catch) request.catch(() => {}); } catch { /* click the view to capture the mouse */ }
+    }
+    resumeButton.addEventListener('click', closeMenu);
+    document.getElementById('newGameButton').addEventListener('click', () => { weaponLevel = 1; missileAmmo = 0; loadLevel(0, 100); closeMenu(); });
     function resetGame() {
       if (finished) { weaponLevel = 1; missileAmmo = 0; loadLevel(0, 100); }
       else { weaponLevel = levelWeapon; missileAmmo = levelMissiles; loadLevel(levelIndex, 100); }
     }
     function damage(amount, label) {
       if (destroyed || finished || warpTimer > 0) return;
+      amount *= DIFFICULTIES[save.difficulty].damage;
       // The shield soaks damage first and starts recharging a few seconds after the last hit.
       shieldDelay = 4;
       const absorbed = Math.min(shield, amount);
@@ -2760,7 +2852,8 @@
     statusText.textContent = 'FORGING SURFACES'; statusText.style.opacity = '1';
     requestAnimationFrame(() => setTimeout(() => {
       loadMaterials();
-      loadLevel(0, 100);
+      startSector(save.last);
+      openMenu();
       lastTime = performance.now();
       requestAnimationFrame(frame);
     }, 30));

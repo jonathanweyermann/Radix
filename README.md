@@ -4,7 +4,11 @@ A tiny dependency-free 3D space-flight prototype drawn with terminal characters.
 
 ## Run in a browser
 
-Open `index.html` in a browser that supports WebGL 2. No installation or web server is needed. Click the game to capture the mouse; Esc releases it. Move the mouse to steer, with up/down inverted. Hold the left mouse button to fire the cannon, and press the right mouse button or C to launch a seeker missile. The weapons make short synthesized sounds.
+Open `index.html` in a browser that supports WebGL 2. No installation or web server is needed. The game opens on a menu where you can continue, start a new game, pick a difficulty, or choose any sector you have reached. Click the game to capture the mouse; Esc releases it and opens the menu, which pauses the game.
+
+**Difficulty:** Easy spawns about two thirds as many enemies and lets 60% of incoming damage through; Hard spawns 30% more enemies and deals 35% more damage. Changing it mid-flight changes damage at once and enemy numbers from the next sector you start.
+
+**Progress** is saved in the browser (localStorage) as you enter each sector: the last sector you flew, your difficulty, and the cannon and missiles you last entered each sector with. Picking a sector from the menu starts it with that loadout and a full hull. Move the mouse to steer, with up/down inverted. Hold the left mouse button to fire the cannon, and press the right mouse button or C to launch a seeker missile. The weapons make short synthesized sounds.
 
 The keyboard controls are W/A/S/D to strafe up, left, down, and right, Up to pitch down, Down to pitch up, Left/Right to turn, Q/E to roll, X to accelerate, Z to brake, F/J to fire, C to launch a missile, P to pause, and M to toggle music. Space also accelerates. Shoot hostile ships and the explosive barrels on the floor; barrel blasts also damage nearby enemies. The sky is visible, but a flight boundary prevents escape above the walls. Solid walls block your view and shots. The cockpit shows radar, shield, hull, speed, heading, altitude, sector, cannon level, missile count, target counts, and the name of the current area. A blue shield soaks up the first few hits before the hull takes damage; it holds about a third of a full hull, starts recharging four seconds after the last hit, and refills at 7% a second. Hits that only reach the shield flash the screen edge blue. If the hull reaches zero you are destroyed; press R to restart the current sector with the cannon and missiles you entered it with.
 
