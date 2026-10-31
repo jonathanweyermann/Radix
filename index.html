@@ -417,6 +417,8 @@
           [-80, 440, 80, 500, GRATE, 7],
           [96, 152, 160, 168, PLATE, -5, 9], [140, 168, 160, 340, PLATE, -5, 9], [80, 320, 160, 340, PLATE, -5, 9],
           [160, 152, 168, 168, PLATE, -5, 9], [168, 136, 208, 184, PLATE, -5, 9],
+          [160, 260, 200, 276, PLATE, -5, 9], [200, 220, 248, 320, VENT, BASE], [232, 220, 248, 300, PLATE, 13, SKY, 'wallBasalt'], [200, 300, 248, 320, PLATE, 21, SKY, 'wallBasalt'],
+          [208, 320, 224, 420, PLATE, 21, 31], [80, 404, 208, 420, PLATE, 21, 31],
           [-160, 152, -96, 168, PLATE, -5, 9], [-160, 168, -140, 300, PLATE, -5, 9], [-160, 300, -80, 320, PLATE, -5, 9],
           [-24, 500, 24, 560, PLATE, 7, 19],
           [-40, 560, 40, 640, PAD, 7],
@@ -430,8 +432,9 @@
         girders: [[-96, 6, 190, 96, 9, 194], [-80, 14, 330, 80, 17, 334], [-80, 20, 470, 80, 23, 474]],
         gates: [
           [-12, 220, 12, 224, 'south', 'chain'], [80, 320, 84, 340, 'east', 'chain'], [-84, 300, -80, 320, 'west', 'chain'],
-          [-24, 500, 24, 504, 'south', 'chain'], [160, 152, 164, 168, 'west', 'secret'],
+          [-24, 500, 24, 504, 'south', 'chain'], [160, 152, 164, 168, 'west', 'secret'], [160, 260, 164, 276, 'west', 'chain'],
         ],
+        lasers: [[120, 404, 120, 420, 22, 29.7, 3, 0]],
         zones: [
           { name: 'STAGING PAD', area: [-24, -32, 24, 32], barrels: 3 },
           { name: 'CAUSEWAY', area: [-12, 32, 12, 120], barrels: 3, drones: 2 },
@@ -444,6 +447,9 @@
           { name: 'UPPER WORKS', area: [-80, 380, 80, 500], barrels: 8, drones: 3, turrets: 3, lancers: 1, missile: 1, high: true },
           { name: 'VENT SHAFT', area: [-24, 500, 24, 560], hunters: 2 },
           { name: 'EXIT DECK', area: [-40, 560, 40, 640], barrels: 4, strikers: 2, wardens: 1 },
+          { name: 'TOWER DUCT', area: [160, 260, 200, 276], hunters: 1 },
+          { name: 'COOLING TOWER', area: [200, 220, 248, 320], drones: 2, lancers: 1, skimmers: 1, missile: 1, health: 1, high: true },
+          { name: 'TOWER RUN', area: [80, 320, 224, 420], hunters: 2 },
         ],
       },
       {
