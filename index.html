@@ -467,6 +467,8 @@
           [-12, 520, 12, 560, PAD, 9, 27, 'z'],
         ],
         lasers: [[-12, 400, 12, 400, 6, 16.5, 3.6, 0]],
+        extras: { enemies: [['overseer', 0, 21, 488], ['relay', -48, 12, 452], ['relay', 48, 12, 452]] },
+        brief: 'THE SPIRE OVERSEER HOLDS THE SUMMIT HALL',
         blocks: [
           [-24, 96, -8, 144, REACTOR], [8, 96, 24, 144, REACTOR],
           [-80, 80, -72, 88, COLUMN], [72, 80, 80, 88, COLUMN], [-80, 160, -72, 168, COLUMN], [72, 160, 80, 168, COLUMN],
@@ -475,7 +477,7 @@
         ],
         girders: [[-120, 16, 180, 120, 19, 184], [-56, 6, 264, 56, 9, 268], [-60, 18, 480, 60, 21, 484]],
         gates: [
-          [-12, 360, 12, 364, 'south', 'chain'], [-120, 360, -100, 364, 'south', 'chain'], [-12, 520, 12, 524, 'south', 'chain'],
+          [-12, 360, 12, 364, 'south', 'chain'], [-120, 360, -100, 364, 'south', 'chain'], [-12, 520, 12, 524, 'south', 'boss'],
           [-124, 100, -120, 116, 'east', 'secret'],
         ],
         zones: [
@@ -487,7 +489,7 @@
           { name: 'UPPER TERRACE', area: [-120, 280, 120, 360], barrels: 8, turrets: 3, wardens: 1, aegis: 1, health: 1, high: true },
           { name: 'TOWER BORE', area: [-12, 360, 12, 440], hunters: 2 },
           { name: 'WEST BORE', area: [-120, 360, -60, 472], barrels: 3, drones: 2, strikers: 1 },
-          { name: 'SUMMIT HALL', area: [-60, 440, 60, 520], barrels: 8, drones: 3, wardens: 2, strikers: 1, missile: 1, health: 1, high: true },
+          { name: 'SUMMIT HALL', area: [-60, 440, 60, 520], barrels: 6, missile: 1, health: 2 },
           { name: 'SUMMIT DECK', area: [-40, 520, 40, 620], strikers: 2, turrets: 2, skimmers: 1 },
         ],
       },
@@ -565,8 +567,10 @@
         girders: [[-56, 2, 120, 56, 5, 124], [-104, 6, 312, 104, 9, 316], [-104, 14, 364, 104, 17, 368], [-72, 16, 520, 72, 19, 524]],
         gates: [
           [176, 168, 192, 172, 'south', 'chain'], [104, 300, 108, 316, 'east', 'chain'], [-108, 300, -104, 316, 'west', 'chain'],
-          [-8, 400, 8, 404, 'south', 'chain'], [-76, 512, -72, 528, 'east', 'secret'],
+          [-8, 400, 8, 404, 'south', 'boss'], [-76, 512, -72, 528, 'east', 'secret'],
         ],
+        extras: { enemies: [['queen', 0, 9, 372], ['egg', -88, -5, 336], ['egg', 88, -5, 336], ['egg', -40, -5, 388], ['egg', 40, -5, 388]] },
+        brief: 'THE HIVE QUEEN NESTS AT THE HEART OF THE WARRENS',
         zones: [
           { name: 'HATCHERY MOUTH', area: [-24, -32, 24, 32], barrels: 3 },
           { name: 'FEED TUBE', area: [-8, 32, 8, 80], hunters: 1 },
@@ -577,7 +581,7 @@
           { name: 'EAST TUBE', area: [56, 112, 120, 128], barrels: 2, hunters: 1 },
           { name: 'EGG VAULT', area: [120, 88, 200, 168], drones: 2, hunters: 2, strikers: 1, broods: 1, missile: 1, health: 1 },
           { name: 'EAST SHAFT', area: [104, 168, 192, 316], hunters: 3, turrets: 1 },
-          { name: 'THE NEST', area: [-104, 280, 104, 400], barrels: 10, drones: 4, hunters: 3, wardens: 1, strikers: 1, broods: 2, health: 1, missile: 1, high: true },
+          { name: 'THE NEST', area: [-104, 280, 104, 400], barrels: 8, drones: 2, hunters: 2, health: 2, missile: 1, high: true },
           { name: 'HIVE STAIR', area: [-8, 400, 8, 480], hunters: 2 },
           { name: 'UPPER WARREN', area: [-72, 480, 72, 560], barrels: 6, drones: 3, turrets: 2, wardens: 1, aegis: 1, health: 1 },
           { name: 'ROYAL CACHE', area: [-124, 500, -72, 540], weapon: 1, launcher: 1, health: 1, missile: 1 },
@@ -736,7 +740,7 @@
         zones: [
           { name: 'START LEDGE', area: [-24, -32, 24, 24], barrels: 3 },
           { name: 'RIM PASSAGE', area: [-12, 24, 12, 88], hunters: 1 },
-          { name: 'GREAT SHAFT', area: [-88, 88, 88, 264], drones: 4, skimmers: 3, lancers: 2, aegis: 1, health: 1, missile: 1, high: true },
+          { name: 'GREAT SHAFT', area: [-88, 88, 88, 264], phantoms: 2, drones: 3, skimmers: 3, lancers: 2, aegis: 1, health: 1, missile: 1, high: true },
           { name: 'WEST CACHE', area: [-200, 124, -88, 172], weapon: 1, health: 1 },
           { name: 'EAST VAULT', area: [88, 176, 204, 248], barrels: 6, drones: 2, miners: 1, health: 1, missile: 1, weapon: 1 },
           { name: 'DEEP WORKS', area: [-12, 264, 12, 328], hunters: 2 },
@@ -786,7 +790,7 @@
           { name: 'EAST BEND', area: [16, 96, 120, 128], barrels: 3, hunters: 2, lancers: 1 },
           { name: 'CRYSTAL GULLY', area: [88, 128, 120, 240], drones: 2, lancers: 1, aegis: 1, health: 1, high: true },
           { name: 'WEST BEND', area: [-40, 240, 120, 272], barrels: 4, skimmers: 2, missile: 1 },
-          { name: 'THE NEEDLES', area: [-120, 272, 40, 400], barrels: 8, drones: 4, lancers: 2, skimmers: 2, broods: 1, aegis: 1, health: 1, missile: 1, high: true },
+          { name: 'THE NEEDLES', area: [-120, 272, 40, 400], barrels: 8, phantoms: 2, drones: 3, lancers: 2, skimmers: 2, broods: 1, aegis: 1, health: 1, missile: 1, high: true },
           { name: 'ICE CAVE', area: [-176, 288, -120, 332], weapon: 1, health: 1, missile: 1 },
           { name: 'FROZEN FALLS', area: [-40, 400, 40, 448], drones: 2, miners: 1 },
           { name: 'HIGH PASS', area: [-56, 448, 56, 512], lancers: 2, strikers: 2, wardens: 1, high: true },
@@ -829,7 +833,7 @@
         zones: [
           { name: 'INTAKE BAY', area: [-24, -32, 24, 24], barrels: 4 },
           { name: 'SLAG CHANNEL', area: [-16, 24, 16, 104], drones: 2, hunters: 1 },
-          { name: 'THE ATRIUM', area: [-72, 104, 72, 232], drones: 4, skimmers: 2, lancers: 2, miners: 1, aegis: 1, health: 1, missile: 1, high: true },
+          { name: 'THE ATRIUM', area: [-72, 104, 72, 232], phantoms: 1, drones: 4, skimmers: 2, lancers: 2, miners: 1, aegis: 1, health: 1, missile: 1, high: true },
           { name: 'PRESS GALLERY', area: [-12, 232, 12, 296], hunters: 2 },
           { name: 'THE CRUCIBLE', area: [-56, 296, 56, 392], barrels: 8, drones: 3, wardens: 2, broods: 1, lancers: 1, health: 1, high: true },
           { name: 'EAST STORES', area: [56, 296, 104, 376], barrels: 4, turrets: 2, health: 1, missile: 1 },
@@ -883,7 +887,7 @@
           { name: 'WEST STACK', area: [-120, 104, -104, 216], hunters: 2, health: 1 },
           { name: 'EAST STACK', area: [184, 104, 200, 200], drones: 2 },
           { name: 'EAST ARCHIVE', area: [168, 200, 224, 248], barrels: 4, turrets: 2, aegis: 1, missile: 1 },
-          { name: 'THE WELL', area: [-48, 168, 48, 264], drones: 3, lancers: 2, skimmers: 2, health: 1, high: true },
+          { name: 'THE WELL', area: [-48, 168, 48, 264], phantoms: 2, drones: 2, lancers: 2, skimmers: 2, health: 1, high: true },
           { name: 'MIRROR CACHE', area: [-80, 196, -48, 220], launcher: 1, missile: 1, health: 1 },
           { name: 'WEST LINK', area: [-104, 232, -48, 248], hunters: 1 },
           { name: 'MID WEST', area: [-120, 248, -104, 312], drones: 2 },
@@ -932,7 +936,7 @@
         zones: [
           { name: 'DROP POINT', area: [-24, -32, 24, 24], barrels: 2, health: 1 },
           { name: 'GAUNTLET', area: [-12, 24, 12, 136], hunters: 2 },
-          { name: 'SHATTERED RING', area: [-104, 136, 104, 248], barrels: 6, drones: 4, skimmers: 3, lancers: 2, aegis: 1, miners: 1, health: 1, missile: 1, high: true },
+          { name: 'SHATTERED RING', area: [-104, 136, 104, 248], barrels: 6, phantoms: 2, drones: 3, skimmers: 3, lancers: 2, aegis: 1, miners: 1, health: 1, missile: 1, high: true },
           { name: 'WEST WING', area: [-176, 168, -104, 216], wardens: 1, broods: 1, weapon: 1, health: 1 },
           { name: 'EAST WING', area: [104, 168, 176, 216], barrels: 4, aegis: 1, drones: 2, strikers: 1, missile: 1, health: 1 },
           { name: 'NULL CORRIDOR', area: [-12, 248, 12, 312], hunters: 2 },
@@ -1040,14 +1044,22 @@
       pylon: { hp: 6, radius: 2.6, scale: 1, tint: [0.6, 0.9, 1.5], eye: [0.4, 0.8, 1.0], ram: 20, radar: '#7fb8ff', sight: 85, name: 'PYLON', bump: true },
       carrier: { hp: 90, radius: 7.5, scale: 2.8, tint: [0.85, 1.15, 0.7], eye: [0.6, 1.0, 0.4], ram: 30, radar: '#a8ff6a', sight: 170, name: 'CARRIER', bump: true, boss: 'VOID CARRIER' },
       herald: { hp: 150, radius: 8, scale: 3.2, tint: [0.95, 0.5, 1.5], eye: [0.85, 0.4, 1.0], ram: 34, radar: '#e070ff', sight: 190, name: 'HERALD', bump: true, boss: 'VOID HERALD', lance: 22 },
+      overseer: { hp: 70, radius: 6, scale: 2.4, tint: [1.1, 1.0, 0.75], eye: [1.0, 0.85, 0.4], ram: 30, radar: '#ffd36a', sight: 160, name: 'OVERSEER', bump: true, boss: 'SPIRE OVERSEER', lance: 18 },
+      relay: { hp: 6, radius: 2.4, scale: 1, tint: [1.2, 1.05, 0.6], eye: [1.0, 0.85, 0.3], ram: 20, radar: '#ffe58a', sight: 110, name: 'RELAY', bump: true },
+      queen: { hp: 80, radius: 6.5, scale: 2.8, tint: [1.3, 1.1, 0.35], eye: [0.9, 1.0, 0.3], ram: 30, radar: '#e6ff5a', sight: 150, name: 'QUEEN', bump: true, boss: 'HIVE QUEEN' },
+      egg: { hp: 5, radius: 2.3, scale: 1.2, tint: [1.3, 1.05, 0.45], eye: [1.0, 0.9, 0.3], ram: 16, radar: '#f2ff9a', sight: 70, name: 'EGG SAC', bump: true },
+      phantom: { hp: 3, radius: 2.0, scale: 1, tint: [0.65, 0.8, 1.3], eye: [0.6, 0.8, 1.0], ram: 18, radar: '#9fb0ff', sight: 100, name: 'PHANTOM' },
       core: { hp: 6, radius: 2.4, scale: 1.3, tint: [0.45, 1.4, 1.25], eye: [0.4, 1.0, 0.9], ram: 18, radar: '#5dfff0', sight: 0, name: 'DATA CORE', bump: true },
       node: { hp: 8, radius: 2.4, scale: 1.1, tint: [0.95, 0.6, 1.6], eye: [0.8, 0.5, 1.0], ram: 20, radar: '#c99aff', sight: 130, name: 'NODE', bump: true },
     };
     // A boss with guards cannot be hurt while any of them stand: the sentinel's pylons and the herald's orbiting nodes.
-    const GUARDS = { sentinel: 'pylon', herald: 'node' };
+    const GUARDS = { sentinel: 'pylon', herald: 'node', overseer: 'relay', queen: 'egg' };
+    const isGuard = (type) => Object.values(GUARDS).includes(type);
+    const GUARD_HINTS = { sentinel: 'CORE SHIELDED // DESTROY THE PYLONS', herald: 'HERALD SHIELDED // DESTROY THE NODES', overseer: 'OVERSEER SHIELDED // DESTROY THE RELAYS', queen: 'QUEEN SHIELDED // BURST THE EGG SACS' };
+    const GUARDS_DOWN = { pylon: 'CORE SHIELD DOWN', node: 'HERALD SHIELD DOWN', relay: 'OVERSEER SHIELD DOWN', egg: 'QUEEN SHIELD DOWN' };
     const guardsLeft = (boss) => enemies.filter(e => e.type === GUARDS[boss.type] && e.hp > 0).length;
     // Enemies get a little tougher in each later sector; bosses and their parts, mites and mines do not.
-    const toughness = (type) => ENEMY_TYPES[type].boss || ['pylon', 'node', 'core', 'mite', 'mine'].includes(type) ? 1 : 1 + 0.05 * levelIndex;
+    const toughness = (type) => ENEMY_TYPES[type].boss || ['pylon', 'node', 'relay', 'egg', 'core', 'mite', 'mine'].includes(type) ? 1 : 1 + 0.05 * levelIndex;
     // The sentinel cannot be hurt while any of its shield pylons stand.
     const pylonsLeft = () => enemies.filter(e => e.type === 'pylon' && e.hp > 0).length;
     const barrels = [], enemies = [], pickups = [];
@@ -1083,7 +1095,7 @@
           addBarrel(x, z); last = [x, z]; placed++;
         }
         for (const [type, field] of [['drone', 'drones'], ['hunter', 'hunters'], ['warden', 'wardens'], ['striker', 'strikers'], ['sentry', 'turrets'],
-          ['lancer', 'lancers'], ['aegis', 'aegis'], ['brood', 'broods'], ['skimmer', 'skimmers'], ['miner', 'miners']]) {
+          ['lancer', 'lancers'], ['aegis', 'aegis'], ['brood', 'broods'], ['skimmer', 'skimmers'], ['miner', 'miners'], ['phantom', 'phantoms']]) {
           const margin = type === 'warden' || type === 'brood' ? 6 : 4;
           scatter(Math.round((zone[field] || 0) * DIFFICULTIES[save.difficulty].enemies), margin, (x, z) => {
             const i = cellIndex(x, z);
@@ -2309,6 +2321,11 @@
     enemyMeshes.herald = crown(8, 1.9, 3.6, 2.4, 3.0);
     enemyMeshes.node = crown(3, 0.7, 1.4, 1.6, 1.6);
     enemyMeshes.core = crown(6, 1.1, 1.7, 2.2, 2.2);
+    enemyMeshes.overseer = faceted([[0, 0, 3.4], [-3.2, 0, 0], [0, 2.2, 0], [3.2, 0, 0], [0, -2.2, 0], [0, 0, -3.4], [-4.6, 0.6, -2.4], [4.6, 0.6, -2.4]], HULL_TRIS);
+    enemyMeshes.relay = enemyMeshes.pylon;
+    enemyMeshes.queen = crown(7, 2.0, 2.9, 3.0, 2.4);
+    enemyMeshes.egg = crown(6, 1.5, 1.9, 2.2, 1.5);
+    enemyMeshes.phantom = enemyMeshes.striker;
     enemyMeshes.carrier = faceted([[0, 0, 5], [-3, 0, 0], [0, 1.4, 0], [3, 0, 0], [0, -1.2, 0], [0, 0, -5], [-5.5, 0.3, -3.5], [5.5, 0.3, -3.5]], HULL_TRIS);
     const boxHull = (hx, hy, hz) => faceted(
       [[-hx, -hy, -hz], [hx, -hy, -hz], [hx, hy, -hz], [-hx, hy, -hz], [-hx, -hy, hz], [hx, -hy, hz], [hx, hy, hz], [-hx, hy, hz]],
@@ -3087,7 +3104,7 @@
       for (const missile of enemyMissiles) list.push([missile.position, 14, [1.0, 0.25, 0.15]]);
       for (const explosion of explosions) { const k = explosion.life / 0.65; list.push([explosion.position, (30 + 30 * (1 - k)) * explosion.scale, [3.2 * k, 1.6 * k, 0.5 * k]]); }
       if (muzzleTimer > 0) list.push([add(ship.position, mul(camera.view.forward, 2)), 24, mul([0.4, 0.85, 1.0], muzzleTimer / 0.12 * 1.5)]);
-      for (const enemy of enemies) if (enemy.hp > 0) { const kind = ENEMY_TYPES[enemy.type]; list.push([enemy.position, 10 * kind.scale, mul(kind.eye, 0.85)]); }
+      for (const enemy of enemies) if (enemy.hp > 0 && !enemy.cloaked) { const kind = ENEMY_TYPES[enemy.type]; list.push([enemy.position, 10 * kind.scale, mul(kind.eye, 0.85)]); }
       for (const pickup of pickups) if (!pickup.taken) list.push([pickup.position, 13, PICKUP_COLORS[pickup.type]]);
       for (const gate of gates) for (const lock of gate.locks) if (lock.hp > 0) list.push([lock.position, 9, [1.0, 0.35, 0.15]]);
       list.push([exitCenter(), 45, [0.3, 1.2, 0.7]]);
@@ -3140,7 +3157,7 @@
       for (const enemy of enemies) {
         if (enemy.hp <= 0 || !nearby(enemy.position, 320)) continue;
         if (ENEMY_TYPES[enemy.type].boss) {
-          const pulse = 0.8 + 0.2 * Math.sin(time * 5), core = enemy.type === 'herald' ? [0.85, 0.35, 1.0] : enemy.type === 'carrier' ? [0.6, 1.0, 0.4] : [1.0, 0.35, 0.65];
+          const pulse = 0.8 + 0.2 * Math.sin(time * 5), core = { herald: [0.85, 0.35, 1.0], carrier: [0.6, 1.0, 0.4], overseer: [1.0, 0.8, 0.35], queen: [0.85, 1.0, 0.3] }[enemy.type] || [1.0, 0.35, 0.65];
           billboard(enemy.position, 3.2 * pulse, core, 1.6 + enemy.flash * 2);
           billboard(enemy.position, 9 * pulse, mul(core, 0.8), 0.3 + enemy.flash);
           if (GUARDS[enemy.type] && guardsLeft(enemy) > 0) billboard(enemy.position, 13, [0.3, 0.6, 1.0], 0.22 + (enemy.shieldHit || 0) * 0.5);
@@ -3156,10 +3173,12 @@
           billboard(enemy.position, 6, [0.3, 0.9, 0.8], 0.25 + 0.1 * Math.sin(time * 3 + enemy.phase));
           continue;
         }
-        if (enemy.type === 'pylon' || enemy.type === 'node') {
-          const top = enemy.type === 'pylon' ? add(enemy.position, [0, 4.4, 0]) : enemy.position, master = enemy.type === 'pylon' ? sentinel : herald;
+        if (enemy.cloaked) { billboard(enemy.position, 2.6, [0.5, 0.6, 1.0], 0.08 + 0.05 * Math.sin(time * 7 + enemy.phase)); continue; }
+        if (isGuard(enemy.type)) {
+          const top = enemy.type === 'pylon' ? add(enemy.position, [0, 4.4, 0]) : enemy.position, master = enemies.find(e => GUARDS[e.type] === enemy.type && e.hp > 0);
           billboard(top, 1.4, ENEMY_TYPES[enemy.type].eye, 1.6 + enemy.flash * 2);
-          if (master) streak(top, master.position, 0.3, enemy.type === 'pylon' ? [0.35, 0.65, 1.0] : [0.7, 0.4, 1.0], 0.55 + 0.25 * Math.sin(time * 9 + enemy.phase));
+          const link = { pylon: [0.35, 0.65, 1.0], node: [0.7, 0.4, 1.0], relay: [1.0, 0.8, 0.3], egg: [0.8, 1.0, 0.3] }[enemy.type];
+          if (master) streak(top, master.position, 0.3, link, 0.55 + 0.25 * Math.sin(time * 9 + enemy.phase));
           continue;
         }
         const kind = ENEMY_TYPES[enemy.type];
@@ -3228,6 +3247,11 @@
         }
       }
       for (const shot of enemyShots) {
+        if (shot.kind === 'acid') {
+          streak(sub(shot.position, mul(shot.velocity, 0.1)), shot.position, 0.7, [0.6, 1.0, 0.2], 1.5);
+          billboard(shot.position, 1.4, [0.85, 1.0, 0.5], 1.2);
+          continue;
+        }
         if (shot.kind === 'lance') {
           streak(sub(shot.position, mul(shot.velocity, 0.08)), shot.position, 0.7, [1.0, 0.2, 0.35], 2);
           billboard(shot.position, 1.6, [1.0, 0.6, 0.7], 1.4);
@@ -3297,7 +3321,7 @@
       for (const [model, flash, exposure] of liveBarrels) drawMesh(barrelMesh.lid, model, flash, WHITE, exposure);
       useMaterial(materials.drone);
       for (const enemy of enemies) {
-        if (enemy.hp <= 0 || !near(enemy.position, 400)) continue;
+        if (enemy.hp <= 0 || enemy.cloaked || !near(enemy.position, 400)) continue;
         const kind = ENEMY_TYPES[enemy.type];
         if (enemy.type === 'sentry') { useMaterial(materials.hazard); drawMesh(pylonMesh, modelMatrix([enemy.base[0], enemy.base[1] - 1.8, enemy.base[2]]), 0, WHITE, exposureAt(enemy.position)); useMaterial(materials.drone); }
         // Data cores and the herald's crown and nodes are cut from glowing crystal rather than hull plate.
@@ -3362,7 +3386,7 @@
       };
       for (const barrel of barrels) if (!barrel.exploded) mark(barrel.position,'#e8a05e',1.8);
       for (const pickup of pickups) if (!pickup.taken) mark(pickup.position, pickup.type === 'health' ? '#6dffa0' : pickup.type === 'launcher' ? '#d9a6ff' : '#ffc45a', 2.4);
-      for (const enemy of enemies) if (enemy.hp > 0) mark(enemy.position, ENEMY_TYPES[enemy.type].radar, ENEMY_TYPES[enemy.type].boss ? 4.6 : enemy.type === 'warden' || enemy.type === 'brood' ? 3.4 : enemy.summoned && enemy.type !== 'hunter' ? 1.7 : 2.6);
+      for (const enemy of enemies) if (enemy.hp > 0 && !enemy.cloaked) mark(enemy.position, ENEMY_TYPES[enemy.type].radar, ENEMY_TYPES[enemy.type].boss ? 4.6 : enemy.type === 'warden' || enemy.type === 'brood' ? 3.4 : enemy.summoned && enemy.type !== 'hunter' ? 1.7 : 2.6);
       r.save(); r.beginPath(); r.arc(cx,cy,51,0,Math.PI*2); r.clip();
       r.strokeStyle = '#ff9a3a'; r.lineWidth = 2.2; r.beginPath();
       for (const gate of gates) {
@@ -3504,8 +3528,9 @@
       if (enemy.hp <= 0) return;
       if (GUARDS[enemy.type] && guardsLeft(enemy) > 0) {
         enemy.flash = 0.35; enemy.active = true; enemy.shieldHit = 1;
-        registerHit(enemy.type === 'herald' ? 'HERALD SHIELDED // DESTROY THE NODES' : 'CORE SHIELDED // DESTROY THE PYLONS'); return;
+        registerHit(GUARD_HINTS[enemy.type]); return;
       }
+      if (enemy.type === 'phantom') { enemy.reveal = 1.2; enemy.cloaked = false; }
       if (enemy.shieldedBy && enemy.shieldedBy.hp > 0) {
         enemy.flash = 0.3; enemy.shieldHit = 1; if (!enemy.active) alert(enemy);
         registerHit('AEGIS SHIELD // DESTROY THE AEGIS'); return;
@@ -3523,9 +3548,9 @@
         else for (const gate of gates) if (gate.kind === 'core') openGate(gate, 'ALL DATA CORES DOWN // ARCHIVE OPEN');
         return;
       }
-      if (enemy.type === 'pylon' || enemy.type === 'node') {
+      if (isGuard(enemy.type)) {
         const left = enemies.filter(e => e.type === enemy.type && e.hp > 0).length;
-        registerHit(left ? `${ENEMY_TYPES[enemy.type].name} DESTROYED // ${left} LEFT` : enemy.type === 'node' ? 'HERALD SHIELD DOWN' : 'CORE SHIELD DOWN');
+        registerHit(left ? `${ENEMY_TYPES[enemy.type].name} DESTROYED // ${left} LEFT` : GUARDS_DOWN[enemy.type]);
         explosions.push({ position: enemy.position.slice(), life: 0.65, scale: 1.3 });
         sparks(enemy.position, 30, [0.5, 0.8, 1.0], 20); playExplosionSound();
         return;
@@ -3647,7 +3672,7 @@
     const fireBolt = (from, direction, speed, amount, extra) => enemyShots.push({ position: from, velocity: mul(direction, speed), life: 4, damage: amount, ...extra });
     const ELITE_EYE = [1.0, 0.82, 0.25];
     const CRYSTALLINE = { core: [0.7, 1.3, 1.2], herald: [1.2, 0.8, 1.4], node: [1.1, 0.9, 1.4] };
-    const SPINNERS = { sentinel: 0.45, pylon: 1.2, aegis: 1.6, mine: 2.4, herald: 0.3, node: 1.8, core: 0.8 };
+    const SPINNERS = { sentinel: 0.45, pylon: 1.2, aegis: 1.6, mine: 2.4, herald: 0.3, node: 1.8, core: 0.8, overseer: 0.35, egg: 0.5 };
     // A hostile that spots the ship wakes the others close to it; hunters and mites only wake when they see it.
     function alert(enemy) {
       enemy.active = true;
@@ -3665,7 +3690,7 @@
           const speed = enemy.type === 'mite' ? 21 : 17, weave = mul(side, Math.sin(time * 3 + enemy.phase) * speed * 0.25);
           return drive(enemy, add(mul(aim, speed), weave), dt, 1.8, enemy.type === 'mite' ? 0.9 : 1.4);
         }
-        case 'drone': {
+        case 'drone': case 'phantom': {
           if (!enemy.active) return bob(enemy, 1.3, 1.1);
           // Awake drones hold a middle distance and sidestep, switching sides now and then, without straying far from home.
           if ((enemy.dodge -= dt) <= 0) { enemy.side = random() < 0.5 ? -1 : 1; enemy.dodge = range(1.2, 2.8); }
@@ -3704,7 +3729,13 @@
           enemy.position = add(enemy.base, [Math.sin(time * 0.5 + enemy.phase) * 3, Math.cos(time * 0.7 + enemy.phase) * 1.5, Math.cos(time * 0.5 + enemy.phase) * 3]);
           return;
         case 'lancer': return bob(enemy, 0.6, 0.6);
-        case 'sentry': case 'pylon': enemy.position = enemy.base.slice(); return;
+        case 'sentry': case 'pylon': case 'relay': case 'egg': enemy.position = enemy.base.slice(); return;
+        case 'overseer':
+          enemy.position = add(enemy.base, [Math.sin(time * 0.4 + enemy.phase) * 14, Math.sin(time * 0.8) * 2, Math.sin(time * 0.3 + enemy.phase) * 6]);
+          return;
+        case 'queen':
+          enemy.position = add(enemy.base, [Math.sin(time * 0.3 + enemy.phase) * 12, Math.sin(time * 0.9) * 2, Math.cos(time * 0.3 + enemy.phase) * 8]);
+          return;
         case 'core': enemy.position = add(enemy.base, [0, Math.sin(time * 1.6 + enemy.phase) * 0.6, 0]); return;
         case 'sentinel':
           enemy.position = add(enemy.base, [Math.sin(time * 0.35 + enemy.phase) * 16, Math.sin(time * 0.7) * 2.5, Math.sin(time * 0.5) * 6]);
@@ -3741,7 +3772,11 @@
           enemyMissiles.push({ position: add(enemy.position, [0, -0.8, 0]), velocity: mul(normalize(add(aim, [0, 0.35, 0])), 20), life: 6.5 });
           enemy.cooldown = 4.5 + random() * 1.5;
           return playMissileLaunch(0.6);
-        case 'sentry': enemy.burst = 3; enemy.burstTimer = 0; enemy.cooldown = 2.6 + random() * 0.6; return;
+        case 'sentry': case 'relay': enemy.burst = 3; enemy.burstTimer = 0; enemy.cooldown = 2.6 + random() * 0.6; return;
+        case 'phantom': enemy.burst = 3; enemy.burstTimer = 0; enemy.reveal = 1.6; enemy.cooldown = 3.2 + random(); return;
+        case 'egg': if (distance < 70 && owned() < 2) summon('mite', below(0), enemy); enemy.cooldown = 7 + random() * 2; return;
+        case 'overseer': return overseerAttack(enemy, aim, distance);
+        case 'queen': return queenAttack(enemy, aim);
         case 'warden':
           for (const spread of [-0.12, 0, 0.12]) {
             const c = Math.cos(spread), s = Math.sin(spread);
@@ -3794,6 +3829,7 @@
         const facing = Math.atan2(toPlayer[0], toPlayer[2]) - enemy.yaw;
         enemy.yaw += clamp(Math.atan2(Math.sin(facing), Math.cos(facing)), -dt * 2.5, dt * 2.5);
         if (SPINNERS[enemy.type]) enemy.yaw = time * SPINNERS[enemy.type] + enemy.phase;
+        if (enemy.type === 'phantom') { enemy.reveal = Math.max(0, (enemy.reveal || 0) - dt); enemy.cloaked = enemy.reveal <= 0 && distance > 18; }
         enemy.cooldown -= dt;
         if (visible && distance < 70) hostilesNear++;
         const aim = mul(toPlayer, 1 / distance);
@@ -3852,6 +3888,33 @@
       }
       enemy.cooldown = enraged ? 1.9 : 2.8;
     }
+    // The overseer fires five-bolt spreads and every third volley a charged beam; below 40% it calls drones.
+    function overseerAttack(enemy, aim, distance) {
+      const enraged = enemy.hp <= enemy.maxHp * 0.4;
+      enemy.volleys = (enemy.volleys || 0) + 1;
+      if (enemy.volleys % 3 === 0) { enemy.charge = 1.25; enemy.aimPoint = ship.position.slice(); playCharge(distance); }
+      else for (let k = -2; k <= 2; k++) {
+        const c = Math.cos(k * 0.11), s = Math.sin(k * 0.11);
+        fireBolt(add(enemy.position, mul(aim, 6)), [aim[0] * c + aim[2] * s, aim[1], -aim[0] * s + aim[2] * c], 26, 9, { life: 5 });
+      }
+      if (enraged && enemy.volleys % 2 === 0 && enemies.filter(e => e.owner === enemy && e.hp > 0).length < 4)
+        for (const offset of [-6, 6]) { const spot = add(enemy.position, [offset, -3, 0]); summon('drone', freeAt(...spot, 1.5) ? spot : enemy.position.slice(), enemy); }
+      enemy.cooldown = enraged ? 1.8 : 2.5;
+    }
+    // The queen sprays fans of slow acid and lays mites every other volley; badly hurt, she lays broods as well.
+    function queenAttack(enemy, aim) {
+      const enraged = enemy.hp <= enemy.maxHp * 0.4, owned = enemies.filter(e => e.owner === enemy && e.hp > 0);
+      for (let k = -4; k <= 4; k++) {
+        const c = Math.cos(k * 0.09), s = Math.sin(k * 0.09);
+        fireBolt(add(enemy.position, mul(aim, 6)), [aim[0] * c + aim[2] * s, aim[1] + (k % 2) * 0.04, -aim[0] * s + aim[2] * c], 18, 7, { kind: 'acid', life: 6 });
+      }
+      enemy.volleys = (enemy.volleys || 0) + 1;
+      if (enemy.volleys % 2 === 0 && owned.length < 6) for (const offset of [-5, 5]) {
+        const spot = add(enemy.position, [offset, -3, 0]), broods = owned.filter(e => e.type === 'brood').length;
+        summon(enraged && broods < 2 ? 'brood' : 'mite', freeAt(...spot, 1.5) ? spot : enemy.position.slice(), enemy);
+      }
+      enemy.cooldown = enraged ? 2 : 2.8;
+    }
     // The carrier fires a fan of bolts and a missile pair, and every other volley launches two skimmers from its
     // bays (four at most); badly hurt, it launches mites instead and fires faster.
     function carrierAttack(enemy, aim) {
@@ -3903,7 +3966,7 @@
     function acquireTarget(view) {
       let best = null, bestDot = Math.cos(0.3);
       for (const enemy of enemies) {
-        if (enemy.hp <= 0) continue;
+        if (enemy.hp <= 0 || enemy.cloaked) continue;
         const to = sub(enemy.position, ship.position), distance = Math.hypot(...to);
         if (distance > 160 || distance < 4) continue;
         const facing = dot(to, view.forward) / distance;
@@ -3971,7 +4034,7 @@
     function salvoTargets(view, count) {
       const list = lockTarget ? [lockTarget] : [];
       const others = enemies.filter(enemy => {
-        if (enemy.hp <= 0 || enemy === lockTarget) return false;
+        if (enemy.hp <= 0 || enemy.cloaked || enemy === lockTarget) return false;
         const to = sub(enemy.position, ship.position), distance = Math.hypot(...to);
         return distance < 160 && distance > 4 && dot(to, view.forward) / distance > Math.cos(0.6) && lineOfSight(enemy.position);
       }).map(enemy => [enemy, dot(normalize(sub(enemy.position, ship.position)), view.forward)]).sort((a, b) => b[1] - a[1]);
@@ -4262,7 +4325,7 @@
       bossBar.classList.toggle('show', fighting);
       setTrack(fighting ? 'boss' : level.music || 'relay');
       if (fighting) {
-        const left = GUARDS[boss.type] ? guardsLeft(boss) : 0, part = GUARDS[boss.type] === 'node' ? 'NODE' : 'PYLON';
+        const left = GUARDS[boss.type] ? guardsLeft(boss) : 0, part = GUARDS[boss.type] ? ENEMY_TYPES[GUARDS[boss.type]].name : '';
         bossName.textContent = ENEMY_TYPES[boss.type].boss;
         bossMeter.style.width = `${boss.hp / boss.maxHp * 100}%`;
         bossState.textContent = left ? `SHIELDED // ${left} ${part}${left > 1 ? 'S' : ''} LEFT` : boss.hp <= boss.maxHp * 0.4 ? 'CORE CRITICAL' : GUARDS[boss.type] ? 'SHIELD DOWN' : 'ENGAGED';
