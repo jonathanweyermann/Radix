@@ -1106,7 +1106,7 @@
           return true;
         });
       }
-      hostileTotal = enemies.length;
+      hostileTotal = enemies.length; pickupTotal = pickups.length;
     }
     // Gates seal their cells until opened. Chain gates carry two padlocks on the face the player meets,
     // each chained to the door edges; secret panels are opened by shooting the panel itself.
@@ -2362,7 +2362,7 @@
         musicOn = !musicOn; musicText.textContent = musicOn ? 'ON' : 'OFF'; musicNextTime = 0;
         if (musicBus) musicBus.gain.setValueAtTime(musicOn ? 1 : 0, audioContext.currentTime);
       }
-      if (key === 'r' && (destroyed || finished) && !event.repeat) resetGame();
+      if (key === 'r' && (destroyed || finished) && !event.repeat) resetGame(event.shiftKey);
       if (key !== 'p' && key !== 'r') ensureAudio();
       keys.add(key);
     });
@@ -2473,7 +2473,7 @@
     const releaseTouch = () => { Object.assign(touch, { steerX: 0, steerY: 0, fire: false, thrust: false, brake: false }); resetStick();
       for (const held of document.querySelectorAll('.tbutton.held')) held.classList.remove('held'); };
     bindStick(document.getElementById('steerZone'), document.getElementById('steerStick'), (x, y) => { touch.steerX = x; touch.steerY = y; });
-    bindHold('fireButton', (on) => { touch.fire = on; });
+    bindHold('fireButton', (on) => { if (on && (destroyed || finished)) { resetGame(false); return; } touch.fire = on; });
     bindHold('thrustButton', (on) => { touch.thrust = on; });
     bindHold('brakeButton', (on) => { touch.brake = on; });
     bindTap('missileButton', () => { missileRequest = true; });
@@ -2876,6 +2876,7 @@
       bossBlast = null; resetMap(); setTrack(level.music || 'relay');
       sectorText.textContent = `${index + 1} / ${LEVELS.length}`; levelText.textContent = level.name;
       Object.assign(save.sectors[index] ||= {}, { weapon: weaponLevel, missiles: missileAmmo, launcher: launcherLevel }); save.last = index; noteArsenal();
+      checkpoint = null;
       sectorTime = 0; briefTimer = level.brief ? 3.2 : 0;
       notice(`SECTOR ${index + 1} // ${level.name} ${level.title}`, 3);
     }
@@ -2965,9 +2966,36 @@
       Promise.resolve(enter.call(root)).then(() => screen.orientation?.lock?.('landscape')).catch(() => {});
     });
     document.getElementById('newGameButton').addEventListener('click', () => { weaponLevel = 1; missileAmmo = 0; launcherLevel = 1; loadLevel(0, 100); closeMenu(); });
-    function resetGame() {
-      if (finished) { weaponLevel = 1; missileAmmo = 0; launcherLevel = 1; loadLevel(0, 100); }
-      else { weaponLevel = levelWeapon; missileAmmo = levelMissiles; launcherLevel = levelLauncher; loadLevel(levelIndex, 100); }
+    // Checkpoints: opening a gate or destroying a boss records how far the sector has got. Spawns are seeded per
+    // sector, so a restart reloads the sector and replays that progress: the same enemies stay dead, barrels and
+    // pickups stay gone and gates stay open, with the ship back where it was and the loadout it had then.
+    let checkpoint = null, pickupTotal = 0;
+    const indexesWhere = (list, test, limit = list.length) => list.slice(0, limit).flatMap((item, i) => test(item) ? [i] : []);
+    function takeCheckpoint() {
+      if (destroyed || warpTimer > 0) return;
+      checkpoint = { position: ship.position.slice(), yaw: ship.yaw, health: Math.max(health, 60), weapon: weaponLevel, launcher: launcherLevel, missiles: missileAmmo,
+        hostiles: hostileTotal, dead: indexesWhere(enemies, e => e.hp <= 0, hostileTotal), barrels: indexesWhere(barrels, b => b.exploded),
+        pickups: indexesWhere(pickups, p => p.taken, pickupTotal), gates: indexesWhere(gates, g => g.opening), kills, barrelsDestroyed };
+    }
+    function resetGame(fromStart) {
+      const cp = checkpoint, elapsed = sectorTime;
+      if (finished) { weaponLevel = 1; missileAmmo = 0; launcherLevel = 1; loadLevel(0, 100); return; }
+      weaponLevel = levelWeapon; missileAmmo = levelMissiles; launcherLevel = levelLauncher;
+      loadLevel(levelIndex, fromStart || !cp ? 100 : cp.health);
+      if (fromStart || !cp || cp.hostiles !== hostileTotal) return;
+      weaponLevel = cp.weapon; launcherLevel = cp.launcher; missileAmmo = cp.missiles;
+      for (const i of cp.dead) enemies[i].hp = 0;
+      for (const i of cp.barrels) barrels[i].exploded = true;
+      for (const i of cp.pickups) pickups[i].taken = true;
+      for (const i of cp.gates) {
+        const gate = gates[i];
+        gate.opening = true; gate.open = 1; for (const lock of gate.locks) lock.hp = 0;
+        fillCells([gate.x0, gate.z0, gate.x1, gate.z1], k => { sealed[k] = 0; });
+      }
+      kills = cp.kills; barrelsDestroyed = cp.barrelsDestroyed; sectorTime = elapsed;
+      ship.position = cp.position.slice(); ship.yaw = cp.yaw; ship.speed = 0;
+      checkpoint = cp;
+      notice('RESTARTED AT CHECKPOINT', 2);
     }
     function damage(amount, label) {
       if (destroyed || finished || warpTimer > 0) return;
@@ -2982,7 +3010,10 @@
       impactTimer = 1.1; impactText.textContent = label;
       if (health === 0) {
         destroyed = true; ship.speed = 0;
-        gameOverText.innerHTML = 'SHIP DESTROYED<small>PRESS R TO RESTART THE SECTOR</small>'; gameOverText.classList.add('show');
+        const how = touchMode ? 'TAP FIRE' : 'PRESS R';
+        gameOverText.innerHTML = checkpoint ? `SHIP DESTROYED<small>${how} TO RESTART FROM THE CHECKPOINT${touchMode ? '' : ' // SHIFT+R: SECTOR START'}</small>`
+          : `SHIP DESTROYED<small>${how} TO RESTART THE SECTOR</small>`;
+        gameOverText.classList.add('show');
       }
     }
     function registerHit(message) {
@@ -3540,7 +3571,8 @@
     }
     function openGate(gate, message) {
       gate.opening = true;
-      notice(message, 2);
+      takeCheckpoint();
+      notice(`${message} // CHECKPOINT`, 2.2);
       playGate();
     }
     // A padlock bursts and its chains shower sparks; the last lock on a gate opens it.
@@ -3565,7 +3597,7 @@
     }
     function finishGame() {
       finished = true; ship.speed = 0;
-      gameOverText.innerHTML = 'ALL SECTORS CLEAR<small>PRESS R TO FLY AGAIN FROM SECTOR 1</small>'; gameOverText.classList.add('show');
+      gameOverText.innerHTML = `ALL SECTORS CLEAR<small>${touchMode ? 'TAP FIRE' : 'PRESS R'} TO FLY AGAIN FROM SECTOR 1</small>`; gameOverText.classList.add('show');
     }
     // Move an enemy by its velocity one axis at a time, bouncing off walls, floors, ceilings and girders.
     function moveEnemy(enemy, dt, pad) {
