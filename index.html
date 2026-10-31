@@ -2976,7 +2976,8 @@
       if (destroyed || warpTimer > 0) return;
       checkpoint = { position: ship.position.slice(), yaw: ship.yaw, health: Math.max(health, 60), weapon: weaponLevel, launcher: launcherLevel, missiles: missileAmmo,
         hostiles: hostileTotal, dead: indexesWhere(enemies, e => e.hp <= 0, hostileTotal), barrels: indexesWhere(barrels, b => b.exploded),
-        pickups: indexesWhere(pickups, p => p.taken, pickupTotal), gates: indexesWhere(gates, g => g.opening), kills, barrelsDestroyed };
+        pickups: indexesWhere(pickups, p => p.taken, pickupTotal), gates: indexesWhere(gates, g => g.opening), kills, barrelsDestroyed,
+        explored: explored.slice(), zones: [...visitedZones] };
     }
     function resetGame(fromStart) {
       const cp = checkpoint, elapsed = sectorTime;
@@ -2994,6 +2995,9 @@
         fillCells([gate.x0, gate.z0, gate.x1, gate.z1], k => { sealed[k] = 0; });
       }
       kills = cp.kills; barrelsDestroyed = cp.barrelsDestroyed; sectorTime = elapsed;
+      // The map keeps what had been explored by the checkpoint.
+      explored.set(cp.explored); for (const zone of cp.zones) visitedZones.add(zone);
+      for (let i = 0; i < explored.length; i++) if (explored[i]) paintMapCell(i % GRID_W, Math.floor(i / GRID_W));
       ship.position = cp.position.slice(); ship.yaw = cp.yaw; ship.speed = 0;
       checkpoint = cp;
       notice('RESTARTED AT CHECKPOINT', 2);
