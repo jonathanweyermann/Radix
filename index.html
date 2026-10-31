@@ -60,10 +60,10 @@
     .boss .meter { height: 7px; border-color: #a04a6a; }
     .boss .meter span { background: #ff5a8a; box-shadow: 0 0 12px #ff5a8a; }
     .boss small { display: block; margin-top: 6px; color: #8fd8ff; font-size: 10px; letter-spacing: .2em; }
-    .touch-ui, .rotate-hint, #fullscreenButton { display: none; }
+    .touch-ui, .rotate-hint, #fullscreenButton, #pitchButton { display: none; }
     body.touch { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
     body.touch .touch-ui { display: block; position: fixed; inset: 0; pointer-events: none; }
-    body.touch #fullscreenButton { display: inline-block; }
+    body.touch #fullscreenButton, body.touch #pitchButton { display: inline-block; }
     .touch-ui > * { position: absolute; pointer-events: auto; touch-action: none; }
     .stick { left: max(20px, env(safe-area-inset-left)); bottom: 108px; width: 132px; height: 132px; border-radius: 50%; border: 2px solid #53d8eb66; background: radial-gradient(#0b1a2433, #0b1a2488); }
     .stick .knob { position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; margin: -27px 0 0 -27px; border-radius: 50%; border: 2px solid #9ff3ff; background: #65e9ff44; box-shadow: 0 0 14px #3be8ff66; }
@@ -142,13 +142,13 @@
   <div class="menu" id="menu" role="dialog" aria-label="Game menu">
     <div class="menu-box">
       <h1>RADIX<small>BEYOND THE VOID</small></h1>
-      <div class="row" style="margin-top: 26px"><button class="primary" id="resumeButton">RESUME</button><button class="primary" id="newGameButton">NEW GAME</button><button class="primary" id="fullscreenButton">FULL SCREEN</button></div>
+      <div class="row" style="margin-top: 26px"><button class="primary" id="resumeButton">RESUME</button><button class="primary" id="newGameButton">NEW GAME</button><button class="primary" id="fullscreenButton">FULL SCREEN</button><button class="primary" id="pitchButton">PITCH: NORMAL</button></div>
       <h2>DIFFICULTY</h2>
       <div class="row" id="difficultyRow"></div>
       <h2>SECTOR SELECT</h2>
       <div class="sectors" id="sectorList"></div>
       <p id="menuNote">Sectors unlock as you reach them, and start with the cannon and missiles you last entered them with. Press Esc during flight to open this menu.</p>
-      <p id="touchNote" hidden>Touch: drag the left stick to steer (pull down to climb). Hold THRUST or BRAKE to change speed; it stays where you leave it. Hold FIRE to shoot, tap MSL for a missile.</p>
+      <p id="touchNote" hidden>Touch: drag the left stick to steer; push up to climb (PITCH flips this), and the nose levels out when you let go. Hold THRUST or BRAKE to change speed; it stays where you leave it. Hold FIRE to shoot, tap MSL for a missile.</p>
     </div>
   </div>
   <script>
@@ -1896,8 +1896,8 @@
         const reach = Math.hypot(x, y);
         if (reach > 1) { x /= reach; y /= reach; }
         knob.style.left = `${50 + x * 32}%`; knob.style.top = `${50 + y * 32}%`;
-        // A small dead zone, then a squared response for fine aiming near the centre.
-        const shape = (v) => Math.sign(v) * Math.max(0, (Math.abs(v) - 0.12) / 0.88) ** 1.6;
+        // A dead zone for a resting thumb, then a curved response for fine aiming near the centre.
+        const shape = (v) => Math.sign(v) * Math.max(0, (Math.abs(v) - 0.2) / 0.8) ** 1.6;
         onMove(shape(x), shape(y));
       };
       element.addEventListener('pointerdown', (event) => {
@@ -2227,6 +2227,11 @@
     }
     resumeButton.addEventListener('click', closeMenu);
     document.getElementById('touchNote').hidden = !touchMode;
+    // Touch pitch defaults to stick-up climbs; the menu can flip it to the mouse's inverted style.
+    const pitchButton = document.getElementById('pitchButton');
+    const showPitch = () => { pitchButton.textContent = save.invertTouch ? 'PITCH: INVERTED' : 'PITCH: NORMAL'; };
+    pitchButton.addEventListener('click', () => { save.invertTouch = !save.invertTouch; writeSave(); showPitch(); });
+    showPitch();
     document.getElementById('fullscreenButton').addEventListener('click', () => {
       const root = document.documentElement, enter = root.requestFullscreen || root.webkitRequestFullscreen;
       if (!enter) return;
@@ -3052,11 +3057,13 @@
       }
       const previous = ship.position;
       const turn = clamp(Number(down('arrowright')) - Number(down('arrowleft')) + touch.steerX * 1.5, -1.5, 1.5);
-      const climb = clamp(Number(down('arrowdown')) - Number(down('arrowup')) + touch.steerY * 1.4, -1.4, 1.4);
+      const climb = clamp(Number(down('arrowdown')) - Number(down('arrowup')) + touch.steerY * (save.invertTouch ? 1.4 : -1.4), -1.4, 1.4);
       const bank = Number(down('e')) - Number(down('q'));
       const slideX = Number(down('d')) - Number(down('a')), slideY = Number(down('w')) - Number(down('s'));
       ship.yaw += turn * dt * 1.2;
       ship.pitch = clamp(ship.pitch + climb * dt * 0.9, -1.35, 1.35);
+      // With the touch stick centred vertically, the nose eases back to level so small drifts don't add up.
+      if (touchMode && touch.steerY === 0 && climb === 0) ship.pitch -= ship.pitch * Math.min(1, dt * 0.9);
       ship.roll += bank * dt * 1.4;
       ship.roll += (-(turn * 0.35 + slideX * 0.2) - ship.roll) * Math.min(1, dt * 0.7);
       ship.speed = clamp(ship.speed + (Number(down('x', ' ') || touch.thrust) * 18 - Number(down('z') || touch.brake) * 24) * dt, 0, 45);
