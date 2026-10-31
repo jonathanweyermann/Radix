@@ -3082,6 +3082,10 @@
       impactTimer = 1.1; impactText.textContent = label;
       if (health === 0) {
         destroyed = true; ship.speed = 0;
+        // The ship goes up in a fireball just ahead of the cockpit.
+        const blast = add(ship.position, mul(basis(ship.yaw, ship.pitch).forward, 4));
+        explosions.push({ position: blast, life: 0.65, scale: 2.2 }, { position: add(blast, [1.5, 1, 0]), life: 0.5, scale: 1.4 });
+        sparks(blast, 50, [1.0, 0.55, 0.25], 26); playExplosionSound(); playExplosionSound();
         const how = touchMode ? 'TAP FIRE' : 'PRESS R';
         gameOverText.innerHTML = checkpoint ? `SHIP DESTROYED<small>${how} TO RESTART FROM THE CHECKPOINT${touchMode ? '' : ' // SHIFT+R: SECTOR START'}</small>`
           : `SHIP DESTROYED<small>${how} TO RESTART THE SECTOR</small>`;
@@ -3726,8 +3730,16 @@
     const CRYSTALLINE = { core: [0.7, 1.3, 1.2], herald: [1.2, 0.8, 1.4], node: [1.1, 0.9, 1.4] };
     const SPINNERS = { sentinel: 0.45, pylon: 1.2, aegis: 1.6, mine: 2.4, herald: 0.3, node: 1.8, core: 0.8, overseer: 0.35, egg: 0.5 };
     // A hostile that spots the ship wakes the others close to it; hunters and mites only wake when they see it.
+    // The first time a pilot ever meets a type, a short tip explains it; types already met are remembered in the save.
+    const ENEMY_TIPS = {
+      warden: 'WARDEN // HEAVY ARMOR, THREE-BOLT SPREADS', striker: 'STRIKER // SHOOT DOWN ITS HOMING MISSILES', sentry: 'SENTRY // TURRET ON A PYLON, FIRES BURSTS',
+      lancer: 'LANCER // KEEP MOVING WHEN ITS RED BEAM FINDS YOU', aegis: 'AEGIS // KILL IT FIRST: IT SHIELDS ITS ALLIES', brood: 'BROOD // HATCHES MITES AND BURSTS INTO MORE',
+      skimmer: 'SKIMMER // FAST, CIRCLES YOU AND FIRES PAIRS', miner: 'MINER // SHOOT ITS MINES BEFORE THEY REACH YOU', phantom: 'PHANTOM // CLOAKED UNTIL IT FIRES OR GETS CLOSE',
+    };
     function alert(enemy) {
       enemy.active = true;
+      const seen = save.seen || (save.seen = []);
+      if (ENEMY_TIPS[enemy.type] && !seen.includes(enemy.type)) { seen.push(enemy.type); writeSave(); notice(ENEMY_TIPS[enemy.type], 3.5); }
       for (const other of enemies)
         if (!other.active && other.hp > 0 && other.type !== 'hunter' && other.type !== 'mite' && Math.hypot(...sub(other.position, enemy.position)) < 35) other.active = true;
     }
@@ -4164,6 +4176,21 @@
       }
       warningText.style.opacity = warning && Math.sin(time * 14) > 0 ? '1' : '0';
     }
+    function updateEffects(dt) {
+      for (let i = explosions.length - 1; i >= 0; i--) {
+        explosions[i].life -= dt;
+        if (explosions[i].life <= 0) explosions.splice(i,1);
+      }
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const spark = particles[i];
+        spark.life -= dt;
+        if (spark.life <= 0 || !isOpen(spark.position[0], spark.position[2])) { particles.splice(i, 1); continue; }
+        spark.velocity[1] -= 24 * dt;
+        spark.position = add(spark.position, mul(spark.velocity, dt));
+        const floor = floorAt(spark.position[0], spark.position[2]);
+        if (spark.position[1] < floor + 0.1) { spark.position[1] = floor + 0.1; spark.velocity = [spark.velocity[0] * 0.6, -spark.velocity[1] * 0.35, spark.velocity[2] * 0.6]; }
+      }
+    }
     function updateCombat(dt) {
       fireCooldown = Math.max(0, fireCooldown - dt);
       muzzleTimer = Math.max(0, muzzleTimer - dt);
@@ -4263,19 +4290,7 @@
           bossBlast = null;
         }
       }
-      for (let i = explosions.length - 1; i >= 0; i--) {
-        explosions[i].life -= dt;
-        if (explosions[i].life <= 0) explosions.splice(i,1);
-      }
-      for (let i = particles.length - 1; i >= 0; i--) {
-        const spark = particles[i];
-        spark.life -= dt;
-        if (spark.life <= 0 || !isOpen(spark.position[0], spark.position[2])) { particles.splice(i, 1); continue; }
-        spark.velocity[1] -= 24 * dt;
-        spark.position = add(spark.position, mul(spark.velocity, dt));
-        const floor = floorAt(spark.position[0], spark.position[2]);
-        if (spark.position[1] < floor + 0.1) { spark.position[1] = floor + 0.1; spark.velocity = [spark.velocity[0] * 0.6, -spark.velocity[1] * 0.35, spark.velocity[2] * 0.6]; }
-      }
+      updateEffects(dt);
       for (const pickup of pickups) {
         if (pickup.taken || Math.hypot(...sub(pickup.position, ship.position)) > 3.6) continue;
         pickup.taken = true;
@@ -4304,6 +4319,7 @@
     function update(dt) {
       warpGlow = warpTimer > 0 ? 1 - warpTimer / WARP_TIME : Math.max(0, warpGlow - dt * 1.4);
       warpFlash.style.opacity = String(warpGlow);
+      if (destroyed && !paused) { time += dt; updateEffects(dt); }
       if (paused || destroyed || finished) return;
       time += dt;
       if (warpTimer === 0) sectorTime += dt;
