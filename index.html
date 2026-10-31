@@ -55,6 +55,11 @@
     .tr { top: 12px; right: 12px; border-width: 1px 1px 0 0; }
     .bl { bottom: 12px; left: 12px; border-width: 0 0 1px 1px; }
     .br { bottom: 12px; right: 12px; border-width: 0 1px 1px 0; }
+    .boss { position: absolute; top: 64px; left: 50%; transform: translateX(-50%); width: min(420px, 70vw); display: none; text-align: center; color: #ff9ab8; font-size: 11px; letter-spacing: .3em; }
+    .boss.show { display: block; }
+    .boss .meter { height: 7px; border-color: #a04a6a; }
+    .boss .meter span { background: #ff5a8a; box-shadow: 0 0 12px #ff5a8a; }
+    .boss small { display: block; margin-top: 6px; color: #8fd8ff; font-size: 10px; letter-spacing: .2em; }
     .menu { position: fixed; inset: 0; display: none; place-items: center; overflow-y: auto; padding: 16px; background: radial-gradient(#06121cc4, #02060bf0); }
     .menu.show { display: grid; }
     .menu-box { width: min(620px, 100%); text-align: center; }
@@ -84,6 +89,7 @@
     <div class="damage-flash" id="damageFlash"></div>
     <div class="shield-flash" id="shieldFlash"></div>
     <div class="warning" id="warningText">MISSILE WARNING</div>
+    <div class="boss" id="bossBar">OMEGA SENTINEL<div class="meter"><span id="bossMeter"></span></div><small id="bossState">SHIELDED</small></div>
     <div class="warp" id="warpFlash"></div>
     <div class="paused" id="pausedText">PAUSED</div>
     <div class="impact" id="impactText">HULL IMPACT</div>
@@ -93,7 +99,7 @@
       <div class="panel"><div class="panel-title">NEUTRON CANNON</div><div class="panel-row"><span>SECTOR</span><strong id="sectorText">1 / 4</strong></div><div class="panel-row"><span>CANNON</span><strong id="cannonText">MK I</strong></div><div class="panel-row"><span>MISSILES</span><strong id="missileText">0</strong></div><div class="panel-row"><span>BARRELS</span><strong id="barrelText">0 / 0</strong></div><div class="panel-row"><span>HOSTILES</span><strong id="killText">0 / 0</strong></div><div class="panel-row"><span>MUSIC</span><strong id="musicText">ON</strong></div></div>
       <div class="radar-wrap"><canvas id="radar" width="118" height="118"></canvas><div class="readouts">SPEED<strong id="speedText">8.0</strong>HEADING<strong id="headingText">000</strong>ALT<strong id="altitudeText">-4</strong></div></div>
       <div class="panel"><div class="panel-title">SHIP STATUS</div><div class="hull shield">SHIELD <strong id="shieldText">100</strong>%<div class="meter"><span id="shieldBar"></span></div></div><div class="hull">HULL <strong id="healthText">100</strong>%<div class="meter"><span id="healthBar"></span></div></div><div class="speed">THRUST<div class="meter"><span id="speedBar"></span></div></div></div>
-      <div class="controls"><b>MOUSE</b> STEER / FIRE &nbsp; <b>WASD</b> STRAFE &nbsp; <b>↑/↓</b> PITCH &nbsp; <b>←/→</b> TURN &nbsp; <b>Q/E</b> ROLL &nbsp; <b>X</b> ACCELERATE &nbsp; <b>Z</b> BRAKE &nbsp; <b>F/J</b> FIRE &nbsp; <b>C/RMB</b> MISSILE &nbsp; <b>P</b> PAUSE &nbsp; <b>M</b> MUSIC</div>
+      <div class="controls"><b>MOUSE</b> STEER / FIRE &nbsp; <b>WASD</b> STRAFE &nbsp; <b>↑/↓</b> PITCH &nbsp; <b>←/→</b> TURN &nbsp; <b>Q/E</b> ROLL &nbsp; <b>X</b> ACCELERATE &nbsp; <b>Z</b> BRAKE &nbsp; <b>F/J</b> FIRE &nbsp; <b>C/RMB</b> MISSILE &nbsp; <b>TAB</b> MAP &nbsp; <b>P</b> PAUSE &nbsp; <b>M</b> MUSIC</div>
     </div>
   </div>
   <div class="menu" id="menu" role="dialog" aria-label="Game menu">
@@ -132,6 +138,7 @@
     const warningText = document.getElementById('warningText');
     const speedBar = document.getElementById('speedBar');
     const pausedText = document.getElementById('pausedText');
+    const bossBar = document.getElementById('bossBar'), bossMeter = document.getElementById('bossMeter'), bossState = document.getElementById('bossState');
     const impactText = document.getElementById('impactText');
     const statusText = document.getElementById('statusText');
     const damageFlash = document.getElementById('damageFlash');
@@ -175,8 +182,9 @@
     const WORLD_SCALE = 1.25, BASE = -11, TOP = 33;
     const FLOOR = BASE * WORLD_SCALE, SKY_LIMIT = 32 * WORLD_SCALE, WALL_TOP = TOP * WORLD_SCALE, CELL = 4 * WORLD_SCALE;
     const GRID_X0 = -256 * WORLD_SCALE, GRID_Z0 = -48 * WORLD_SCALE, GRID_W = 128, GRID_D = 200;
-    //   gates: doors [x0, z0, x1, z1, side the player meets them on, 'chain' | 'secret'] that seal their cells.
-    //     Chain gates open once both chain locks on their face are shot; secret panels open after a few hits.
+    //   gates: doors [x0, z0, x1, z1, side the player meets them on, 'chain' | 'secret' | 'boss'] that seal their cells.
+    //     Chain gates open once both chain locks on their face are shot; secret panels open after a few hits;
+    //     boss gates open when the sector's sentinel is destroyed.
     //   walls: optional weighted wall-texture variants for the lower and upper bands
     const FLOOR_MATERIALS = ['floorPlate', 'floorGrate', 'floorPad', 'floorFoundry', 'floorSludge', 'floorLava'];
     const PLATE = 0, GRATE = 1, PAD = 2, SLAG = 3, SLUDGE = 4, LAVA = 5, BULKHEAD = 1, COLUMN = 2, REACTOR = 3;
@@ -604,17 +612,17 @@
         blocks: [
           [-24, 192, 24, 240, REACTOR],
           [-52, 148, -44, 156, COLUMN], [44, 148, 52, 156, COLUMN], [-52, 276, -44, 284, COLUMN], [44, 276, 52, 284, COLUMN],
-          [-52, 464, -44, 472, COLUMN], [44, 464, 52, 472, COLUMN], [-52, 492, -44, 500, COLUMN], [44, 492, 52, 500, COLUMN],
-          [-8, 472, 8, 488, REACTOR],
         ],
         girders: [[-8, -7, 70, 8, -4, 74], [-96, 14, 160, 96, 17, 164], [-96, 4, 270, 96, 7, 274], [-80, 8, 456, 80, 11, 460]],
+        gates: [[-12, 520, 12, 524, 'south', 'boss']],
+        extras: { enemies: [['sentinel', 0, 12, 484], ['pylon', -52, 1, 468], ['pylon', 52, 1, 468], ['pylon', -52, 1, 500], ['pylon', 52, 1, 500]] },
         zones: [
           { name: 'DROP CHAMBER', area: [-20, -32, 20, 24], barrels: 3, health: 1 },
           { name: 'ENTRY BORE', area: [-8, 24, 8, 120], barrels: 3, drones: 2, hunters: 2 },
           { name: 'CORE ARENA', area: [-96, 120, 96, 312], barrels: 16, drones: 6, hunters: 3, wardens: 3, health: 2, weapon: 1, high: true },
           { name: 'WEST BORE', area: [-60, 312, -44, 440], barrels: 4, drones: 2, hunters: 2 },
           { name: 'EAST BORE', area: [44, 312, 60, 440], barrels: 4, drones: 2, hunters: 2, health: 1 },
-          { name: 'CROWN HALL', area: [-80, 440, 80, 520], barrels: 10, drones: 4, wardens: 3, health: 1, high: true },
+          { name: 'CROWN HALL', area: [-80, 440, 80, 520], barrels: 8, health: 2, missile: 2, high: true },
           { name: 'ASCENT', area: [-12, 520, 12, 580], drones: 2 },
           { name: 'ESCAPE DECK', area: [-32, 580, 32, 640], barrels: 4, wardens: 1 },
         ],
@@ -700,7 +708,11 @@
       warden: { hp: 8, radius: 3.9, scale: 1.7, tint: [0.75, 0.55, 1.6], eye: [0.75, 0.4, 1.0], ram: 30, radar: '#c08cff' },
       striker: { hp: 4, radius: 2.7, scale: 1.1, tint: [0.5, 1.35, 1.25], eye: [0.3, 1.0, 0.9], ram: 25, radar: '#4dffe0' },
       sentry: { hp: 5, radius: 2.3, scale: 1, tint: [1.25, 1.05, 0.7], eye: [1.0, 0.85, 0.3], ram: 20, radar: '#ffe066' },
+      sentinel: { hp: 60, radius: 7, scale: 2.6, tint: [1.3, 0.55, 0.9], eye: [1.0, 0.3, 0.6], ram: 30, radar: '#ff5a9a' },
+      pylon: { hp: 6, radius: 2.6, scale: 1, tint: [0.6, 0.9, 1.5], eye: [0.4, 0.8, 1.0], ram: 20, radar: '#7fb8ff' },
     };
+    // The sentinel cannot be hurt while any of its shield pylons stand.
+    const pylonsLeft = () => enemies.filter(e => e.type === 'pylon' && e.hp > 0).length;
     const barrels = [], enemies = [], pickups = [];
     const addBarrel = (x, z) => barrels.push({ position: [x, floorAt(x, z) + 1.8, z], floor: floorAt(x, z), radius: 1.7, height: 3.6, hp: 2, exploded: false, spin: range(0, Math.PI * 2), flash: 0 });
     const addEnemy = (type, x, y, z) => enemies.push({ type, base: [x, y, z], position: [x, y, z], velocity: [0, 0, 0], hp: ENEMY_TYPES[type].hp,
@@ -1740,6 +1752,15 @@
     enemyMeshes.warden = enemyMeshes.drone;
     enemyMeshes.striker = faceted([[0, 0, 2.2], [-1.6, 0, 0], [0, 1.0, 0], [1.6, 0, 0], [0, -1.0, 0], [0, 0, -2.4], [-4.2, -0.3, -1.2], [4.2, -0.3, -1.2]], HULL_TRIS);
     enemyMeshes.sentry = faceted([[0, 0.2, 2.2], [-1.4, 0, 0], [0, 1.2, 0], [1.4, 0, 0], [0, -1.1, 0], [0, 0.2, -1.4], [-1.9, -0.4, -0.4], [1.9, -0.4, -0.4]], HULL_TRIS);
+    // A star-shaped bipyramid: the sentinel's turning crown and the pylons' tall crystals.
+    const crown = (points, inner, outer, top, bottom) => {
+      const v = [[0, top, 0], [0, -bottom, 0]], tris = [], n = points * 2;
+      for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2, r = i % 2 ? inner : outer; v.push([Math.sin(a) * r, 0, Math.cos(a) * r]); }
+      for (let i = 0; i < n; i++) { const a = 2 + i, b = 2 + (i + 1) % n; tris.push([0, a, b], [1, b, a]); }
+      return faceted(v, tris);
+    };
+    enemyMeshes.sentinel = crown(6, 1.6, 3.4, 1.9, 2.4);
+    enemyMeshes.pylon = crown(3, 0.8, 1.5, 4.2, 4.2);
     const boxHull = (hx, hy, hz) => faceted(
       [[-hx, -hy, -hz], [hx, -hy, -hz], [hx, hy, -hz], [-hx, hy, -hz], [-hx, -hy, hz], [hx, -hy, hz], [hx, hy, hz], [-hx, hy, hz]],
       [[0, 1, 2], [0, 2, 3], [4, 6, 5], [4, 7, 6], [0, 4, 5], [0, 5, 1], [3, 2, 6], [3, 6, 7], [0, 3, 7], [0, 7, 4], [1, 5, 6], [1, 6, 2]], Math.max(hx, hy, hz) * 2);
@@ -1779,12 +1800,13 @@
     window.addEventListener('resize', resize);
     resize();
 
-    const controlKeys = new Set(['w', 'a', 's', 'd', 'c', 'z', 'q', 'e', 'x', 'p', 'm', 'r', 'f', 'j', ' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright']);
+    const controlKeys = new Set(['tab', 'w', 'a', 's', 'd', 'c', 'z', 'q', 'e', 'x', 'p', 'm', 'r', 'f', 'j', ' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright']);
     window.addEventListener('keydown', (event) => {
       const key = event.key.toLowerCase();
       if (menuOpen) { if (key === 'escape' && performance.now() - menuOpenedAt > 300) closeMenu(); return; }
       if (key === 'escape' && !event.repeat) { openMenu(); return; }
       if (controlKeys.has(key)) event.preventDefault();
+      if (key === 'tab' && !event.repeat) mapOpen = !mapOpen;
       if (key === 'p' && !event.repeat) { paused = !paused; pausedText.classList.toggle('show', paused); }
       if (key === 'm' && !event.repeat) {
         musicOn = !musicOn; musicText.textContent = musicOn ? 'ON' : 'OFF'; musicNextTime = 0;
@@ -2047,6 +2069,7 @@
       impactTimer = 0; hitTimer = 0; muzzleTimer = 0; fireCooldown = 0; wallCooldown = 0; warpTimer = 0;
       shots.length = 0; enemyShots.length = 0; explosions.length = 0; particles.length = 0;
       gameOverText.classList.remove('show'); pausedText.classList.remove('show');
+      bossBlast = null; resetMap();
       sectorText.textContent = `${index + 1} / ${LEVELS.length}`; levelText.textContent = level.name;
       save.sectors[index] = { weapon: weaponLevel, missiles: missileAmmo }; save.last = index; writeSave();
       notice(`SECTOR ${index + 1} // ${level.name} ${level.title}`, 3);
@@ -2225,8 +2248,22 @@
         billboard(beacon.position, 0.7, [1.0, 0.65, 0.2], 0.4 + blink * 0.9);
         billboard(beacon.position, 2.4, [1.0, 0.5, 0.15], 0.1 + blink * 0.16);
       }
+      const sentinel = enemies.find(e => e.type === 'sentinel' && e.hp > 0);
       for (const enemy of enemies) {
         if (enemy.hp <= 0 || !nearby(enemy.position, 300)) continue;
+        if (enemy.type === 'sentinel') {
+          const pulse = 0.8 + 0.2 * Math.sin(time * 5);
+          billboard(enemy.position, 3.2 * pulse, [1.0, 0.35, 0.65], 1.6 + enemy.flash * 2);
+          billboard(enemy.position, 9 * pulse, [1.0, 0.25, 0.5], 0.3 + enemy.flash);
+          if (pylonsLeft() > 0) billboard(enemy.position, 12, [0.3, 0.6, 1.0], 0.22 + (enemy.shieldHit || 0) * 0.5);
+          enemy.shieldHit = Math.max(0, (enemy.shieldHit || 0) - 0.05);
+          continue;
+        }
+        if (enemy.type === 'pylon') {
+          billboard(add(enemy.position, [0, 4.4, 0]), 1.4, ENEMY_TYPES.pylon.eye, 1.6 + enemy.flash * 2);
+          if (sentinel) streak(add(enemy.position, [0, 4.4, 0]), sentinel.position, 0.3, [0.35, 0.65, 1.0], 0.55 + 0.25 * Math.sin(time * 9 + enemy.phase));
+          continue;
+        }
         const kind = ENEMY_TYPES[enemy.type], reach = { hunter: 3.4, striker: 2.3, sentry: 2.3 }[enemy.type] * kind.scale || 2.6 * kind.scale;
         const eye = add(enemy.position, [Math.sin(enemy.yaw) * reach, 0, Math.cos(enemy.yaw) * reach]);
         billboard(eye, 0.9 * kind.scale, kind.eye, 1.4 + enemy.flash * 2);
@@ -2325,7 +2362,7 @@
         if (enemy.hp <= 0 || !near(enemy.position, 400)) continue;
         const kind = ENEMY_TYPES[enemy.type];
         if (enemy.type === 'sentry') { useMaterial(materials.hazard); drawMesh(pylonMesh, modelMatrix([enemy.base[0], enemy.base[1] - 1.8, enemy.base[2]]), 0, WHITE, exposureAt(enemy.position)); useMaterial(materials.drone); }
-        drawMesh(enemyMeshes[enemy.type], modelMatrix(enemy.position, enemy.yaw, enemy.type === 'sentry' ? 0 : Math.sin(time * 1.7 + enemy.phase) * 0.25, kind.scale),
+        drawMesh(enemyMeshes[enemy.type], modelMatrix(enemy.position, enemy.yaw, enemy.type === 'sentry' || enemy.type === 'pylon' ? 0 : Math.sin(time * 1.7 + enemy.phase) * 0.25, kind.scale),
           enemy.flash * 0.8, kind.tint, exposureAt(enemy.position));
       }
       for (const pickup of pickups) {
@@ -2380,11 +2417,11 @@
       };
       for (const barrel of barrels) if (!barrel.exploded) mark(barrel.position,'#e8a05e',1.8);
       for (const pickup of pickups) if (!pickup.taken) mark(pickup.position, pickup.type === 'health' ? '#6dffa0' : '#ffc45a', 2.4);
-      for (const enemy of enemies) if (enemy.hp > 0) mark(enemy.position, ENEMY_TYPES[enemy.type].radar, enemy.type === 'warden' ? 3.4 : 2.6);
+      for (const enemy of enemies) if (enemy.hp > 0) mark(enemy.position, ENEMY_TYPES[enemy.type].radar, enemy.type === 'sentinel' ? 4.6 : enemy.type === 'warden' ? 3.4 : 2.6);
       r.save(); r.beginPath(); r.arc(cx,cy,51,0,Math.PI*2); r.clip();
       r.strokeStyle = '#ff9a3a'; r.lineWidth = 2.2; r.beginPath();
       for (const gate of gates) {
-        if (gate.kind !== 'chain' || gate.open > 0.85) continue;
+        if (gate.kind === 'secret' || gate.open > 0.85) continue;
         const corners = [[gate.x0, gate.z0], [gate.x1, gate.z0], [gate.x1, gate.z1], [gate.x0, gate.z1]].map(([x, z]) => {
           const dx = x - sx, dz = z - sz; return [cx + (cos*dx - sin*dz) * 0.55, cy - (sin*dx + cos*dz) * 0.55];
         });
@@ -2427,11 +2464,99 @@
       { name: 'MK III', cooldown: 0.11, damage: 1, guns: [-0.7, 0.7] },
       { name: 'MK IV', cooldown: 0.1, damage: 2, guns: [-0.8, 0, 0.8] },
     ];
+    let bossBlast = null;
+    // The map: cells are painted into an offscreen grid image as they come into view, then drawn over the view while Tab is toggled on.
+    const MAP_PX = 4, explored = new Uint8Array(GRID_W * GRID_D), visitedZones = new Set();
+    const mapImage = document.createElement('canvas'); mapImage.width = GRID_W * MAP_PX; mapImage.height = GRID_D * MAP_PX;
+    const mapCtx = mapImage.getContext('2d');
+    let mapOpen = false, revealTimer = 0, mapBounds = [0, 0, GRID_W - 1, GRID_D - 1];
+    function resetMap() {
+      explored.fill(0); visitedZones.clear(); mapCtx.clearRect(0, 0, mapImage.width, mapImage.height); revealTimer = 0;
+      let gx0 = GRID_W, gz0 = GRID_D, gx1 = 0, gz1 = 0;
+      for (let gz = 0; gz < GRID_D; gz++) for (let gx = 0; gx < GRID_W; gx++)
+        if (cellAt(gx, gz)) { gx0 = Math.min(gx0, gx); gz0 = Math.min(gz0, gz); gx1 = Math.max(gx1, gx); gz1 = Math.max(gz1, gz); }
+      mapBounds = [gx0 - 1, gz0 - 1, gx1 + 1, gz1 + 1];
+    }
+    function paintMapCell(gx, gz) {
+      const i = gz * GRID_W + gx, material = open[i] - 1, x = gx * MAP_PX, y = (GRID_D - 1 - gz) * MAP_PX;
+      const h = clamp((floorY[i] - FLOOR) / (WALL_TOP - FLOOR), 0, 1);
+      mapCtx.fillStyle = material === SLUDGE ? '#355f22' : material === LAVA ? '#7a3412'
+        : `rgb(${Math.round(16 + h * 40)},${Math.round(40 + h * 95)},${Math.round(50 + h * 95)})`;
+      mapCtx.fillRect(x, y, MAP_PX, MAP_PX);
+      for (const [dx, dz, rx, ry, rw, rh] of [[-1, 0, 0, 0, 1, MAP_PX], [1, 0, MAP_PX - 1, 0, 1, MAP_PX], [0, 1, 0, 0, MAP_PX, 1], [0, -1, 0, MAP_PX - 1, MAP_PX, 1]]) {
+        const next = cellAt(gx + dx, gz + dz), step = next && Math.abs(floorY[(gz + dz) * GRID_W + gx + dx] - floorY[i]) > 3;
+        if (!next || step) { mapCtx.fillStyle = next ? '#4fa3b0' : '#a6f2fb'; mapCtx.fillRect(x + rx, y + ry, rw, rh); }
+      }
+    }
+    // Reveal open cells near the ship that a straight line across the floor plan can reach without crossing a wall or closed gate.
+    function revealMap() {
+      const [sx, , sz] = ship.position, reach = 9;
+      const cx = Math.floor((sx - GRID_X0) / CELL), cz = Math.floor((sz - GRID_Z0) / CELL);
+      for (let dz = -reach; dz <= reach; dz++) for (let dx = -reach; dx <= reach; dx++) {
+        const gx = cx + dx, gz = cz + dz;
+        if (dx * dx + dz * dz > reach * reach || !cellAt(gx, gz) || explored[gz * GRID_W + gx]) continue;
+        const tx = GRID_X0 + (gx + 0.5) * CELL, tz = GRID_Z0 + (gz + 0.5) * CELL, steps = Math.ceil(Math.hypot(tx - sx, tz - sz) / (CELL / 3));
+        let clear = true;
+        for (let k = 1; k < steps && clear; k++) clear = isOpen(sx + (tx - sx) * k / steps, sz + (tz - sz) * k / steps);
+        if (clear) { explored[gz * GRID_W + gx] = 1; paintMapCell(gx, gz); }
+      }
+    }
+    function drawMap() {
+      if (!mapOpen) return;
+      const left = 20, right = width - 20, top = 60, bottom = Math.max(top + 160, height - 222);
+      ctx.fillStyle = 'rgba(2,8,14,0.88)'; ctx.fillRect(left, top, right - left, bottom - top);
+      ctx.strokeStyle = '#3f7f90'; ctx.lineWidth = 1; ctx.strokeRect(left + 0.5, top + 0.5, right - left - 1, bottom - top - 1);
+      const [gx0, gz0, gx1, gz1] = mapBounds, cols = gx1 - gx0 + 1, rows = gz1 - gz0 + 1;
+      const scale = Math.min((right - left - 32) / cols, (bottom - top - 64) / rows);
+      const ox = (left + right) / 2 - cols * scale / 2, oy = (top + bottom) / 2 + 8 - rows * scale / 2;
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(mapImage, gx0 * MAP_PX, (GRID_D - 1 - gz1) * MAP_PX, cols * MAP_PX, rows * MAP_PX, ox, oy, cols * scale, rows * scale);
+      ctx.imageSmoothingEnabled = true;
+      const toScreen = (x, z) => [ox + ((x - GRID_X0) / CELL - gx0) * scale, oy + (gz1 + 1 - (z - GRID_Z0) / CELL) * scale];
+      const seen = (x, z) => explored[Math.floor((z - GRID_Z0) / CELL) * GRID_W + Math.floor((x - GRID_X0) / CELL)];
+      ctx.font = '10px Consolas, monospace'; ctx.textAlign = 'center';
+      for (const zone of level.zones) {
+        if (!visitedZones.has(zone.name)) continue;
+        const [x0, z0, x1, z1] = zone.area, [lx, ly] = toScreen((x0 + x1) / 2, (z0 + z1) / 2);
+        ctx.fillStyle = 'rgba(240,166,92,0.85)'; ctx.fillText(zone.name, lx, ly);
+      }
+      ctx.strokeStyle = '#ff9a3a'; ctx.lineWidth = 2;
+      for (const gate of gates) {
+        if (gate.kind === 'secret' || gate.open > 0.85 || !seen((gate.x0 + gate.x1) / 2, (gate.z0 + gate.z1) / 2)) continue;
+        const [ax, ay] = toScreen(gate.x0, gate.z1), [bx, by] = toScreen(gate.x1, gate.z0);
+        ctx.strokeRect(ax, ay, bx - ax, by - ay);
+      }
+      const [ex, ey] = toScreen(level.exit[0], level.exit[2]);
+      if (Math.sin(time * 6) > -0.3) { ctx.fillStyle = '#5dffb0'; ctx.beginPath(); ctx.arc(ex, ey, 4.5, 0, Math.PI * 2); ctx.fill(); }
+      const [px, py] = toScreen(ship.position[0], ship.position[2]), fx = Math.sin(ship.yaw), fy = -Math.cos(ship.yaw);
+      ctx.fillStyle = '#ffffff'; ctx.beginPath();
+      ctx.moveTo(px + fx * 8, py + fy * 8); ctx.lineTo(px - fx * 5 - fy * 5, py - fy * 5 + fx * 5); ctx.lineTo(px - fx * 5 + fy * 5, py - fy * 5 - fx * 5);
+      ctx.closePath(); ctx.fill();
+      ctx.textAlign = 'left'; ctx.fillStyle = '#65e9ff'; ctx.fillText(`MAP // SECTOR ${levelIndex + 1} // ${level.name} ${level.title}`, left + 14, top + 20);
+      ctx.textAlign = 'right'; ctx.fillStyle = '#8a9ca6'; ctx.fillText('ORANGE: CLOSED GATE   GREEN: EXIT   TAB: CLOSE', right - 14, top + 20);
+    }
     function hurtEnemy(enemy, amount) {
       if (enemy.hp <= 0) return;
+      if (enemy.type === 'sentinel' && pylonsLeft() > 0) {
+        enemy.flash = 0.35; enemy.active = true; enemy.shieldHit = 1;
+        registerHit('CORE SHIELDED // DESTROY THE PYLONS'); return;
+      }
       enemy.hp = Math.max(0, enemy.hp - amount); enemy.flash = 1; enemy.active = true;
       if (enemy.hp > 0) { registerHit('TARGET HIT'); return; }
       kills++;
+      if (enemy.type === 'pylon') {
+        const left = pylonsLeft();
+        registerHit(left ? `PYLON DESTROYED // ${left} LEFT` : 'CORE SHIELD DOWN');
+        explosions.push({ position: enemy.position.slice(), life: 0.65, scale: 1.3 });
+        sparks(enemy.position, 30, [0.5, 0.8, 1.0], 20); playExplosionSound();
+        return;
+      }
+      if (enemy.type === 'sentinel') {
+        // A chain of blasts across the hull, then one big one that opens the boss gate.
+        registerHit('OMEGA SENTINEL CRITICAL');
+        bossBlast = { position: enemy.position.slice(), timer: 1.8, next: 0 };
+        return;
+      }
       registerHit({ warden: 'WARDEN DESTROYED', hunter: 'HUNTER DOWN', striker: 'STRIKER DOWN', sentry: 'SENTRY DESTROYED' }[enemy.type] || 'DRONE DOWN');
       const scale = ENEMY_TYPES[enemy.type].scale;
       explosions.push({ position: enemy.position.slice(), life: 0.65, scale });
@@ -2524,16 +2649,19 @@
           }
         } else if (enemy.type === 'warden') {
           enemy.position = add(enemy.base, [Math.sin(time * 0.6 + enemy.phase) * 2.4, Math.cos(time * 0.8 + enemy.phase) * 1.2, 0]);
-        } else if (enemy.type === 'sentry') {
+        } else if (enemy.type === 'sentry' || enemy.type === 'pylon') {
           enemy.position = enemy.base.slice();
+        } else if (enemy.type === 'sentinel') {
+          enemy.position = add(enemy.base, [Math.sin(time * 0.35 + enemy.phase) * 16, Math.sin(time * 0.7) * 2.5, Math.sin(time * 0.5) * 6]);
         } else {
           enemy.position = add(enemy.base, [Math.sin(time * 1.2 + enemy.phase) * 1.3, Math.cos(time * 1.4 + enemy.phase) * 1.1, 0]);
         }
         const toPlayer = sub(ship.position, enemy.position), distance = Math.hypot(...toPlayer);
         const facing = Math.atan2(toPlayer[0], toPlayer[2]) - enemy.yaw;
         enemy.yaw += clamp(Math.atan2(Math.sin(facing), Math.cos(facing)), -dt * 2.5, dt * 2.5);
+        if (enemy.type === 'sentinel' || enemy.type === 'pylon') enemy.yaw = time * (enemy.type === 'pylon' ? 1.2 : 0.45) + enemy.phase;
         enemy.cooldown -= dt;
-        const visible = distance < (enemy.type === 'warden' ? 110 : 85) && lineOfSight(enemy.position);
+        const visible = distance < (enemy.type === 'sentinel' ? 170 : enemy.type === 'warden' ? 110 : 85) && lineOfSight(enemy.position);
         if (visible) enemy.active = true;
         if (visible && distance < 70) hostilesNear++;
         const aim = mul(toPlayer, 1 / distance);
@@ -2544,8 +2672,9 @@
             enemy.burst--; enemy.burstTimer = 0.16;
           }
         }
-        if (visible && distance > 6 && enemy.cooldown <= 0 && enemy.type !== 'hunter') {
-          if (enemy.type === 'striker') {
+        if (visible && distance > 6 && enemy.cooldown <= 0 && enemy.type !== 'hunter' && enemy.type !== 'pylon') {
+          if (enemy.type === 'sentinel') sentinelAttack(enemy, aim);
+          else if (enemy.type === 'striker') {
             enemyMissiles.push({ position: add(enemy.position, [0, -0.8, 0]), velocity: mul(normalize(add(aim, [0, 0.35, 0])), 20), life: 6.5 });
             enemy.cooldown = 4.5 + random() * 1.5;
             playMissileLaunch(0.6);
@@ -2564,7 +2693,7 @@
           }
         }
         if (distance < kind.radius + 0.6) {
-          if (enemy.type === 'warden' || enemy.type === 'sentry') {
+          if (enemy.type === 'warden' || enemy.type === 'sentry' || enemy.type === 'sentinel' || enemy.type === 'pylon') {
             if (wallCooldown === 0) { damage(kind.ram, enemy.type === 'warden' ? 'WARDEN IMPACT' : 'SENTRY IMPACT'); wallCooldown = 0.9; ship.speed *= 0.3; }
           } else {
             damage(kind.ram, enemy.type === 'hunter' ? 'HUNTER RAM' : enemy.type === 'striker' ? 'STRIKER IMPACT' : 'DRONE IMPACT');
@@ -2573,6 +2702,31 @@
         }
       }
       musicIntensity += ((hostilesNear ? 1 : 0) - musicIntensity) * Math.min(1, dt * 0.8);
+    }
+    // The sentinel fans bolts at the ship and adds homing missiles, more of them once its shield is down;
+    // below 40% it fires faster and calls in hunters.
+    function sentinelAttack(enemy, aim) {
+      const shielded = pylonsLeft() > 0, enraged = enemy.hp <= ENEMY_TYPES.sentinel.hp * 0.4;
+      for (let k = -3; k <= 3; k++) {
+        const c = Math.cos(k * 0.13), s = Math.sin(k * 0.13);
+        enemyShots.push({ position: add(enemy.position, mul(aim, 7)), velocity: mul([aim[0] * c + aim[2] * s, aim[1], -aim[0] * s + aim[2] * c], 26), life: 6, damage: 8 });
+      }
+      enemy.volleys = (enemy.volleys || 0) + 1;
+      if (enemy.volleys % (shielded ? 3 : 2) === 0) {
+        const side = normalize([aim[2], 0, -aim[0]]);
+        for (const offset of shielded ? [0] : [-5, 5])
+          enemyMissiles.push({ position: add(enemy.position, add(mul(side, offset), [0, -2, 0])), velocity: mul(normalize(add(aim, [0, 0.35, 0])), 20), life: 6.5 });
+        playMissileLaunch(0.8);
+      }
+      if (enraged && enemy.volleys % 3 === 0 && enemies.filter(e => e.summoned && e.hp > 0).length < 4) {
+        for (const offset of [-6, 6]) {
+          const spot = add(enemy.position, [offset, -3, 0]), at = freeAt(...spot, 1.5) ? spot : enemy.position.slice();
+          addEnemy('hunter', ...at);
+          Object.assign(enemies[enemies.length - 1], { active: true, summoned: true, cooldown: 0 });
+        }
+        notice('SENTINEL CALLS HUNTERS', 1.6);
+      }
+      enemy.cooldown = enraged ? 1.9 : 2.8;
     }
     // Turn a direction toward another by at most maxAngle radians.
     function steer(direction, wanted, maxAngle) {
@@ -2738,6 +2892,20 @@
         gate.open = Math.min(1, gate.open + dt / 1.6);
         if (gate.open > 0.85) fillCells([gate.x0, gate.z0, gate.x1, gate.z1], i => { sealed[i] = 0; });
       }
+      if (bossBlast) {
+        bossBlast.timer -= dt; bossBlast.next -= dt;
+        if (bossBlast.next <= 0) {
+          const offset = [(Math.random() - 0.5) * 12, (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 12];
+          explosions.push({ position: add(bossBlast.position, offset), life: 0.65, scale: 0.8 + Math.random() * 0.8 });
+          playExplosionSound(); bossBlast.next = 0.14;
+        }
+        if (bossBlast.timer <= 0) {
+          explosions.push({ position: bossBlast.position, life: 0.65, scale: 3.2 });
+          sparks(bossBlast.position, 60, [1.0, 0.45, 0.6], 28); playExplosionSound();
+          for (const gate of gates) if (gate.kind === 'boss') openGate(gate, 'OMEGA SENTINEL DESTROYED // ASCENT OPEN');
+          bossBlast = null;
+        }
+      }
       for (let i = explosions.length - 1; i >= 0; i--) {
         explosions[i].life -= dt;
         if (explosions[i].life <= 0) explosions.splice(i,1);
@@ -2836,6 +3004,16 @@
       speedBar.style.width = `${ship.speed / 45 * 100}%`;
       const zone = zoneAt(ship.position[0], ship.position[2]);
       if (zone && zoneText.textContent !== zone.name) zoneText.textContent = zone.name;
+      if (zone) visitedZones.add(zone.name);
+      revealTimer -= dt;
+      if (revealTimer <= 0) { revealMap(); revealTimer = 0.2; }
+      const boss = enemies.find(e => e.type === 'sentinel');
+      bossBar.classList.toggle('show', !!boss && boss.active && boss.hp > 0);
+      if (boss && boss.active && boss.hp > 0) {
+        const left = pylonsLeft();
+        bossMeter.style.width = `${boss.hp / ENEMY_TYPES.sentinel.hp * 100}%`;
+        bossState.textContent = left ? `SHIELDED // ${left} PYLON${left > 1 ? 'S' : ''} LEFT` : boss.hp <= ENEMY_TYPES.sentinel.hp * 0.4 ? 'CORE CRITICAL' : 'SHIELD DOWN';
+      }
     }
     function frame(now) {
       const dt = clamp((now - lastTime) / 1000, 0, 0.05); lastTime = now;
@@ -2845,6 +3023,7 @@
       ctx.clearRect(0, 0, width, height);
       drawReticle();
       drawTargets();
+      drawMap();
       drawRadar();
       requestAnimationFrame(frame);
     }

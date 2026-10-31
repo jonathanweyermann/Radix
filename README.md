@@ -10,7 +10,7 @@ Open `index.html` in a browser that supports WebGL 2. No installation or web ser
 
 **Progress** is saved in the browser (localStorage) as you enter each sector: the last sector you flew, your difficulty, and the cannon and missiles you last entered each sector with. Picking a sector from the menu starts it with that loadout and a full hull. Move the mouse to steer, with up/down inverted. Hold the left mouse button to fire the cannon, and press the right mouse button or C to launch a seeker missile. The weapons make short synthesized sounds.
 
-The keyboard controls are W/A/S/D to strafe up, left, down, and right, Up to pitch down, Down to pitch up, Left/Right to turn, Q/E to roll, X to accelerate, Z to brake, F/J to fire, C to launch a missile, P to pause, and M to toggle music. Space also accelerates. Shoot hostile ships and the explosive barrels on the floor; barrel blasts also damage nearby enemies. The sky is visible, but a flight boundary prevents escape above the walls. Solid walls block your view and shots. The cockpit shows radar, shield, hull, speed, heading, altitude, sector, cannon level, missile count, target counts, and the name of the current area. A blue shield soaks up the first few hits before the hull takes damage; it holds about a third of a full hull, starts recharging four seconds after the last hit, and refills at 7% a second. Hits that only reach the shield flash the screen edge blue. If the hull reaches zero you are destroyed; press R to restart the current sector with the cannon and missiles you entered it with.
+The keyboard controls are W/A/S/D to strafe up, left, down, and right, Up to pitch down, Down to pitch up, Left/Right to turn, Q/E to roll, X to accelerate, Z to brake, F/J to fire, C to launch a missile, Tab to toggle the map, P to pause, and M to toggle music. Space also accelerates. Shoot hostile ships and the explosive barrels on the floor; barrel blasts also damage nearby enemies. The sky is visible, but a flight boundary prevents escape above the walls. Solid walls block your view and shots. The cockpit shows radar, shield, hull, speed, heading, altitude, sector, cannon level, missile count, target counts, and the name of the current area. A blue shield soaks up the first few hits before the hull takes damage; it holds about a third of a full hull, starts recharging four seconds after the last hit, and refills at 7% a second. Hits that only reach the shield flash the screen edge blue. If the hull reaches zero you are destroyed; press R to restart the current sector with the cannon and missiles you entered it with.
 
 ### Sectors
 
@@ -25,11 +25,24 @@ There are ten sectors. Each ends at a green warp gate; fly through it to move on
 7. **TAU-3 Hive Warrens**: a dark, enclosed maze of tubes at different heights. From the brood chamber, a west climb leads through a high gallery and shaft, and an east tube leads through a sludge-filled egg vault. Both routes end at chained gates into the nest, a tall chamber around a glowing core. A chained stair climbs to the upper warren, which has a secret royal cache, and a breach tunnel opens to the sky and the warp gate.
 8. **TAU-3 Tether Anchor**: a bright, high-altitude climb. The anchor ring circles a lava pit around the glowing tether, with a chained maintenance bay and secret cache to the east. A chained lift bore and a chained west ramp both climb to the spoke deck. From there you fly across a deep lava gap, between girders, to the summit ring and a chained docking bore up to the cradle.
 9. **SIGMA-4 Refinery Terraces**: open-air terraces that climb from a canyon floor past a glowing slag pit, with stairs to the west and east terraces. A climbing pipe tunnel leads to the upper terrace, and more stairs lead to the summit gate.
-10. **OMEGA Core Breach**: a covered drop chamber leads to an open arena around a reactor core with raised balconies. Two bores at different heights lead to the vast crown hall, and a final staircase climbs to the escape deck.
+10. **OMEGA Core Breach**: a covered drop chamber leads to an open arena around a reactor core with raised balconies. Two bores at different heights lead to the vast crown hall, where the OMEGA Sentinel waits. The staircase to the escape deck stays sealed until it is destroyed.
 
 **Chained gates** block some routes. Each gate has two glowing padlocks chained across its face, and shooting both apart sinks the gate into the floor. On the radar, closed gates show as orange outlines. **Secret panels** look almost like the surrounding wall apart from a faint glowing seam; shoot one a few times and it slides away to reveal a hidden room with supplies. **Toxic sludge** and **molten slag** damage the ship if you fly within a few units of the surface; slag burns harder.
 
 The levels are built on a grid of 5-unit cells. Each cell has its own floor height, and covered cells have a ceiling with tunnel lights, so the ship must fit between floor and ceiling. Steel girders cross many routes at different heights, so you have to fly over, under or between them. Hazard-striped posts with amber beacons mark doorways and pillar corners, and the radar draws the walls around you.
+
+### The OMEGA Sentinel
+
+The final sector ends with a boss: a huge turning crown that drifts above the crown hall floor. A health bar appears at the top of the screen once it sees you.
+
+- While any of its four blue shield pylons stand, beams link them to the Sentinel and shots bounce off its shield. Destroy the pylons first.
+- It fires fans of seven bolts and launches homing missiles, two at a time once its shield is down.
+- Below 40% health it fires faster and calls in pairs of hunters.
+- When it dies, a chain of explosions runs across its hull and the gate to the ascent opens.
+
+### Map
+
+Press Tab to show or hide the map of the current sector. Rooms appear as they come into view; walls you have not seen stay hidden. Brighter floors are higher, sludge is green, and slag is orange. Areas you have entered are labelled, closed gates are outlined in orange, the exit blinks green, and the white arrow is your ship. The game keeps running while the map is open.
 
 ### Enemies and powerups
 
