@@ -113,6 +113,14 @@
     .menu .tier.got b { color: #f0a65c; }
     .menu .tier.now { border-color: #75edff; background: #14394a; }
     .menu .tier.now b { color: #fff; }
+    .menu .story, .menu .brief { margin: 22px auto 0; max-width: 580px; color: #c9dce4; font-size: 13px; line-height: 1.85; letter-spacing: .04em; text-align: left; }
+    .menu .brief { margin-top: 14px; font-size: 12px; line-height: 1.75; }
+    .menu .hint { color: #f0a65c; text-align: center; }
+    .menu h2.briefing-head { margin: 0 0 6px; }
+    .menu h1.briefing-title { font-size: 15px; letter-spacing: .24em; }
+    #intro, #briefing { background: radial-gradient(#06121cf0, #02060bfb); }
+    #systemMap { display: block; width: 100%; height: min(44vh, 330px); margin-top: 14px; border: 1px solid #22404c; background: #02070c; }
+    body.touch .menu .story, body.touch .menu .brief { font-size: 11px; line-height: 1.6; }
     .menu p { margin: 18px 0 0; color: #8a9ca6; font-size: 10px; line-height: 1.6; letter-spacing: .08em; }
     @media (max-width: 700px) { .top { left: 16px; right: 16px; top: 16px; } .brand { font-size: 11px; } .mission { display: none; } .cockpit { height: 155px; padding: 11px 12px 28px; grid-template-columns: 1fr 100px 1fr; gap: 6px; } .panel { padding: 6px; border-width: 2px; } .panel-row { font-size: 9px; } .panel-title { font-size: 9px; } #radar { width: 82px; height: 82px; } .readouts { display: none; } .controls { left: 10px; right: 10px; font-size: 8px; } }
   </style>
@@ -163,6 +171,23 @@
       <div class="arsenal" id="arsenalList"></div>
       <p id="menuNote">Sectors unlock as you reach them, and start with the cannon, launcher and missiles you last entered them with; the time shown is your best run. Press Esc during flight to open this menu.</p>
       <p id="touchNote" hidden>Touch: drag the left stick to steer; push up to climb (PITCH flips this), and the nose levels out when you let go. Hold THRUST or BRAKE to change speed; it stays where you leave it. Hold FIRE to shoot, tap MSL for a missile.</p>
+    </div>
+  </div>
+  <div class="menu show" id="intro" role="dialog" aria-label="Story">
+    <div class="menu-box">
+      <h1>RADIX<small>BEYOND THE VOID</small></h1>
+      <p class="story">Thirty-eight light-years away, a red star sang a chord, and nine days later its swarm burned the Earth in forty hours. Forty thousand of us survived on frozen outposts, and from the wreck of one of their fighters we built the Radix, a human ship that wears their signature. The stealth cruiser Requiem carried it fourteen months across the dark to Nadir, the system the swarm came from. Now the Radix drops onto their worlds to burn the refineries, foundries, hives and gates that built the swarm. Somewhere beyond the Void, at the heart of their system, is the voice that called them to Earth, and the time for talking is over.</p>
+      <div class="row" style="margin-top: 24px"><button class="primary" id="introButton" disabled>LOADING</button></div>
+      <p class="hint" id="soundHint">TAP ANYWHERE OR PRESS A KEY FOR MUSIC</p>
+    </div>
+  </div>
+  <div class="menu" id="briefing" role="dialog" aria-label="Mission briefing">
+    <div class="menu-box">
+      <h2 class="briefing-head">MISSION BRIEFING</h2>
+      <h1 class="briefing-title" id="briefingTitle">SECTOR 1</h1>
+      <canvas id="systemMap" aria-label="Map of the Nadir system"></canvas>
+      <p class="brief" id="briefingText"></p>
+      <div class="row" style="margin-top: 16px"><button class="primary" id="launchButton">LAUNCH</button></div>
     </div>
   </div>
   <script>
@@ -2472,6 +2497,11 @@
     const controlKeys = new Set(['tab', 'w', 'a', 's', 'd', 'c', 'z', 'q', 'e', 'x', 'p', 'm', 'r', 'f', 'j', ' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright']);
     window.addEventListener('keydown', (event) => {
       const key = event.key.toLowerCase();
+      if (screenOpen) {
+        ensureAudio();
+        if ((key === 'enter' || key === ' ') && !event.repeat) { event.preventDefault(); if (screenOpen === 'intro') leaveIntro(); else launch(); }
+        return;
+      }
       if (menuOpen) { if (key === 'escape' && performance.now() - menuOpenedAt > 300) closeMenu(); return; }
       if (key === 'escape' && !event.repeat) { openMenu(); return; }
       if (controlKeys.has(key)) event.preventDefault();
@@ -2488,7 +2518,7 @@
     window.addEventListener('keyup', (event) => keys.delete(event.key.toLowerCase()));
     window.addEventListener('blur', () => { keys.clear(); mouseFiring = false; releaseTouch(); });
     // Switching apps or tabs pauses into the menu, which matters on phones where there is no mouse capture to lose.
-    document.addEventListener('visibilitychange', () => { if (document.hidden && started && !menuOpen && !destroyed && !finished) openMenu(); });
+    document.addEventListener('visibilitychange', () => { if (document.hidden && started && !menuOpen && !screenOpen && !destroyed && !finished) openMenu(); });
     canvas.addEventListener('contextmenu', (event) => event.preventDefault());
     canvas.addEventListener('pointerdown', (event) => {
       if (event.pointerType === 'touch') return;
@@ -2502,7 +2532,7 @@
     document.addEventListener('pointerlockchange', () => {
       if (document.pointerLockElement === canvas) return;
       mouseFiring = false;
-      if (started && !menuOpen && !destroyed && !finished) openMenu();
+      if (started && !menuOpen && !screenOpen && !destroyed && !finished) openMenu();
     });
     document.addEventListener('mousemove', (event) => {
       if (document.pointerLockElement !== canvas || paused || destroyed) return;
@@ -2976,7 +3006,7 @@
       if (section.riser && barInPhrase === 6 && step === 0) riser(at, track.step * 32);
     }
     function scheduleMusic() {
-      if (!musicOn || (paused && !menuOpen) || destroyed || !audioContext || audioContext.state !== 'running') return;
+      if (!musicOn || (paused && !menuOpen && !screenOpen) || destroyed || !audioContext || audioContext.state !== 'running') return;
       if (musicNextTime < audioContext.currentTime) musicNextTime = audioContext.currentTime + 0.05;
       while (musicNextTime < audioContext.currentTime + 0.2) {
         playMusicStep(musicStep, musicNextTime);
@@ -3000,11 +3030,11 @@
       ship.position = level.start.slice(); ship.yaw = level.yaw; ship.pitch = 0; ship.roll = 0; ship.speed = 8; ship.strafe = [0, 0];
       health = startHealth; levelWeapon = weaponLevel; levelMissiles = missileAmmo; levelLauncher = launcherLevel; rails.length = 0; railCount = 0; shield = SHIELD_MAX; shieldDelay = 0;
       missiles.length = 0; enemyMissiles.length = 0; lockTarget = null; lockTimer = 0;
-      barrelsDestroyed = 0; kills = 0; destroyed = false; finished = false; sludgeCooldown = 0; paused = menuOpen; mouseFiring = false;
+      barrelsDestroyed = 0; kills = 0; destroyed = false; finished = false; sludgeCooldown = 0; paused = menuOpen || !!screenOpen; mouseFiring = false;
       impactTimer = 0; hitTimer = 0; muzzleTimer = 0; fireCooldown = 0; wallCooldown = 0; warpTimer = 0;
       shots.length = 0; enemyShots.length = 0; explosions.length = 0; particles.length = 0;
       gameOverText.classList.remove('show'); pausedText.classList.remove('show');
-      bossBlast = null; resetMap(); setTrack(menuOpen ? 'menu' : level.music || 'relay');
+      bossBlast = null; resetMap(); setTrack(menuOpen || screenOpen ? 'menu' : level.music || 'relay');
       sectorText.textContent = `${index + 1} / ${LEVELS.length}`; levelText.textContent = level.name;
       Object.assign(save.sectors[index] ||= {}, { weapon: weaponLevel, missiles: missileAmmo, launcher: launcherLevel }); save.last = index; noteArsenal();
       checkpoint = null;
@@ -3074,10 +3104,120 @@
         const best = kit && kit.best ? ` / ${Math.floor(kit.best / 60)}:${String(kit.best % 60).padStart(2, '0')}` : '';
         detail.textContent = kit ? `${WEAPONS[clamp(kit.weapon || 1, 1, WEAPONS.length) - 1].name} / ${kit.missiles || 0} MSL${best}` : i === 0 ? 'MK I / 0 MSL' : 'LOCKED';
         button.append(label, detail); button.disabled = !kit && i > 0;
-        button.addEventListener('click', () => { startSector(i); closeMenu(); });
+        button.addEventListener('click', () => { startSector(i); showBriefing(); });
         return button;
       }));
     }
+    // The story page opens first (with the menu theme once a tap or key starts the audio) and leads to the menu.
+    // Starting a sector, from the menu or through a warp gate, shows its briefing first: the system map with the
+    // route from the last target to the next, and what the last sector achieved and this one has to.
+    let screenOpen = 'intro', booted = false;
+    const intro = document.getElementById('intro'), introButton = document.getElementById('introButton'), soundHint = document.getElementById('soundHint');
+    const briefing = document.getElementById('briefing'), briefingTitle = document.getElementById('briefingTitle'), briefingText = document.getElementById('briefingText');
+    const launchButton = document.getElementById('launchButton'), systemMap = document.getElementById('systemMap'), systemCtx = systemMap.getContext('2d');
+    const BRIEFINGS = [
+      'The Requiem crossed fourteen months of dark and now hides in the shadow of an outer moon, unseen. Your first target is the relay station on Delta-9, which passes the Choir\'s signals between their worlds. Cut it, and they won\'t know what is hitting them for a while longer.',
+      'The Delta-9 relay is dark: they know something is wrong, but not what. The same moon\'s refinery turns its poison air into fuel for the swarm. Burn the tanks and vats, because every one is a fighter that never launches.',
+      'Delta-9\'s refinery is burning, and the fire can be seen from orbit. On Epsilon-5, the forge moon, finished fighters sleep in cryo vaults, waiting for the next world to be found. Destroy the vaults before they wake.',
+      'The cryo vaults are wrecked, and the fighters racked inside them will never fly. Epsilon-5\'s magma works cast the swarm\'s hulls from rivers of molten slag. Break the foundry and the swarm stops growing.',
+      'The foundry is slag. The last target on Epsilon-5 is the signal spire that runs its defenses, held by the Spire Overseer. Destroy its two relays, then the Overseer, and the forge moon goes deaf and blind.',
+      'Epsilon-5 is silent and its forges are cold. Tau-3 is an ocean moon whose docks load the swarm for the crossing between stars. Sink the docks, and watch for gold-marked enemies: they were at Earth.',
+      'The docks are burning, and no swarm will load there again. Under Tau-3\'s surface are the hive warrens where the Choir grow their pilots, ruled by the Hive Queen. Burst her egg sacs, then kill her, and the next generation of Earth-burners is never born.',
+      'The Hive Queen is dead and her nest is quiet. A tether anchored on Tau-3 lifts finished fighters up to the orbital yards. Cut it and the yards starve.',
+      'The tether is down and Tau-3\'s yards are cut off. Sigma-4\'s refinery terraces are the last supply line feeding the crown world. Burn them and Omega stands alone.',
+      'Sigma-4\'s terraces are in ruins and Omega is cut off. The crown world\'s core is guarded by the Omega Sentinel and its four shield pylons. Bring the Sentinel down; this should end the song.',
+      'The Sentinel is dead, but the song did not stop: Omega was never the source. The signal comes from inside the Void, a shroud of dark dust around Nadir\'s inner worlds, and the Requiem is going in. Follow it down the Abyss Shaft, a world hollowed out to its core.',
+      'You made it back up the shaft, deeper inside the Void than anyone has been. At the end of a crystal canyon a Void Carrier is docked, one of the ships that carried the swarm to Earth. Take it apart.',
+      'The carrier that burned Earth is wreckage. Deeper in, a foundry is building something far bigger than fighters. Climb it and tear it down before it is finished.',
+      'The foundry is down, and whatever it was building will never fly. The Mirror Archive holds the Choir\'s records behind three data cores. Destroy the cores and find out what the song is for.',
+      'The archive listed 312 silenced worlds, and Earth was the latest; every one was found when the Herald heard its first radio voices. The ash plain ahead is world 311, and the Herald\'s listening array stands on it, aimed by three data cores. Destroy them and the Herald goes deaf to everything but you.',
+      'The array is blind: the Herald can only hear you now. It waits at the heart of the Void, shielded by three orbiting nodes. Silence it, and the swarm loses its voice everywhere.',
+    ];
+    // Where each sector is on the system map: worlds on tilted orbits around Nadir, the Void as a shroud around the star.
+    const PLACES = {
+      requiem: { name: 'REQUIEM', orbit: 1.02, angle: 2.6, color: '#9fdcff' },
+      delta: { name: 'DELTA-9', orbit: 0.9, angle: 3.3, color: '#9fc7a2' },
+      epsilon: { name: 'EPSILON-5', orbit: 0.74, angle: 4.1, color: '#ff9a52' },
+      tau: { name: 'TAU-3', orbit: 0.58, angle: 4.95, color: '#5fb8ff' },
+      sigma: { name: 'SIGMA-4', orbit: 0.43, angle: 0.1, color: '#d8b07a' },
+      omega: { name: 'OMEGA', orbit: 0.3, angle: 0.95, color: '#c08cff' },
+      void: { name: 'THE VOID', orbit: 0.15, angle: 3.6, color: '#e070ff' },
+    };
+    const SECTOR_PLACES = ['delta', 'delta', 'epsilon', 'epsilon', 'epsilon', 'tau', 'tau', 'tau', 'sigma', 'omega', 'void', 'void', 'void', 'void', 'void', 'void'];
+    function drawSystemMap(now) {
+      const ratio = window.devicePixelRatio || 1, w = systemMap.clientWidth, h = systemMap.clientHeight;
+      if (!w || !h) return;
+      if (systemMap.width !== Math.round(w * ratio) || systemMap.height !== Math.round(h * ratio)) { systemMap.width = Math.round(w * ratio); systemMap.height = Math.round(h * ratio); }
+      const m = systemCtx, cx = w / 2, cy = h / 2, rx = w * 0.46, ry = h * 0.42, pulse = 0.5 + 0.5 * Math.sin(now / 260);
+      m.setTransform(ratio, 0, 0, ratio, 0, 0); m.clearRect(0, 0, w, h);
+      for (let i = 0; i < 110; i++) { m.fillStyle = `rgba(200,220,255,${0.12 + hashInt(i, 3, 9) * 0.45})`; m.fillRect(hashInt(i, 1, 9) * w, hashInt(i, 2, 9) * h, 1.2, 1.2); }
+      // Nadir burning inside the Void's dark shroud.
+      m.save(); m.translate(cx, cy); m.scale(1, ry / rx);
+      const shroud = m.createRadialGradient(0, 0, 0, 0, 0, rx * 0.22);
+      shroud.addColorStop(0, 'rgba(255,190,120,1)'); shroud.addColorStop(0.12, 'rgba(255,90,40,0.9)'); shroud.addColorStop(0.3, 'rgba(70,12,80,0.95)');
+      shroud.addColorStop(0.8, 'rgba(40,8,52,0.75)'); shroud.addColorStop(1, 'rgba(40,8,52,0)');
+      m.fillStyle = shroud; m.beginPath(); m.arc(0, 0, rx * 0.22, 0, Math.PI * 2); m.fill(); m.restore();
+      m.strokeStyle = 'rgba(110,190,210,0.22)'; m.lineWidth = 1;
+      for (const key of ['delta', 'epsilon', 'tau', 'sigma', 'omega']) { m.beginPath(); m.ellipse(cx, cy, PLACES[key].orbit * rx, PLACES[key].orbit * ry, 0, 0, Math.PI * 2); m.stroke(); }
+      const at = (place) => [cx + Math.cos(place.angle) * place.orbit * rx, cy + Math.sin(place.angle) * place.orbit * ry];
+      const target = SECTOR_PLACES[levelIndex], origin = levelIndex ? SECTOR_PLACES[levelIndex - 1] : 'requiem';
+      const cleared = new Set(SECTOR_PLACES.slice(0, levelIndex).filter(key => key !== target));
+      m.font = '10px Consolas, "Courier New", monospace'; m.textAlign = 'center';
+      for (const [key, place] of Object.entries(PLACES)) {
+        if (key === 'requiem' && origin !== 'requiem') continue;
+        const [x, y] = at(place), done = cleared.has(key);
+        m.fillStyle = done ? '#4d6470' : place.color;
+        m.beginPath();
+        if (key === 'requiem') { m.moveTo(x + 8, y); m.lineTo(x - 6, y - 4); m.lineTo(x - 6, y + 4); m.closePath(); } else m.arc(x, y, key === 'void' ? 4 : 5, 0, Math.PI * 2);
+        m.fill();
+        m.fillStyle = done ? '#4d6470' : '#c9dce4'; m.fillText(place.name, x, y + 17);
+        if (done) { m.fillStyle = '#6a5a48'; m.fillText('CLEARED', x, y + 29); }
+      }
+      const [tx, ty] = at(PLACES[target]);
+      if (origin !== target) {
+        // The route from the last target, dashes flowing toward the next one.
+        const [ox, oy] = at(PLACES[origin]), angle = Math.atan2(ty - oy, tx - ox), stop = 12;
+        m.strokeStyle = '#ffb347'; m.lineWidth = 1.6; m.setLineDash([6, 5]); m.lineDashOffset = -now / 40;
+        m.beginPath(); m.moveTo(ox, oy); m.lineTo(tx - Math.cos(angle) * stop, ty - Math.sin(angle) * stop); m.stroke(); m.setLineDash([]);
+        m.fillStyle = '#ffb347'; m.beginPath();
+        m.moveTo(tx - Math.cos(angle) * stop, ty - Math.sin(angle) * stop);
+        m.lineTo(tx - Math.cos(angle) * (stop + 9) + Math.cos(angle + Math.PI / 2) * 5, ty - Math.sin(angle) * (stop + 9) + Math.sin(angle + Math.PI / 2) * 5);
+        m.lineTo(tx - Math.cos(angle) * (stop + 9) - Math.cos(angle + Math.PI / 2) * 5, ty - Math.sin(angle) * (stop + 9) - Math.sin(angle + Math.PI / 2) * 5);
+        m.closePath(); m.fill();
+        const [ox2, oy2] = at(PLACES[origin]);
+        m.strokeStyle = '#65e9ff'; m.lineWidth = 1.2; m.beginPath(); m.arc(ox2, oy2, 9, 0, Math.PI * 2); m.stroke();
+        m.fillStyle = '#65e9ff'; m.fillText(origin === 'requiem' ? 'START' : 'LAST TARGET', ox2, oy2 - 14);
+      }
+      m.strokeStyle = `rgba(255,179,71,${0.4 + pulse * 0.6})`; m.lineWidth = 2;
+      m.beginPath(); m.arc(tx, ty, 10 + pulse * 5, 0, Math.PI * 2); m.stroke();
+      m.fillStyle = '#ffb347'; m.fillText(origin === target ? `NEXT TARGET // SECTOR ${levelIndex + 1}` : `SECTOR ${levelIndex + 1}`, tx, ty - 20);
+      m.textAlign = 'left'; m.fillStyle = '#8a9ca6'; m.fillText('NADIR SYSTEM', 10, 16);
+    }
+    function introReady() {
+      booted = true; introButton.disabled = false; introButton.textContent = 'ENTER'; introButton.focus();
+    }
+    function leaveIntro() {
+      if (screenOpen !== 'intro' || !booted) return;
+      screenOpen = null; intro.classList.remove('show'); ensureAudio(); openMenu();
+    }
+    function showBriefing() {
+      menuOpen = false; menu.classList.remove('show');
+      screenOpen = 'briefing'; paused = true; mouseFiring = false; keys.clear(); releaseTouch();
+      if (document.pointerLockElement) document.exitPointerLock();
+      briefingTitle.textContent = `SECTOR ${levelIndex + 1} // ${level.name} ${level.title}`;
+      briefingText.textContent = BRIEFINGS[levelIndex] || '';
+      briefing.classList.add('show'); launchButton.focus(); setTrack('menu');
+    }
+    function launch() {
+      if (screenOpen !== 'briefing') return;
+      screenOpen = null; briefing.classList.remove('show');
+      started = true; paused = false; lastTime = performance.now();
+      ensureAudio(); setTrack(level.music || 'relay');
+      try { const request = canvas.requestPointerLock(); if (request && request.catch) request.catch(() => {}); } catch { /* click the view to capture the mouse */ }
+    }
+    introButton.addEventListener('click', leaveIntro);
+    launchButton.addEventListener('click', launch);
+    for (const screen of [intro, briefing]) screen.addEventListener('pointerdown', () => ensureAudio());
     function openMenu() {
       menuOpen = true; menuOpenedAt = performance.now(); paused = true; mouseFiring = false; keys.clear(); releaseTouch();
       pausedText.classList.remove('show');
@@ -3085,7 +3225,8 @@
       setTrack('menu');
     }
     function closeMenu() {
-      menuOpen = false; started = true; paused = false; lastTime = performance.now();
+      if (!started) return showBriefing();
+      menuOpen = false; paused = false; lastTime = performance.now();
       menu.classList.remove('show'); ensureAudio(); setTrack(level.music || 'relay');
       try { const request = canvas.requestPointerLock(); if (request && request.catch) request.catch(() => {}); } catch { /* click the view to capture the mouse */ }
     }
@@ -3103,7 +3244,7 @@
       if (!enter) return;
       Promise.resolve(enter.call(root)).then(() => screen.orientation?.lock?.('landscape')).catch(() => {});
     });
-    document.getElementById('newGameButton').addEventListener('click', () => { weaponLevel = 1; missileAmmo = 0; launcherLevel = 1; startRun(0); loadLevel(0, 100); closeMenu(); });
+    document.getElementById('newGameButton').addEventListener('click', () => { weaponLevel = 1; missileAmmo = 0; launcherLevel = 1; startRun(0); loadLevel(0, 100); showBriefing(); });
     // Checkpoints: opening a gate or destroying a boss records how far the sector has got. Spawns are seeded per
     // sector, so a restart reloads the sector and replays that progress: the same enemies stay dead, barrels and
     // pickups stay gone and gates stay open, with the ship back where it was and the loadout it had then.
@@ -3118,7 +3259,7 @@
     }
     function resetGame(fromStart) {
       const cp = checkpoint, elapsed = sectorTime;
-      if (finished) { weaponLevel = 1; missileAmmo = 0; launcherLevel = 1; startRun(0); loadLevel(0, 100); return; }
+      if (finished) { weaponLevel = 1; missileAmmo = 0; launcherLevel = 1; startRun(0); loadLevel(0, 100); showBriefing(); return; }
       weaponLevel = levelWeapon; missileAmmo = levelMissiles; launcherLevel = levelLauncher;
       loadLevel(levelIndex, fromStart || !cp ? 100 : cp.health);
       if (fromStart || !cp || cp.hostiles !== hostileTotal) return;
@@ -4410,7 +4551,7 @@
         warpTimer = Math.max(0, warpTimer - dt);
         ship.position = add(ship.position, mul(sub(exitCenter(), ship.position), Math.min(1, dt * 3)));
         if (warpTimer === 0) {
-          if (levelIndex + 1 < LEVELS.length) loadLevel(levelIndex + 1, Math.min(100, health + 25));
+          if (levelIndex + 1 < LEVELS.length) { loadLevel(levelIndex + 1, Math.min(100, health + 25)); showBriefing(); }
           else finishGame();
         }
         return;
@@ -4503,6 +4644,8 @@
       drawTargets();
       drawMap();
       drawRadar();
+      if (screenOpen === 'briefing') drawSystemMap(now);
+      if (screenOpen === 'intro') soundHint.hidden = !!audioContext && audioContext.state === 'running';
       requestAnimationFrame(frame);
     }
     // Painting the textures takes about a second, so show the HUD with a notice first.
@@ -4510,7 +4653,7 @@
     requestAnimationFrame(() => setTimeout(() => {
       loadMaterials();
       startSector(save.last);
-      openMenu();
+      introReady();
       lastTime = performance.now();
       requestAnimationFrame(frame);
     }, 30));
