@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>Radix / Beyond the Void</title>
   <style>
     :root { color-scheme: dark; font-family: Consolas, "Courier New", monospace; }
@@ -60,6 +60,33 @@
     .boss .meter { height: 7px; border-color: #a04a6a; }
     .boss .meter span { background: #ff5a8a; box-shadow: 0 0 12px #ff5a8a; }
     .boss small { display: block; margin-top: 6px; color: #8fd8ff; font-size: 10px; letter-spacing: .2em; }
+    .touch-ui, .rotate-hint, #fullscreenButton { display: none; }
+    body.touch { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+    body.touch .touch-ui { display: block; position: fixed; inset: 0; pointer-events: none; }
+    body.touch #fullscreenButton { display: inline-block; }
+    .touch-ui > * { position: absolute; pointer-events: auto; touch-action: none; }
+    .stick { left: max(20px, env(safe-area-inset-left)); bottom: 108px; width: 132px; height: 132px; border-radius: 50%; border: 2px solid #53d8eb66; background: radial-gradient(#0b1a2433, #0b1a2488); }
+    .stick .knob { position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; margin: -27px 0 0 -27px; border-radius: 50%; border: 2px solid #9ff3ff; background: #65e9ff44; box-shadow: 0 0 14px #3be8ff66; }
+    .tbutton { display: grid; place-items: center; width: 60px; height: 60px; border-radius: 50%; border: 2px solid #53d8eb88; background: #0b1a2488; color: #d7f9ff; font: 10px Consolas, "Courier New", monospace; letter-spacing: .12em; }
+    .tbutton.held { background: #14394acc; border-color: #ffffff; }
+    .tbutton.small { width: 50px; height: 36px; border-radius: 6px; }
+    #fireButton { right: max(28px, env(safe-area-inset-right)); bottom: 118px; width: 92px; height: 92px; border-color: #ff9a7a; color: #ffd0c0; font-size: 12px; }
+    #missileButton { right: max(132px, calc(env(safe-area-inset-right) + 104px)); bottom: 112px; border-color: #ff7ab0; color: #ffc0dc; }
+    #thrustButton { right: max(132px, calc(env(safe-area-inset-right) + 104px)); bottom: 184px; }
+    #brakeButton { right: max(56px, calc(env(safe-area-inset-right) + 28px)); bottom: 222px; }
+    #mapButton { right: max(16px, env(safe-area-inset-right)); top: 52px; }
+    #menuButton { right: max(74px, calc(env(safe-area-inset-right) + 58px)); top: 52px; }
+    body.touch .brand, body.touch .controls, body.touch .readouts, body.touch .panel-title { display: none; }
+    body.touch .top { top: 12px; left: 16px; right: 16px; justify-content: flex-end; }
+    body.touch .cockpit { height: 96px; padding: 6px max(10px, env(safe-area-inset-right)) 6px max(10px, env(safe-area-inset-left)); grid-template-columns: 1fr 86px 1fr; gap: 8px; border-top-width: 3px; }
+    body.touch .panel { padding: 4px 8px; border-width: 2px; overflow: hidden; }
+    body.touch .panel-row { font-size: 9px; line-height: 1.25; }
+    body.touch #radar { width: 80px; height: 80px; border-width: 3px; }
+    body.touch .cockpit .hull { margin: 0 0 3px; font-size: 9px; }
+    body.touch .cockpit .hull .meter, body.touch .cockpit .speed .meter { height: 6px; margin-top: 3px; }
+    body.touch .cockpit .speed { font-size: 9px; }
+    body.touch .boss { top: 44px; }
+    @media (orientation: portrait) { body.touch .rotate-hint { display: grid; position: fixed; inset: 0; z-index: 10; place-items: center; padding: 24px; text-align: center; background: #030712f2; color: #65e9ff; font-size: 14px; letter-spacing: .24em; line-height: 1.8; } }
     .menu { position: fixed; inset: 0; display: none; place-items: center; overflow-y: auto; padding: 16px; background: radial-gradient(#06121cc4, #02060bf0); }
     .menu.show { display: grid; }
     .menu-box { width: min(620px, 100%); text-align: center; }
@@ -102,15 +129,26 @@
       <div class="controls"><b>MOUSE</b> STEER / FIRE &nbsp; <b>WASD</b> STRAFE &nbsp; <b>↑/↓</b> PITCH &nbsp; <b>←/→</b> TURN &nbsp; <b>Q/E</b> ROLL &nbsp; <b>X</b> ACCELERATE &nbsp; <b>Z</b> BRAKE &nbsp; <b>F/J</b> FIRE &nbsp; <b>C/RMB</b> MISSILE &nbsp; <b>TAB</b> MAP &nbsp; <b>P</b> PAUSE &nbsp; <b>M</b> MUSIC</div>
     </div>
   </div>
+  <div class="touch-ui" id="touchUi">
+    <div class="stick" id="steerStick" aria-label="Steer"><div class="knob"></div></div>
+    <button class="tbutton" id="fireButton">FIRE</button>
+    <button class="tbutton" id="missileButton">MSL</button>
+    <button class="tbutton" id="thrustButton">THRUST</button>
+    <button class="tbutton" id="brakeButton">BRAKE</button>
+    <button class="tbutton small" id="mapButton">MAP</button>
+    <button class="tbutton small" id="menuButton">MENU</button>
+  </div>
+  <div class="rotate-hint">TURN YOUR PHONE SIDEWAYS<br>TO FLY</div>
   <div class="menu" id="menu" role="dialog" aria-label="Game menu">
     <div class="menu-box">
       <h1>RADIX<small>BEYOND THE VOID</small></h1>
-      <div class="row" style="margin-top: 26px"><button class="primary" id="resumeButton">RESUME</button><button class="primary" id="newGameButton">NEW GAME</button></div>
+      <div class="row" style="margin-top: 26px"><button class="primary" id="resumeButton">RESUME</button><button class="primary" id="newGameButton">NEW GAME</button><button class="primary" id="fullscreenButton">FULL SCREEN</button></div>
       <h2>DIFFICULTY</h2>
       <div class="row" id="difficultyRow"></div>
       <h2>SECTOR SELECT</h2>
       <div class="sectors" id="sectorList"></div>
       <p id="menuNote">Sectors unlock as you reach them, and start with the cannon and missiles you last entered them with. Press Esc during flight to open this menu.</p>
+      <p id="touchNote" hidden>Touch: drag the left stick to steer (pull down to climb). Hold THRUST or BRAKE to change speed; it stays where you leave it. Hold FIRE to shoot, tap MSL for a missile.</p>
     </div>
   </div>
   <script>
@@ -119,6 +157,10 @@
     const world = document.getElementById('world');
     const gl = world.getContext('webgl2', { antialias: true, alpha: false, powerPreference: 'high-performance' });
     const canvas = document.getElementById('space');
+    // Phones and tablets get on-screen controls; ?touch forces them on, ?desktop off.
+    const touchMode = /[?&]touch\b/.test(location.search) ||
+      (!/[?&]desktop\b/.test(location.search) && matchMedia('(pointer: coarse)').matches && navigator.maxTouchPoints > 0);
+    document.body.classList.toggle('touch', touchMode);
     const ctx = canvas.getContext('2d');
     const radar = document.getElementById('radar');
     const radarCtx = radar.getContext('2d');
@@ -138,6 +180,7 @@
     const warningText = document.getElementById('warningText');
     const speedBar = document.getElementById('speedBar');
     const pausedText = document.getElementById('pausedText');
+    const cockpitPanel = document.querySelector('.cockpit');
     const bossBar = document.getElementById('bossBar'), bossMeter = document.getElementById('bossMeter'), bossState = document.getElementById('bossState');
     const impactText = document.getElementById('impactText');
     const statusText = document.getElementById('statusText');
@@ -1793,7 +1836,8 @@
       width = window.innerWidth; height = window.innerHeight;
       canvas.width = Math.round(width * dpr); canvas.height = Math.round(height * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      world.width = Math.round(width * Math.min(dpr, 2)); world.height = Math.round(height * Math.min(dpr, 2));
+      const detail = Math.min(dpr, touchMode ? 1.25 : 2);
+      world.width = Math.round(width * detail); world.height = Math.round(height * detail);
       radar.width = Math.round(118 * dpr); radar.height = Math.round(118 * dpr);
       radarCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
@@ -1817,9 +1861,12 @@
       keys.add(key);
     });
     window.addEventListener('keyup', (event) => keys.delete(event.key.toLowerCase()));
-    window.addEventListener('blur', () => { keys.clear(); mouseFiring = false; });
+    window.addEventListener('blur', () => { keys.clear(); mouseFiring = false; releaseTouch(); });
+    // Switching apps or tabs pauses into the menu, which matters on phones where there is no mouse capture to lose.
+    document.addEventListener('visibilitychange', () => { if (document.hidden && started && !menuOpen && !destroyed && !finished) openMenu(); });
     canvas.addEventListener('contextmenu', (event) => event.preventDefault());
     canvas.addEventListener('pointerdown', (event) => {
+      if (event.pointerType === 'touch') return;
       if (event.button === 2) { missileRequest = true; ensureAudio(); return; }
       if (event.button !== 0) return;
       mouseFiring = true;
@@ -1838,6 +1885,55 @@
       ship.pitch = clamp(ship.pitch + event.movementY * 0.0025, -1.35, 1.35);
     });
     const down = (...names) => names.some(name => keys.has(name));
+    // On-screen controls: the stick gives steering rates in -1..1; buttons are held flags.
+    const touch = { steerX: 0, steerY: 0, fire: false, thrust: false, brake: false };
+    function bindStick(element, onMove) {
+      const knob = element.querySelector('.knob');
+      let pointer = null;
+      const move = (event) => {
+        const box = element.getBoundingClientRect(), radius = box.width / 2;
+        let x = (event.clientX - box.left - radius) / radius, y = (event.clientY - box.top - radius) / radius;
+        const reach = Math.hypot(x, y);
+        if (reach > 1) { x /= reach; y /= reach; }
+        knob.style.left = `${50 + x * 32}%`; knob.style.top = `${50 + y * 32}%`;
+        // A small dead zone, then a squared response for fine aiming near the centre.
+        const shape = (v) => Math.sign(v) * Math.max(0, (Math.abs(v) - 0.12) / 0.88) ** 1.6;
+        onMove(shape(x), shape(y));
+      };
+      element.addEventListener('pointerdown', (event) => {
+        event.preventDefault(); pointer = event.pointerId; ensureAudio();
+        try { element.setPointerCapture(pointer); } catch { /* synthetic pointer */ }
+        move(event);
+      });
+      element.addEventListener('pointermove', (event) => { if (event.pointerId === pointer) move(event); });
+      const release = (event) => {
+        if (event.pointerId !== pointer) return;
+        pointer = null; knob.style.left = '50%'; knob.style.top = '50%'; onMove(0, 0);
+      };
+      element.addEventListener('pointerup', release); element.addEventListener('pointercancel', release);
+    }
+    function bindHold(id, set) {
+      const button = document.getElementById(id);
+      const change = (on) => { button.classList.toggle('held', on); set(on); };
+      button.addEventListener('pointerdown', (event) => {
+        event.preventDefault(); ensureAudio(); change(true);
+        try { button.setPointerCapture(event.pointerId); } catch { /* synthetic pointer */ }
+      });
+      for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) button.addEventListener(type, () => change(false));
+    }
+    function bindTap(id, action) {
+      document.getElementById(id).addEventListener('pointerdown', (event) => { event.preventDefault(); ensureAudio(); action(); });
+    }
+    const releaseTouch = () => { Object.assign(touch, { steerX: 0, steerY: 0, fire: false, thrust: false, brake: false });
+      for (const held of document.querySelectorAll('.tbutton.held')) held.classList.remove('held'); };
+    bindStick(document.getElementById('steerStick'), (x, y) => { touch.steerX = x; touch.steerY = y; });
+    bindHold('fireButton', (on) => { touch.fire = on; });
+    bindHold('thrustButton', (on) => { touch.thrust = on; });
+    bindHold('brakeButton', (on) => { touch.brake = on; });
+    bindTap('missileButton', () => { missileRequest = true; });
+    bindTap('mapButton', () => { mapOpen = !mapOpen; });
+    bindTap('menuButton', () => openMenu());
+    document.addEventListener('contextmenu', (event) => { if (touchMode) event.preventDefault(); });
 
     function ensureAudio() {
       const AudioCtor = window.AudioContext || window.webkitAudioContext;
@@ -2120,7 +2216,7 @@
       }));
     }
     function openMenu() {
-      menuOpen = true; menuOpenedAt = performance.now(); paused = true; mouseFiring = false; keys.clear();
+      menuOpen = true; menuOpenedAt = performance.now(); paused = true; mouseFiring = false; keys.clear(); releaseTouch();
       pausedText.classList.remove('show');
       renderMenu(); menu.classList.add('show'); resumeButton.focus();
     }
@@ -2130,6 +2226,12 @@
       try { const request = canvas.requestPointerLock(); if (request && request.catch) request.catch(() => {}); } catch { /* click the view to capture the mouse */ }
     }
     resumeButton.addEventListener('click', closeMenu);
+    document.getElementById('touchNote').hidden = !touchMode;
+    document.getElementById('fullscreenButton').addEventListener('click', () => {
+      const root = document.documentElement, enter = root.requestFullscreen || root.webkitRequestFullscreen;
+      if (!enter) return;
+      Promise.resolve(enter.call(root)).then(() => screen.orientation?.lock?.('landscape')).catch(() => {});
+    });
     document.getElementById('newGameButton').addEventListener('click', () => { weaponLevel = 1; missileAmmo = 0; loadLevel(0, 100); closeMenu(); });
     function resetGame() {
       if (finished) { weaponLevel = 1; missileAmmo = 0; loadLevel(0, 100); }
@@ -2503,7 +2605,7 @@
     }
     function drawMap() {
       if (!mapOpen) return;
-      const left = 20, right = width - 20, top = 60, bottom = Math.max(top + 160, height - 222);
+      const left = 20, right = width - 20, top = touchMode ? 96 : 60, bottom = Math.max(top + 120, height - cockpitPanel.offsetHeight - 16);
       ctx.fillStyle = 'rgba(2,8,14,0.88)'; ctx.fillRect(left, top, right - left, bottom - top);
       ctx.strokeStyle = '#3f7f90'; ctx.lineWidth = 1; ctx.strokeRect(left + 0.5, top + 0.5, right - left - 1, bottom - top - 1);
       const [gx0, gz0, gx1, gz1] = mapBounds, cols = gx1 - gx0 + 1, rows = gz1 - gz0 + 1;
@@ -2818,7 +2920,7 @@
       fireCooldown = Math.max(0, fireCooldown - dt);
       muzzleTimer = Math.max(0, muzzleTimer - dt);
       const view = basis(ship.yaw, ship.pitch, ship.roll), weapon = WEAPONS[weaponLevel - 1];
-      if ((mouseFiring || down('f', 'j')) && fireCooldown === 0) {
+      if ((mouseFiring || down('f', 'j') || touch.fire) && fireCooldown === 0) {
         for (const offset of weapon.guns) {
           // Side barrels angle in slightly so their bolts cross near the reticle.
           const direction = normalize(sub(mul(view.forward, 60), mul(view.right, offset)));
@@ -2949,15 +3051,15 @@
         return;
       }
       const previous = ship.position;
-      const turn = Number(down('arrowright')) - Number(down('arrowleft'));
-      const climb = Number(down('arrowdown')) - Number(down('arrowup'));
+      const turn = clamp(Number(down('arrowright')) - Number(down('arrowleft')) + touch.steerX * 1.5, -1.5, 1.5);
+      const climb = clamp(Number(down('arrowdown')) - Number(down('arrowup')) + touch.steerY * 1.4, -1.4, 1.4);
       const bank = Number(down('e')) - Number(down('q'));
       const slideX = Number(down('d')) - Number(down('a')), slideY = Number(down('w')) - Number(down('s'));
       ship.yaw += turn * dt * 1.2;
       ship.pitch = clamp(ship.pitch + climb * dt * 0.9, -1.35, 1.35);
       ship.roll += bank * dt * 1.4;
       ship.roll += (-(turn * 0.35 + slideX * 0.2) - ship.roll) * Math.min(1, dt * 0.7);
-      ship.speed = clamp(ship.speed + (Number(down('x', ' ')) * 18 - Number(down('z')) * 24) * dt, 0, 45);
+      ship.speed = clamp(ship.speed + (Number(down('x', ' ') || touch.thrust) * 18 - Number(down('z') || touch.brake) * 24) * dt, 0, 45);
       // Strafing slides along the view's right and up axes, easing in and out.
       const easing = Math.min(1, dt * 6), view = basis(ship.yaw, ship.pitch, ship.roll);
       ship.strafe = [ship.strafe[0] + (slideX * STRAFE_SPEED - ship.strafe[0]) * easing, ship.strafe[1] + (slideY * STRAFE_SPEED - ship.strafe[1]) * easing];

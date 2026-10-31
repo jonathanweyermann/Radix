@@ -6,6 +6,8 @@ A tiny dependency-free 3D space-flight prototype drawn with terminal characters.
 
 Open `index.html` in a browser that supports WebGL 2. No installation or web server is needed. The game opens on a menu where you can continue, start a new game, pick a difficulty, or choose any sector you have reached. Click the game to capture the mouse; Esc releases it and opens the menu, which pauses the game.
 
+**Phones and tablets:** play it at https://jonathanweyermann.github.io/Radix/ with the device held sideways. On touch screens the game shows on-screen controls and a smaller cockpit. Drag the left stick to steer (pull down to climb, like the mouse). Hold THRUST or BRAKE to change speed, which stays where you leave it. Hold FIRE to shoot, and tap MSL to launch a missile. MAP and MENU sit at the top right, and the menu has a FULL SCREEN button. Strafing is keyboard only. Switching apps pauses the game. Add `?touch` to the address to force the touch controls on, or `?desktop` to turn them off.
+
 **Difficulty:** Easy spawns about two thirds as many enemies and lets 60% of incoming damage through; Hard spawns 30% more enemies and deals 35% more damage. Changing it mid-flight changes damage at once and enemy numbers from the next sector you start.
 
 **Progress** is saved in the browser (localStorage) as you enter each sector: the last sector you flew, your difficulty, and the cannon and missiles you last entered each sector with. Picking a sector from the menu starts it with that loadout and a full hull. Move the mouse to steer, with up/down inverted. Hold the left mouse button to fire the cannon, and press the right mouse button or C to launch a seeker missile. The weapons make short synthesized sounds.
