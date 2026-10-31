@@ -250,10 +250,10 @@
     //   music: the sector's track
     const FLOOR_MATERIALS = ['floorPlate', 'floorGrate', 'floorPad', 'floorFoundry', 'floorSludge', 'floorLava', 'floorIce', 'floorHive', 'floorWater', 'floorVent', 'floorVoid'];
     const PLATE = 0, GRATE = 1, PAD = 2, SLAG = 3, SLUDGE = 4, LAVA = 5, ICE = 6, HIVE = 7, WATER = 8, VENT = 9, VOID = 10;
-    const BULKHEAD = 1, COLUMN = 2, REACTOR = 3, CRYSTAL = 4;
+    const BULKHEAD = 1, COLUMN = 2, REACTOR = 3, CRYSTAL = 4, SKY = undefined;
     const LEVELS = [
       {
-        name: 'DELTA-9', title: 'RELAY STATION', start: [0, -4, 0], yaw: 0, exit: [0, -2, 440, true],
+        name: 'DELTA-9', title: 'RELAY STATION', music: 'relay', start: [0, -4, 0], yaw: 0, exit: [0, -2, 440, true],
         sky: { zenith: [0.02, 0.03, 0.06], fog: [0.17, 0.19, 0.23], sun: [0.6, 0.55, 0.5], sunDir: [0.4, 0.5, 0.75] },
         walls: { lower: [['wallComputer', 0.4], ['wallLower', 0.3], ['wallVent', 0.15], ['wallDoor', 0.15]], upper: [['wallUpper', 0.8], ['wallWindows', 0.2]] },
         rooms: [
@@ -269,6 +269,7 @@
           [-48, 180, -32, 280, PLATE, BASE, 3],
           [-96, 136, -48, 152, PLATE, BASE, 7],
           [-160, 120, -96, 296, GRATE], [-152, 136, -104, 180, SLUDGE],
+          [-152, 204, -136, 220, PLATE, -3, SKY, 'wallContainer'], [-120, 260, -104, 268, PLATE, -5, SKY, 'wallContainer'], [-112, 196, -104, 212, PLATE, 1, SKY, 'wallContainer'],
           [-152, 296, -144, 304, PLATE, BASE, 11], [-200, 304, -136, 360, PLATE, BASE, 11],
           [-24, 296, 24, 392, PLATE, BASE, 7],
           [-40, 392, 40, 456, PAD],
@@ -287,6 +288,7 @@
           [-152, 296, -144, 300, 'south', 'secret'],
         ],
         extras: { enemies: [['drone', 0, BASE + 8, 150]] },
+        lasers: [[-24, 344, 24, 344, -10, 6, 4, 0]],
         zones: [
           { name: 'ENTRY HALL', area: [-20, -32, 20, 40], barrels: 4 },
           { name: 'ACCESS CORRIDOR', area: [-8, 40, 8, 100], barrels: 2 },
@@ -297,13 +299,13 @@
           { name: 'LONG GALLERY', area: [-96, 280, 96, 296], barrels: 6, drones: 2, hunters: 2 },
           { name: 'SERVICE CORRIDOR', area: [-48, 180, -32, 280], barrels: 3, hunters: 1 },
           { name: 'WEST YARD', area: [-160, 120, -48, 296], barrels: 8, drones: 3, hunters: 2, high: true },
-          { name: 'HIDDEN ARMORY', area: [-200, 296, -136, 360], barrels: 4, weapon: 1, health: 1 },
+          { name: 'HIDDEN ARMORY', area: [-200, 296, -136, 360], barrels: 4, missile: 1, health: 1 },
           { name: 'EXIT APPROACH', area: [-24, 296, 24, 392], barrels: 4, drones: 2, hunters: 1 },
           { name: 'UPLINK COURT', area: [-40, 392, 40, 456], barrels: 4, drones: 2, wardens: 1 },
         ],
       },
       {
-        name: 'DELTA-9', title: 'TOXIN REFINERY', start: [0, -4, 0], yaw: 0, exit: [0, 6, 468, true],
+        name: 'DELTA-9', title: 'TOXIN REFINERY', music: 'toxin', start: [0, -4, 0], yaw: 0, exit: [0, 6, 468, true],
         sky: { zenith: [0.04, 0.06, 0.03], fog: [0.19, 0.23, 0.15], sun: [0.7, 0.75, 0.5], sunDir: [-0.3, 0.45, 0.8] },
         walls: { lower: [['wallRust', 0.45], ['wallPipes', 0.3], ['wallVent', 0.25]], upper: [['wallRust', 0.55], ['wallUpper', 0.45]] },
         rooms: [
@@ -336,35 +338,36 @@
           [-76, 284, -72, 300, 'west', 'chain'], [-8, 320, 8, 324, 'south', 'chain'],
           [176, 160, 180, 176, 'west', 'secret'], [-180, 148, -176, 164, 'east', 'secret'],
         ],
+        lasers: [[-8, 212, 8, 212, -10, 3, 3.4, 0]],
         zones: [
           { name: 'RECEIVING BAY', area: [-24, -32, 24, 32], barrels: 4 },
           { name: 'LOW DUCT', area: [-8, 32, 8, 80], barrels: 2 },
           { name: 'SETTLING BASIN', area: [-64, 80, 64, 176], drones: 4, hunters: 2, health: 1, high: true },
           { name: 'EAST DUCT', area: [64, 120, 112, 136], barrels: 3, drones: 1 },
-          { name: 'FILTER ROOM', area: [112, 96, 176, 192], barrels: 6, drones: 3, hunters: 1, weapon: 1, high: true },
+          { name: 'FILTER ROOM', area: [112, 96, 176, 192], barrels: 6, drones: 3, hunters: 1, health: 1, high: true },
           { name: 'SEALED STORE', area: [176, 144, 232, 192], barrels: 4, health: 1, weapon: 1 },
           { name: 'FILTER RISE', area: [72, 192, 152, 280], barrels: 4, drones: 2, hunters: 1 },
           { name: 'WEST DUCT', area: [-112, 120, -64, 136], barrels: 3, drones: 1 },
-          { name: 'TANK YARD', area: [-176, 96, -112, 208], barrels: 8, drones: 3, wardens: 1, high: true },
+          { name: 'TANK YARD', area: [-176, 96, -112, 208], barrels: 8, drones: 3, wardens: 1, lancers: 1, high: true },
           { name: 'DRAIN CACHE', area: [-216, 140, -176, 172], health: 2 },
           { name: 'YARD PASSAGE', area: [-176, 208, -72, 300], barrels: 4, drones: 2, hunters: 2 },
           { name: 'NORTH DUCT', area: [-8, 176, 8, 240], barrels: 2, hunters: 1 },
-          { name: 'REFINERY HALL', area: [-72, 240, 72, 320], barrels: 10, drones: 4, wardens: 2, health: 1, high: true },
+          { name: 'REFINERY HALL', area: [-72, 240, 72, 320], barrels: 10, drones: 4, wardens: 2, miners: 1, health: 1, high: true },
           { name: 'OUTFLOW DUCT', area: [-8, 320, 8, 400], barrels: 2, drones: 2 },
           { name: 'OUTFLOW POOL', area: [-48, 400, 48, 480], drones: 3, hunters: 2, wardens: 1 },
         ],
       },
       {
-        name: 'EPSILON-5', title: 'CRYO VAULTS', start: [0, -4, 0], yaw: 0, exit: [0, -2, 600, true], tint: [0.82, 0.94, 1.12],
+        name: 'EPSILON-5', title: 'CRYO VAULTS', music: 'cryo', start: [0, -4, 0], yaw: 0, exit: [0, -2, 600, true], tint: [0.88, 0.96, 1.1],
         sky: { zenith: [0.05, 0.08, 0.14], fog: [0.36, 0.44, 0.54], sun: [0.8, 0.9, 1.0], sunDir: [0.3, 0.6, 0.7] },
-        walls: { lower: [['wallLower', 0.5], ['wallVent', 0.2], ['wallComputer', 0.15], ['wallDoor', 0.15]], upper: [['wallUpper', 0.6], ['wallWindows', 0.4]] },
+        walls: { lower: [['wallIce', 0.5], ['wallLower', 0.2], ['wallComputer', 0.15], ['wallDoor', 0.15]], upper: [['wallIce', 0.6], ['wallWindows', 0.4]] },
         rooms: [
           [-24, -32, 24, 24, PAD, BASE, 13],
           [-8, 24, 8, 96, PLATE, BASE, 5],
-          [-64, 96, 64, 192, GRATE, BASE, 25],
+          [-64, 96, 64, 192, ICE, BASE, 25],
           [-64, 256, 64, 280, PLATE, 9, 21],
-          [-24, 280, 24, 360, GRATE, BASE, 21], [-8, 360, 8, 372, PLATE, BASE, 9],
-          [-80, 372, 80, 440, GRATE, BASE, 21],
+          [-24, 280, 24, 360, ICE, -35, 21], [-8, 360, 8, 372, PLATE, BASE, 9],
+          [-80, 372, 80, 440, ICE, BASE, 21],
           [-112, 128, -64, 144, PLATE, BASE, 7], [-176, 112, -112, 240, GRATE, BASE, 17],
           [-184, 160, -176, 176, PLATE, BASE, 9], [-216, 152, -184, 184, PLATE, BASE, 9],
           [-160, 240, -144, 400, PLATE, BASE, 3], [-144, 384, -80, 400, PLATE, BASE, 3],
@@ -373,7 +376,7 @@
         ],
         stairs: [[-64, 192, -40, 256, PAD, BASE, 9, 'z', 12], [40, 192, 64, 256, PAD, BASE, 9, 'z', 12]],
         blocks: [
-          [-40, 120, -32, 128, COLUMN], [32, 120, 40, 128, COLUMN], [-40, 160, -32, 168, COLUMN], [32, 160, 40, 168, COLUMN],
+          [-40, 120, -32, 128, CRYSTAL], [32, 120, 40, 128, CRYSTAL], [-40, 160, -32, 168, CRYSTAL], [32, 160, 40, 168, CRYSTAL],
           [-64, 384, -56, 392, COLUMN], [-40, 384, -32, 392, COLUMN], [32, 384, 40, 392, COLUMN], [56, 384, 64, 392, COLUMN],
           [-64, 412, -56, 420, COLUMN], [-40, 412, -32, 420, COLUMN], [32, 412, 40, 420, COLUMN], [56, 412, 64, 420, COLUMN],
           [-148, 168, -140, 176, COLUMN], [-136, 204, -128, 212, COLUMN], [-28, 540, -20, 548, COLUMN], [20, 540, 28, 548, COLUMN],
@@ -386,26 +389,27 @@
         zones: [
           { name: 'ENTRY LOCK', area: [-24, -32, 24, 24], barrels: 3 },
           { name: 'COLD CORRIDOR', area: [-8, 24, 8, 96], barrels: 2 },
-          { name: 'VAULT HALL', area: [-64, 96, 64, 192], barrels: 8, drones: 3, turrets: 2, health: 1, missile: 1, high: true },
+          { name: 'VAULT HALL', area: [-64, 96, 64, 192], barrels: 8, drones: 3, turrets: 2, lancers: 1, health: 1, missile: 1, high: true },
           { name: 'FROST CACHE', area: [-216, 152, -176, 184], health: 1, weapon: 1 },
           { name: 'WEST COLD STORE', area: [-176, 112, -64, 240], barrels: 6, drones: 2, hunters: 2, strikers: 1, high: true },
           { name: 'NORTH DUCT', area: [-160, 240, -80, 400], barrels: 3, hunters: 2 },
           { name: 'UPPER GALLERY', area: [-64, 192, 64, 280], barrels: 4, drones: 2, turrets: 2 },
-          { name: 'COLD WELL', area: [-24, 280, 24, 372], drones: 2, strikers: 1, high: true },
-          { name: 'CRYO CHAMBER', area: [-80, 372, 80, 440], barrels: 8, drones: 3, turrets: 2, wardens: 1, health: 1, high: true },
+          { name: 'COLD WELL', area: [-24, 280, 24, 372], drones: 2, strikers: 1, skimmers: 1, high: true },
+          { name: 'CRYO CHAMBER', area: [-80, 372, 80, 440], barrels: 8, drones: 3, turrets: 2, wardens: 1, aegis: 1, lancers: 1, health: 1, high: true },
           { name: 'EXIT DUCT', area: [-8, 440, 8, 520], hunters: 2 },
-          { name: 'EXIT VAULT', area: [-40, 520, 40, 620], barrels: 4, strikers: 2, missile: 1 },
+          { name: 'EXIT VAULT', area: [-40, 520, 40, 620], barrels: 4, strikers: 2, missile: 1, launcher: 1 },
         ],
       },
       {
-        name: 'EPSILON-5', title: 'MAGMA WORKS', start: [0, -4, 0], yaw: 0, exit: [0, 14, 600, true], tint: [1.12, 0.95, 0.85],
+        name: 'EPSILON-5', title: 'MAGMA WORKS', music: 'magma', start: [0, -4, 0], yaw: 0, exit: [0, 14, 600, true], tint: [1.12, 0.95, 0.85],
         sky: { zenith: [0.12, 0.05, 0.03], fog: [0.4, 0.23, 0.14], sun: [1.0, 0.6, 0.35], sunDir: [0.5, 0.35, 0.8] },
-        walls: { lower: [['wallRust', 0.4], ['wallPipes', 0.3], ['wallLower', 0.3]], upper: [['wallRust', 0.5], ['wallUpper', 0.5]] },
+        walls: { lower: [['wallBasalt', 0.5], ['wallRust', 0.3], ['wallPipes', 0.2]], upper: [['wallBasalt', 0.6], ['wallRust', 0.4]] },
         rooms: [
           [-24, -32, 24, 32, PAD],
           [-12, 32, 12, 120, PLATE],
-          [-96, 120, 96, 220, LAVA], [-96, 152, 96, 168, PLATE, -5], [-12, 120, 12, 220, PLATE, -5],
-          [-88, 128, -56, 148, PAD, -3], [56, 184, 88, 212, PAD, -3],
+          [-96, 120, 96, 220, LAVA, -27], [-96, 152, 96, 168, PLATE, -5, SKY, 'wallBasalt'], [-12, 120, 12, 220, PLATE, -5, SKY, 'wallBasalt'],
+          [64, 124, 88, 144, VENT, -27], [-88, 196, -64, 216, VENT, -27],
+          [-88, 128, -56, 148, PAD, -3, SKY, 'wallBasalt'], [56, 184, 88, 212, PAD, -3, SKY, 'wallBasalt'],
           [-12, 220, 12, 300, PLATE, -5, 7],
           [-80, 300, 80, 380, SLAG, -5], [-40, 316, 40, 364, LAVA],
           [-80, 440, 80, 500, GRATE, 7],
@@ -429,21 +433,21 @@
         zones: [
           { name: 'STAGING PAD', area: [-24, -32, 24, 32], barrels: 3 },
           { name: 'CAUSEWAY', area: [-12, 32, 12, 120], barrels: 3, drones: 2 },
-          { name: 'LAVA FIELD', area: [-96, 120, 96, 220], drones: 4, strikers: 2, health: 1, missile: 1, high: true },
+          { name: 'LAVA FIELD', area: [-96, 120, 96, 220], drones: 4, strikers: 2, skimmers: 2, health: 1, missile: 1, high: true },
           { name: 'SLAG CACHE', area: [160, 136, 208, 184], health: 1, weapon: 1 },
           { name: 'WEST FLUE', area: [-160, 152, -80, 320], barrels: 3, hunters: 2, turrets: 1 },
           { name: 'EAST FLUE', area: [80, 152, 160, 340], barrels: 3, hunters: 2, turrets: 1 },
           { name: 'CENTRAL FLUE', area: [-12, 220, 12, 300], hunters: 1 },
-          { name: 'SMELTER YARD', area: [-80, 300, 80, 380], barrels: 8, drones: 3, strikers: 2, wardens: 1, health: 1, high: true },
-          { name: 'UPPER WORKS', area: [-80, 380, 80, 500], barrels: 8, drones: 3, turrets: 3, missile: 1, high: true },
+          { name: 'SMELTER YARD', area: [-80, 300, 80, 380], barrels: 8, drones: 3, strikers: 2, wardens: 1, miners: 1, health: 1, high: true },
+          { name: 'UPPER WORKS', area: [-80, 380, 80, 500], barrels: 8, drones: 3, turrets: 3, lancers: 1, missile: 1, high: true },
           { name: 'VENT SHAFT', area: [-24, 500, 24, 560], hunters: 2 },
           { name: 'EXIT DECK', area: [-40, 560, 40, 640], barrels: 4, strikers: 2, wardens: 1 },
         ],
       },
       {
-        name: 'EPSILON-5', title: 'SIGNAL SPIRE', start: [0, -4, 0], yaw: 0, exit: [0, 22, 600, true], tint: [0.95, 0.95, 1.06],
+        name: 'EPSILON-5', title: 'SIGNAL SPIRE', music: 'spire', top: 49, start: [0, -4, 0], yaw: 0, exit: [0, 34, 600, true], tint: [0.95, 0.95, 1.06],
         sky: { zenith: [0.015, 0.015, 0.05], fog: [0.12, 0.12, 0.2], sun: [0.5, 0.56, 0.9], sunDir: [-0.4, 0.55, 0.7] },
-        walls: { lower: [['wallComputer', 0.3], ['wallLower', 0.4], ['wallDoor', 0.3]], upper: [['wallWindows', 0.5], ['wallSign', 0.2], ['wallUpper', 0.3]] },
+        walls: { lower: [['wallTech', 0.4], ['wallComputer', 0.3], ['wallDoor', 0.3]], upper: [['wallTech', 0.4], ['wallWindows', 0.4], ['wallSign', 0.2]] },
         rooms: [
           [-24, -32, 24, 40, PAD],
           [-120, 40, 120, 200, GRATE], [-8, 96, 8, 144, PLATE, BASE, 1],
@@ -453,13 +457,14 @@
           [-12, 360, 12, 440, PLATE, 5, 17],
           [-120, 360, -100, 456, PLATE, 5, 15], [-120, 456, -60, 472, PLATE, 5, 15],
           [-60, 440, 60, 520, GRATE, 9, 29],
-          [-40, 560, 40, 620, PAD, 15],
+          [-40, 560, 40, 620, PAD, 27],
         ],
         stairs: [
           [-104, 200, -80, 232, PAD, BASE, -3, 'z'], [80, 200, 104, 232, PAD, BASE, -3, 'z'],
           [-116, 280, -92, 312, PAD, -3, 5, 'z'], [92, 280, 116, 312, PAD, -3, 5, 'z'],
-          [-12, 520, 12, 560, PAD, 9, 15, 'z'],
+          [-12, 520, 12, 560, PAD, 9, 27, 'z'],
         ],
+        lasers: [[-12, 400, 12, 400, 6, 16.5, 3.6, 0]],
         blocks: [
           [-24, 96, -8, 144, REACTOR], [8, 96, 24, 144, REACTOR],
           [-80, 80, -72, 88, COLUMN], [72, 80, 80, 88, COLUMN], [-80, 160, -72, 168, COLUMN], [72, 160, 80, 168, COLUMN],
@@ -475,29 +480,30 @@
           { name: 'BASE CAMP', area: [-24, -32, 24, 40], barrels: 3 },
           { name: 'SIGNAL CACHE', area: [-168, 88, -120, 128], weapon: 1, health: 1 },
           { name: 'SPIRE BORE', area: [-8, 96, 8, 144], hunters: 1 },
-          { name: 'SPIRE PLAZA', area: [-120, 40, 120, 200], barrels: 12, drones: 4, turrets: 3, strikers: 1, health: 1, missile: 1, high: true },
+          { name: 'SPIRE PLAZA', area: [-120, 40, 120, 200], barrels: 12, drones: 4, turrets: 3, strikers: 1, lancers: 2, health: 1, missile: 1, high: true },
           { name: 'LOWER TERRACES', area: [-120, 200, 120, 280], barrels: 8, drones: 3, hunters: 2, strikers: 1, high: true },
-          { name: 'UPPER TERRACE', area: [-120, 280, 120, 360], barrels: 8, turrets: 3, wardens: 1, health: 1, high: true },
+          { name: 'UPPER TERRACE', area: [-120, 280, 120, 360], barrels: 8, turrets: 3, wardens: 1, aegis: 1, health: 1, high: true },
           { name: 'TOWER BORE', area: [-12, 360, 12, 440], hunters: 2 },
           { name: 'WEST BORE', area: [-120, 360, -60, 472], barrels: 3, drones: 2, strikers: 1 },
           { name: 'SUMMIT HALL', area: [-60, 440, 60, 520], barrels: 8, drones: 3, wardens: 2, strikers: 1, missile: 1, health: 1, high: true },
-          { name: 'SUMMIT DECK', area: [-40, 520, 40, 620], strikers: 2, turrets: 2 },
+          { name: 'SUMMIT DECK', area: [-40, 520, 40, 620], strikers: 2, turrets: 2, skimmers: 1 },
         ],
       },
       {
-        name: 'TAU-3', title: 'DROWNED DOCKS', start: [0, -4, 0], yaw: 0, exit: [0, 13, 600, true], tint: [0.92, 1.02, 1.05],
+        name: 'TAU-3', title: 'DROWNED DOCKS', music: 'docks', start: [0, -4, 0], yaw: 0, exit: [0, 13, 600, true], tint: [0.92, 1.02, 1.05],
         sky: { zenith: [0.08, 0.12, 0.14], fog: [0.3, 0.36, 0.38], sun: [0.7, 0.75, 0.8], sunDir: [0.2, 0.5, 0.8] },
-        walls: { lower: [['wallPipes', 0.35], ['wallRust', 0.35], ['wallDoor', 0.3]], upper: [['wallUpper', 0.5], ['wallRust', 0.3], ['wallWindows', 0.2]] },
+        walls: { lower: [['wallContainer', 0.25], ['wallContainerB', 0.2], ['wallPipes', 0.25], ['wallRust', 0.3]], upper: [['wallContainer', 0.2], ['wallContainerB', 0.2], ['wallUpper', 0.3], ['wallRust', 0.3]] },
         rooms: [
           [-24, -32, 24, 32, PAD],
           [-12, 32, 12, 96, PLATE],
-          [-112, 96, 112, 240, SLUDGE], [-8, 96, 8, 240, PLATE, -7], [-112, 160, 112, 172, PLATE, -7],
-          [-96, 112, -64, 140, PAD, -5], [64, 200, 96, 228, PAD, -5],
+          [-112, 96, 112, 240, WATER, -19], [-8, 96, 8, 240, PLATE, -7, SKY, 'wallContainer'], [-112, 160, 112, 172, PLATE, -7, SKY, 'wallContainer'],
+          [-96, 112, -64, 140, PAD, -5, SKY, 'wallContainer'], [64, 200, 96, 228, PAD, -5, SKY, 'wallContainer'],
           [-148, 160, -112, 172, PLATE, BASE, 9], [-216, 128, -148, 224, GRATE, BASE, 17],
           [112, 160, 148, 172, PLATE, BASE, 9], [148, 120, 216, 220, SLAG],
           [216, 160, 224, 176, PLATE, BASE, 9], [224, 148, 252, 188, PAD, BASE, 9],
           [-12, 240, 12, 300, PLATE, -7, 7],
-          [-100, 300, 100, 400, GRATE, -7], [-24, 320, 24, 380, PLATE, 9],
+          [-100, 300, 100, 400, GRATE, -7], [-24, 320, 24, 380, PLATE, 9, SKY, 'wallContainer'],
+          [-80, 316, -64, 332, PLATE, 3, SKY, 'wallContainer'], [56, 360, 72, 384, PLATE, 5, SKY, 'wallContainer'], [-56, 364, -44, 388, PLATE, 1, SKY, 'wallContainer'],
           [-100, 440, 100, 500, PLATE, 5],
           [-12, 500, 12, 560, PLATE, 5, 17],
           [-40, 560, 40, 640, PAD, 5],
@@ -517,31 +523,31 @@
         zones: [
           { name: 'MOORING PAD', area: [-24, -32, 24, 32], barrels: 3 },
           { name: 'PIER', area: [-12, 32, 12, 96], barrels: 2, drones: 1 },
-          { name: 'HARBOR BASIN', area: [-112, 96, 112, 240], drones: 4, strikers: 2, hunters: 1, health: 1, missile: 1, high: true },
+          { name: 'HARBOR BASIN', area: [-112, 96, 112, 240], drones: 4, strikers: 2, hunters: 1, miners: 2, health: 1, missile: 1, high: true },
           { name: 'WEST HANGAR', area: [-216, 128, -112, 224], barrels: 8, drones: 2, wardens: 1, turrets: 1, weapon: 1, health: 1 },
           { name: 'FUEL DEPOT', area: [112, 120, 216, 220], barrels: 12, turrets: 2, hunters: 2, missile: 1 },
-          { name: 'DEPOT CACHE', area: [216, 148, 252, 188], health: 1, weapon: 1 },
+          { name: 'DEPOT CACHE', area: [216, 148, 252, 188], health: 1, missile: 1 },
           { name: 'DOCK CHANNEL', area: [-12, 240, 12, 300], hunters: 2 },
-          { name: 'DRY DOCK', area: [-100, 300, 100, 400], barrels: 10, drones: 3, strikers: 2, turrets: 2, health: 1, high: true },
-          { name: 'CRANE DECK', area: [-100, 400, 100, 500], barrels: 8, drones: 3, wardens: 1, missile: 1, high: true },
+          { name: 'DRY DOCK', area: [-100, 300, 100, 400], barrels: 10, drones: 3, strikers: 2, turrets: 2, skimmers: 2, health: 1, high: true },
+          { name: 'CRANE DECK', area: [-100, 400, 100, 500], barrels: 8, drones: 3, wardens: 1, lancers: 1, missile: 1, high: true },
           { name: 'CONTROL BORE', area: [-12, 500, 12, 560], hunters: 2 },
           { name: 'LAUNCH PAD', area: [-40, 560, 40, 640], strikers: 2, wardens: 1 },
         ],
       },
       {
-        name: 'TAU-3', title: 'HIVE WARRENS', start: [0, -4, 0], yaw: 0, exit: [0, 17, 640, true], tint: [1.06, 1.0, 0.84],
+        name: 'TAU-3', title: 'HIVE WARRENS', music: 'hive', start: [0, -4, 0], yaw: 0, exit: [0, 17, 640, true], tint: [1.06, 1.0, 0.86],
         sky: { zenith: [0.05, 0.04, 0.02], fog: [0.2, 0.17, 0.1], sun: [0.8, 0.65, 0.4], sunDir: [0.3, 0.6, 0.7] },
-        walls: { lower: [['wallPipes', 0.4], ['wallVent', 0.3], ['wallRust', 0.3]], upper: [['wallRust', 0.6], ['wallUpper', 0.4]] },
+        walls: { lower: [['wallHive', 0.6], ['wallPipes', 0.2], ['wallRust', 0.2]], upper: [['wallHive', 0.7], ['wallRust', 0.3]] },
         rooms: [
           [-24, -32, 24, 32, PAD, BASE, 9],
           [-8, 32, 8, 80, PLATE, BASE, 1],
-          [-56, 80, 56, 160, GRATE, BASE, 19],
+          [-56, 80, 56, 160, HIVE, BASE, 19],
           [-184, 96, -120, 200, PLATE, 3, 19], [-160, 200, -144, 300, PLATE, 3, 15], [-160, 300, -104, 316, PLATE, 3, 15],
           [56, 112, 120, 128, PLATE, BASE, 1],
           [120, 88, 200, 168, SLUDGE, BASE, 9], [120, 124, 200, 132, PLATE, -7, 9], [128, 96, 152, 120, PAD, -7, 9], [168, 136, 192, 160, PAD, -7, 9],
           [176, 168, 192, 300, PLATE, BASE, 1], [104, 300, 192, 316, PLATE, BASE, 1],
-          [-104, 280, 104, 400, GRATE, BASE, 25],
-          [-72, 480, 72, 560, PLATE, 9, 25], [-56, 496, -24, 544, SLUDGE, 9, 25],
+          [-104, 280, 104, 400, HIVE, BASE, 25],
+          [-72, 480, 72, 560, HIVE, 9, 25], [-56, 496, -24, 544, SLUDGE, 9, 25],
           [-80, 512, -72, 528, PLATE, 9, 19], [-124, 500, -80, 540, PAD, 9, 19],
           [-8, 560, 8, 600, PLATE, 9, 21],
           [-40, 600, 40, 672, PAD, 9],
@@ -562,40 +568,40 @@
         zones: [
           { name: 'HATCHERY MOUTH', area: [-24, -32, 24, 32], barrels: 3 },
           { name: 'FEED TUBE', area: [-8, 32, 8, 80], hunters: 1 },
-          { name: 'BROOD CHAMBER', area: [-56, 80, 56, 160], barrels: 6, drones: 3, hunters: 3, health: 1, high: true },
+          { name: 'BROOD CHAMBER', area: [-56, 80, 56, 160], barrels: 6, drones: 3, hunters: 2, broods: 1, health: 1, high: true },
           { name: 'WEST CLIMB', area: [-120, 112, -56, 128], hunters: 2 },
-          { name: 'WEST GALLERY', area: [-184, 96, -120, 200], barrels: 6, drones: 2, turrets: 2, strikers: 1, weapon: 1 },
+          { name: 'WEST GALLERY', area: [-184, 96, -120, 200], barrels: 6, drones: 2, turrets: 2, strikers: 1, health: 1 },
           { name: 'WEST SHAFT', area: [-160, 200, -104, 316], drones: 1, hunters: 2 },
           { name: 'EAST TUBE', area: [56, 112, 120, 128], barrels: 2, hunters: 1 },
-          { name: 'EGG VAULT', area: [120, 88, 200, 168], drones: 3, hunters: 2, strikers: 1, missile: 1, health: 1 },
+          { name: 'EGG VAULT', area: [120, 88, 200, 168], drones: 2, hunters: 2, strikers: 1, broods: 1, missile: 1, health: 1 },
           { name: 'EAST SHAFT', area: [104, 168, 192, 316], hunters: 3, turrets: 1 },
-          { name: 'THE NEST', area: [-104, 280, 104, 400], barrels: 10, drones: 4, hunters: 4, wardens: 2, strikers: 1, health: 1, missile: 1, high: true },
+          { name: 'THE NEST', area: [-104, 280, 104, 400], barrels: 10, drones: 4, hunters: 3, wardens: 1, strikers: 1, broods: 2, health: 1, missile: 1, high: true },
           { name: 'HIVE STAIR', area: [-8, 400, 8, 480], hunters: 2 },
-          { name: 'UPPER WARREN', area: [-72, 480, 72, 560], barrels: 6, drones: 3, turrets: 2, wardens: 1, health: 1 },
-          { name: 'ROYAL CACHE', area: [-124, 500, -72, 540], weapon: 1, health: 1, missile: 1 },
+          { name: 'UPPER WARREN', area: [-72, 480, 72, 560], barrels: 6, drones: 3, turrets: 2, wardens: 1, aegis: 1, health: 1 },
+          { name: 'ROYAL CACHE', area: [-124, 500, -72, 540], weapon: 1, launcher: 1, health: 1, missile: 1 },
           { name: 'BREACH TUNNEL', area: [-8, 560, 8, 600], hunters: 2 },
           { name: 'SURFACE BREACH', area: [-40, 600, 40, 672], drones: 2, strikers: 2, wardens: 1 },
         ],
       },
       {
-        name: 'TAU-3', title: 'TETHER ANCHOR', start: [0, -4, 0], yaw: 0, exit: [0, 27, 620, true], tint: [1.0, 1.0, 1.04],
+        name: 'TAU-3', title: 'TETHER ANCHOR', music: 'tether', top: 49, start: [0, -4, 0], yaw: 0, exit: [0, 37, 620, true], tint: [1.0, 1.0, 1.04],
         sky: { zenith: [0.12, 0.22, 0.42], fog: [0.62, 0.7, 0.8], sun: [1.0, 0.95, 0.85], sunDir: [0.3, 0.7, 0.6] },
-        walls: { lower: [['wallLower', 0.4], ['wallDoor', 0.2], ['wallPipes', 0.2], ['wallComputer', 0.2]], upper: [['wallUpper', 0.5], ['wallWindows', 0.3], ['wallSign', 0.2]] },
+        walls: { lower: [['wallTech', 0.4], ['wallDoor', 0.2], ['wallPipes', 0.2], ['wallComputer', 0.2]], upper: [['wallTech', 0.4], ['wallWindows', 0.4], ['wallSign', 0.2]] },
         rooms: [
           [-24, -32, 24, 32, PAD],
           [-128, 96, 128, 224, GRATE, -3], [-48, 128, 48, 192, LAVA, -27], [-48, 156, 48, 164, PLATE, -3], [-4, 128, 4, 192, PLATE, -3],
           [128, 152, 140, 168, PLATE, -3, 9], [140, 120, 216, 200, PLATE, -3, 13],
           [216, 152, 224, 168, PLATE, -3, 9], [224, 140, 252, 180, PAD, -3, 9],
           [-128, 288, 128, 368, PLATE, 9], [-112, 300, -80, 332, PAD, 15], [80, 300, 112, 332, PAD, 15],
-          [-128, 368, 128, 432, LAVA, -21],
+          [-128, 368, 128, 432, LAVA, -35], [-16, 388, 16, 412, VENT, -35],
           [-96, 432, 96, 520, GRATE, 15],
           [-12, 520, 12, 560, PLATE, 15, 27],
-          [-40, 580, 40, 660, PAD, 19],
+          [-40, 580, 40, 660, PAD, 29],
         ],
         stairs: [
           [-12, 32, 12, 96, PLATE, BASE, -3, 'z'],
           [-12, 224, 12, 288, PLATE, -3, 9, 'z', 12], [-124, 224, -104, 288, PAD, -3, 9, 'z'],
-          [-12, 560, 12, 580, PAD, 15, 19, 'z', 12],
+          [-12, 560, 12, 580, PAD, 15, 29, 'z', 12],
         ],
         blocks: [
           [-8, 152, 8, 168, REACTOR],
@@ -618,29 +624,30 @@
           { name: 'WEST RAMP', area: [-124, 224, -104, 288], hunters: 2 },
           { name: 'MAINTENANCE BAY', area: [128, 120, 216, 200], barrels: 6, drones: 2, turrets: 1, weapon: 1, health: 1 },
           { name: 'BAY CACHE', area: [216, 140, 252, 180], missile: 2, health: 1 },
-          { name: 'SPOKE DECK', area: [-128, 288, 128, 368], barrels: 10, drones: 3, turrets: 3, wardens: 1, strikers: 1, health: 1, high: true },
-          { name: 'TETHER GAP', area: [-128, 368, 128, 432], drones: 3, strikers: 2, high: true },
-          { name: 'SUMMIT RING', area: [-96, 432, 96, 520], barrels: 8, turrets: 2, wardens: 2, strikers: 1, health: 1, missile: 1, high: true },
+          { name: 'SPOKE DECK', area: [-128, 288, 128, 368], barrels: 10, drones: 3, turrets: 3, wardens: 1, strikers: 1, lancers: 2, health: 1, high: true },
+          { name: 'TETHER GAP', area: [-128, 368, 128, 432], drones: 2, strikers: 2, skimmers: 2, high: true },
+          { name: 'SUMMIT RING', area: [-96, 432, 96, 520], barrels: 8, turrets: 2, wardens: 2, strikers: 1, aegis: 1, health: 1, missile: 1, high: true },
           { name: 'DOCKING BORE', area: [-12, 520, 12, 580], hunters: 2 },
           { name: 'CRADLE', area: [-40, 580, 40, 660], strikers: 2, wardens: 1 },
         ],
       },
       {
-        name: 'SIGMA-4', title: 'REFINERY TERRACES', start: [0, -4, 0], yaw: 0, exit: [0, 20, 524, true],
+        name: 'SIGMA-4', title: 'REFINERY TERRACES', music: 'terraces', top: 45, start: [0, -4, 0], yaw: 0, exit: [0, 28, 524, true],
         sky: { zenith: [0.1, 0.16, 0.3], fog: [0.52, 0.44, 0.38], sun: [0.95, 0.75, 0.55], sunDir: [0.3, 0.6, -0.45] },
+        walls: { lower: [['wallRust', 0.35], ['wallContainer', 0.25], ['wallPipes', 0.4]], upper: [['wallRust', 0.5], ['wallUpper', 0.5]] },
         rooms: [
           [-32, -32, 32, 40, PAD],
           [-12, 40, 12, 140, PLATE],
           [-80, 140, 80, 220, GRATE, -5], [-24, 160, 24, 200, SLAG],
           [-180, 180, -100, 300, PLATE, 1], [100, 180, 180, 300, PLATE, 1],
           [-120, 320, 120, 420, GRATE, 7],
-          [-40, 460, 40, 540, PAD, 13],
+          [-40, 460, 40, 540, PAD, 21],
         ],
         stairs: [
           [-100, 184, -80, 216, PAD, 1, -5, 'x'], [80, 184, 100, 216, PAD, -5, 1, 'x'],
           [-124, 300, -104, 320, PAD, 1, 7, 'z'], [104, 300, 124, 320, PAD, 1, 7, 'z'],
           [-8, 220, 8, 320, PLATE, -5, 7, 'z', 10],
-          [-12, 420, 12, 460, PAD, 7, 13, 'z'],
+          [-12, 420, 12, 460, PAD, 7, 21, 'z'],
         ],
         blocks: [
           [-148, 228, -140, 236, COLUMN], [140, 228, 148, 236, COLUMN], [-148, 260, -140, 268, COLUMN], [140, 260, 148, 268, COLUMN],
@@ -653,20 +660,21 @@
           { name: 'PIPE TUNNEL', area: [-8, 220, 8, 320], barrels: 2, hunters: 2 },
           { name: 'START BASIN', area: [-32, -32, 32, 40], barrels: 4 },
           { name: 'NORTH CANYON', area: [-12, 40, 12, 140], barrels: 5, drones: 3 },
-          { name: 'LOWER TERRACE', area: [-80, 140, 80, 220], barrels: 10, drones: 4, hunters: 2, health: 1, high: true },
-          { name: 'WEST TERRACE', area: [-180, 180, -80, 320], barrels: 8, drones: 3, wardens: 1, weapon: 1, high: true },
-          { name: 'EAST TERRACE', area: [80, 180, 180, 320], barrels: 8, drones: 3, hunters: 2, health: 1, high: true },
-          { name: 'UPPER TERRACE', area: [-120, 320, 120, 460], barrels: 14, drones: 5, wardens: 2, health: 1, high: true },
-          { name: 'SUMMIT', area: [-40, 460, 40, 540], barrels: 6, drones: 2, wardens: 1 },
+          { name: 'LOWER TERRACE', area: [-80, 140, 80, 220], barrels: 10, drones: 3, hunters: 2, skimmers: 2, health: 1, high: true },
+          { name: 'WEST TERRACE', area: [-180, 180, -80, 320], barrels: 8, drones: 3, wardens: 1, lancers: 1, health: 1, high: true },
+          { name: 'EAST TERRACE', area: [80, 180, 180, 320], barrels: 8, drones: 3, hunters: 2, miners: 1, health: 1, high: true },
+          { name: 'UPPER TERRACE', area: [-120, 320, 120, 460], barrels: 14, drones: 4, wardens: 2, lancers: 2, aegis: 1, health: 1, missile: 1, weapon: 1, high: true },
+          { name: 'SUMMIT', area: [-40, 460, 40, 540], barrels: 6, drones: 2, wardens: 1, strikers: 1, launcher: 1 },
         ],
       },
       {
-        name: 'OMEGA', title: 'CORE BREACH', start: [0, -4, 0], yaw: 0, exit: [0, 16, 624, true],
+        name: 'OMEGA', title: 'CORE BREACH', music: 'omega', start: [0, -4, 0], yaw: 0, exit: [0, 16, 624, true],
         sky: { zenith: [0.06, 0.02, 0.1], fog: [0.24, 0.16, 0.27], sun: [0.85, 0.5, 0.78], sunDir: [-0.5, 0.4, 0.6] },
+        walls: { lower: [['wallVoid', 0.35], ['wallComputer', 0.35], ['wallLower', 0.3]], upper: [['wallVoid', 0.5], ['wallUpper', 0.5]] },
         rooms: [
           [-20, -32, 20, 24, PAD, BASE, 9],
           [-8, 24, 8, 120, PLATE, BASE, 1],
-          [-96, 120, 96, 312, GRATE], [-96, 120, -72, 312, PLATE, 1], [72, 120, 96, 312, PLATE, 1],
+          [-96, 120, 96, 312, VOID], [-96, 120, -72, 312, PLATE, 1, SKY, 'wallVoid'], [72, 120, 96, 312, PLATE, 1, SKY, 'wallVoid'],
           [-60, 312, -44, 440, PLATE, BASE, 3], [44, 312, 60, 440, PLATE, -3, 11],
           [-80, 440, 80, 520, PLATE, -3, 23],
           [-32, 580, 32, 640, PAD, 9],
@@ -682,12 +690,145 @@
         zones: [
           { name: 'DROP CHAMBER', area: [-20, -32, 20, 24], barrels: 3, health: 1 },
           { name: 'ENTRY BORE', area: [-8, 24, 8, 120], barrels: 3, drones: 2, hunters: 2 },
-          { name: 'CORE ARENA', area: [-96, 120, 96, 312], barrels: 16, drones: 6, hunters: 3, wardens: 3, health: 2, weapon: 1, high: true },
+          { name: 'CORE ARENA', area: [-96, 120, 96, 312], barrels: 16, drones: 5, hunters: 3, wardens: 2, aegis: 2, lancers: 2, skimmers: 2, health: 2, weapon: 1, high: true },
           { name: 'WEST BORE', area: [-60, 312, -44, 440], barrels: 4, drones: 2, hunters: 2 },
           { name: 'EAST BORE', area: [44, 312, 60, 440], barrels: 4, drones: 2, hunters: 2, health: 1 },
           { name: 'CROWN HALL', area: [-80, 440, 80, 520], barrels: 8, health: 2, missile: 2, high: true },
           { name: 'ASCENT', area: [-12, 520, 12, 580], drones: 2 },
           { name: 'ESCAPE DECK', area: [-32, 580, 32, 640], barrels: 4, wardens: 1 },
+        ],
+      },
+      {
+        name: 'VOID-1', title: 'ABYSS SHAFT', music: 'abyss', top: 81, start: [0, 52, 0], yaw: 0, exit: [0, 44, 580, true], tint: [0.95, 0.92, 1.08],
+        sky: { zenith: [0.02, 0.02, 0.06], fog: [0.11, 0.1, 0.17], sun: [0.6, 0.55, 0.9], sunDir: [0.2, 0.85, 0.4] },
+        walls: { lower: [['wallVoid', 0.5], ['wallTech', 0.25], ['wallPipes', 0.25]], upper: [['wallVoid', 0.6], ['wallUpper', 0.4]] },
+        rooms: [
+          [-24, -32, 24, 24, PAD, 45],
+          [-12, 24, 12, 88, PLATE, 45, 59],
+          [-88, 88, 88, 264, VOID, -43],
+          [-88, 88, 88, 104, PLATE, 41, SKY, 'wallVoid'],
+          [-88, 104, -60, 200, PLATE, 25, SKY, 'wallVoid'],
+          [60, 140, 88, 264, PLATE, 5, SKY, 'wallVoid'],
+          [-20, 168, 12, 196, VOID, -15, SKY, 'wallVoid'],
+          [-88, 236, -24, 264, PLATE, -27, SKY, 'wallVoid'],
+          [-152, 140, -88, 156, PLATE, 25, 37], [-200, 124, -152, 172, PAD, 25, 41],
+          [88, 200, 140, 216, PLATE, 5, 17], [140, 176, 204, 248, GRATE, 5, 29],
+          [-12, 264, 12, 328, PLATE, -43, -31],
+          [-28, 328, 28, 392, VENT, -43], [-28, 344, -16, 384, PLATE, 5, SKY, 'wallVoid'],
+          [-28, 392, 28, 456, PAD, 37],
+          [-12, 456, 12, 520, PLATE, 37, 51],
+          [-40, 520, 40, 600, PAD, 37],
+        ],
+        blocks: [
+          [-48, 212, -40, 220, CRYSTAL], [36, 116, 44, 124, CRYSTAL], [-36, 128, -28, 136, CRYSTAL], [28, 224, 36, 232, CRYSTAL],
+          [168, 196, 176, 204, COLUMN], [168, 220, 176, 228, COLUMN], [-24, 548, -16, 556, COLUMN], [16, 548, 24, 556, COLUMN],
+        ],
+        girders: [[-60, 17, 150, 60, 20, 154], [-4, -21, 104, 0, -18, 236], [-88, 41, 244, 88, 44, 248], [-40, 49, 560, 40, 52, 564]],
+        gates: [
+          [-92, 140, -88, 156, 'east', 'secret'], [88, 200, 92, 216, 'west', 'chain'],
+          [-12, 264, 12, 268, 'south', 'chain'], [-12, 456, 12, 460, 'south', 'chain'],
+        ],
+        lasers: [[-12, 284, 12, 284, -42, -31.5, 3.2, 0], [-12, 300, 12, 300, -42, -31.5, 3.2, 1.6], [-12, 316, 12, 316, -42, -31.5, 2.6, 0.8]],
+        zones: [
+          { name: 'START LEDGE', area: [-24, -32, 24, 24], barrels: 3 },
+          { name: 'RIM PASSAGE', area: [-12, 24, 12, 88], hunters: 1 },
+          { name: 'GREAT SHAFT', area: [-88, 88, 88, 264], drones: 4, skimmers: 3, lancers: 2, aegis: 1, health: 1, missile: 1, high: true },
+          { name: 'WEST CACHE', area: [-200, 124, -88, 172], weapon: 1, health: 1 },
+          { name: 'EAST VAULT', area: [88, 176, 204, 248], barrels: 6, drones: 2, miners: 1, health: 1, missile: 1, weapon: 1 },
+          { name: 'DEEP WORKS', area: [-12, 264, 12, 328], hunters: 2 },
+          { name: 'THE CHIMNEY', area: [-28, 328, 28, 392], skimmers: 2, lancers: 1, high: true },
+          { name: 'UPPER LANDING', area: [-28, 392, 28, 456], barrels: 4, drones: 2, aegis: 1, wardens: 1 },
+          { name: 'SPIRE WALK', area: [-12, 456, 12, 520], hunters: 2 },
+          { name: 'EXIT HALL', area: [-40, 520, 40, 600], barrels: 4, strikers: 2, lancers: 1, health: 1 },
+        ],
+      },
+      {
+        name: 'VOID-2', title: 'CRYSTAL CANYON', music: 'canyon', top: 65, start: [0, -4, 0], yaw: 0, exit: [0, 4, 728, true], tint: [0.92, 1.0, 1.08],
+        sky: { zenith: [0.1, 0.2, 0.38], fog: [0.55, 0.66, 0.78], sun: [1.0, 0.95, 0.9], sunDir: [0.4, 0.55, 0.6] },
+        walls: { lower: [['wallIce', 0.7], ['wallTech', 0.3]], upper: [['wallIce', 0.8], ['wallWindows', 0.2]] },
+        rooms: [
+          [-24, -32, 24, 24, ICE],
+          [-16, 24, 16, 120, ICE], [-16, 48, -8, 100, ICE, 9, SKY, 'wallIce'], [8, 64, 16, 96, ICE, 1, SKY, 'wallIce'],
+          [16, 96, 120, 128, ICE, -7], [40, 96, 72, 104, ICE, 17, SKY, 'wallIce'],
+          [88, 128, 120, 240, ICE, -3], [112, 160, 120, 216, ICE, 21, SKY, 'wallIce'],
+          [-40, 240, 120, 272, ICE, 1],
+          [-120, 272, 40, 400, ICE, BASE], [-120, 272, -96, 400, ICE, 21, SKY, 'wallIce'], [-96, 364, -64, 400, ICE, 13, SKY, 'wallIce'],
+          [-40, 320, -16, 344, ICE, 5, SKY, 'wallIce'], [16, 284, 40, 300, ICE, 9, SKY, 'wallIce'],
+          [-124, 300, -120, 316, ICE, 21, 33], [-176, 288, -124, 332, ICE, 21, 37],
+          [-56, 448, 56, 512, ICE, 25],
+          [-88, 512, 88, 640, VOID, -3, 45], [-88, 512, -64, 640, PLATE, 9, 45, 'wallTech'], [64, 512, 88, 640, PLATE, 9, 45, 'wallTech'],
+          [-12, 640, 12, 700, PLATE, -3, 11],
+          [-32, 700, 32, 748, PAD, -3, 25],
+        ],
+        stairs: [[-40, 400, 40, 448, ICE, BASE, 25, 'z']],
+        blocks: [
+          [96, 168, 104, 176, CRYSTAL], [96, 208, 104, 216, CRYSTAL],
+          [-80, 288, -72, 296, CRYSTAL], [-60, 316, -52, 324, CRYSTAL], [-8, 300, 0, 308, CRYSTAL], [-72, 340, -64, 348, CRYSTAL],
+          [0, 356, 8, 364, CRYSTAL], [24, 376, 32, 384, CRYSTAL], [-48, 380, -40, 388, CRYSTAL],
+          [-60, 540, -52, 548, COLUMN], [52, 540, 60, 548, COLUMN], [-60, 600, -52, 608, COLUMN], [52, 600, 60, 608, COLUMN],
+          [-20, 724, -12, 732, COLUMN], [12, 724, 20, 732, COLUMN],
+        ],
+        girders: [[-16, 20, 84, 16, 23, 88], [16, 23, 112, 120, 26, 116], [-120, 31, 330, 40, 34, 334], [-64, 31, 560, 64, 34, 564]],
+        gates: [[-56, 448, 56, 452, 'south', 'chain'], [-124, 300, -120, 316, 'east', 'secret'], [-12, 640, 12, 644, 'south', 'boss']],
+        lasers: [[-56, 480, 56, 480, 26, 44, 3.4, 0], [-56, 496, 56, 496, 26, 44, 3.4, 1.7]],
+        extras: { enemies: [['carrier', 0, 21, 592]] },
+        zones: [
+          { name: 'START BASIN', area: [-24, -32, 24, 24], barrels: 3 },
+          { name: 'CANYON RUN', area: [-16, 24, 16, 120], drones: 2, skimmers: 1 },
+          { name: 'EAST BEND', area: [16, 96, 120, 128], barrels: 3, hunters: 2, lancers: 1 },
+          { name: 'CRYSTAL GULLY', area: [88, 128, 120, 240], drones: 2, lancers: 1, aegis: 1, health: 1, high: true },
+          { name: 'WEST BEND', area: [-40, 240, 120, 272], barrels: 4, skimmers: 2, missile: 1 },
+          { name: 'THE NEEDLES', area: [-120, 272, 40, 400], barrels: 8, drones: 4, lancers: 2, skimmers: 2, broods: 1, aegis: 1, health: 1, missile: 1, high: true },
+          { name: 'ICE CAVE', area: [-176, 288, -120, 332], weapon: 1, health: 1, missile: 1 },
+          { name: 'FROZEN FALLS', area: [-40, 400, 40, 448], drones: 2, miners: 1 },
+          { name: 'HIGH PASS', area: [-56, 448, 56, 512], lancers: 2, strikers: 2, wardens: 1, high: true },
+          { name: 'CARRIER BERTH', area: [-88, 512, 88, 640], barrels: 8, health: 2, missile: 2 },
+          { name: 'EXIT TUNNEL', area: [-12, 640, 12, 700] },
+          { name: 'EXIT DOCK', area: [-32, 700, 32, 748], barrels: 2 },
+        ],
+      },
+      {
+        name: 'VOID-3', title: 'HEART OF THE VOID', music: 'void', top: 81, start: [0, 12, 0], yaw: 0, exit: [0, -4, 600, true], tint: [1.0, 0.9, 1.1],
+        sky: { zenith: [0.05, 0.0, 0.08], fog: [0.2, 0.08, 0.24], sun: [0.9, 0.4, 0.9], sunDir: [-0.3, 0.5, 0.7] },
+        walls: { lower: [['wallVoid', 0.7], ['wallComputer', 0.3]], upper: [['wallVoid', 0.8], ['wallSign', 0.2]] },
+        rooms: [
+          [-24, -32, 24, 24, VOID, 5],
+          [-12, 24, 12, 136, VOID, 5, 19],
+          [-104, 136, 104, 248, VOID, -27],
+          [-104, 136, -88, 248, PLATE, 5, SKY, 'wallVoid'], [88, 136, 104, 248, PLATE, 5, SKY, 'wallVoid'], [-104, 136, 104, 152, PLATE, 5, SKY, 'wallVoid'],
+          [-80, 168, -48, 200, VOID, 1, SKY, 'wallVoid'], [48, 176, 80, 208, VOID, 13, SKY, 'wallVoid'], [-16, 208, 16, 236, VOID, 25, SKY, 'wallVoid'],
+          [-24, 164, 24, 188, VENT, -27],
+          [-176, 168, -104, 216, VOID, 5, 33], [104, 168, 176, 216, VOID, 5, 33],
+          [-12, 248, 12, 312, VOID, 5, 19],
+          [-104, 312, 104, 480, VOID, BASE],
+          [-104, 312, -72, 344, VOID, 13, SKY, 'wallVoid'], [72, 312, 104, 344, VOID, 13, SKY, 'wallVoid'],
+          [-104, 448, -72, 480, VOID, 21, SKY, 'wallVoid'], [72, 448, 104, 480, VOID, 21, SKY, 'wallVoid'],
+          [-32, 376, 32, 416, VENT, BASE],
+          [-12, 480, 12, 540, VOID, BASE, 3],
+          [-40, 540, 40, 620, PAD, BASE],
+        ],
+        blocks: [
+          [-60, 224, -52, 232, CRYSTAL], [56, 220, 64, 228, CRYSTAL],
+          [-64, 360, -56, 368, CRYSTAL], [56, 360, 64, 368, CRYSTAL], [-64, 432, -56, 440, CRYSTAL], [56, 432, 64, 440, CRYSTAL],
+          [-144, 188, -136, 196, COLUMN], [136, 188, 144, 196, COLUMN], [-28, 596, -20, 604, COLUMN], [20, 596, 28, 604, COLUMN],
+        ],
+        girders: [[-104, 17, 196, 104, 20, 200], [-72, 9, 456, 72, 12, 460]],
+        gates: [[-108, 184, -104, 200, 'east', 'secret'], [104, 184, 108, 200, 'west', 'chain'], [-12, 248, 12, 252, 'south', 'chain'], [-12, 480, 12, 484, 'south', 'boss']],
+        lasers: [
+          [-12, 56, 12, 56, 5.5, 18.5, 3, 0], [-12, 80, 12, 80, 5.5, 18.5, 3, 1], [-12, 104, 12, 104, 5.5, 18.5, 3, 2], [-12, 120, 12, 120, 5.5, 18.5, 2.4, 0.6],
+          [-12, 272, 12, 272, 5.5, 18.5, 3.6, 0], [-12, 292, 12, 292, 5.5, 18.5, 3.6, 1.8],
+        ],
+        extras: { enemies: [['herald', 0, 33, 404], ['node', -14, 33, 404], ['node', 14, 33, 404], ['node', 0, 33, 418]] },
+        zones: [
+          { name: 'DROP POINT', area: [-24, -32, 24, 24], barrels: 2, health: 1 },
+          { name: 'GAUNTLET', area: [-12, 24, 12, 136], hunters: 2 },
+          { name: 'SHATTERED RING', area: [-104, 136, 104, 248], barrels: 6, drones: 4, skimmers: 3, lancers: 2, aegis: 1, miners: 1, health: 1, missile: 1, high: true },
+          { name: 'WEST WING', area: [-176, 168, -104, 216], wardens: 1, broods: 1, weapon: 1, health: 1 },
+          { name: 'EAST WING', area: [104, 168, 176, 216], barrels: 4, aegis: 1, drones: 2, strikers: 1, missile: 1, health: 1 },
+          { name: 'NULL CORRIDOR', area: [-12, 248, 12, 312], hunters: 2 },
+          { name: 'HEART CHAMBER', area: [-104, 312, 104, 480], barrels: 6, health: 2, missile: 2 },
+          { name: 'VOID GATE', area: [-12, 480, 12, 540] },
+          { name: 'FINAL DOCK', area: [-40, 540, 40, 620], barrels: 2 },
         ],
       },
     ];
@@ -1529,18 +1670,20 @@
           [[p.c, 'rgba(255,100,20,0.25)', 12], [p.b, gray(0.25), 3], [p.c, '#ffa04a', 2.5], [p.g, '#fff', 3.5]]);
         streaks(p, 20, '8,6,5', 0, 400, 0.4); scratches(p, 80, 0.2);
       }, { grime: 0.45, rust: 0.05, wear: 0.15 });
-      make('wallContainer', 512, 512, '#2a2420', p => {
-        const paints = ['#8a3a26', '#2f6a6a', '#b08a2a', '#3d4f7a', '#6a6f3a'];
-        for (const [y, n] of [[0, 0], [256, 1]]) for (const x of [0, 256]) {
-          const paint = paints[Math.floor(hashInt(x, y, 7) * paints.length)];
-          plate(p, x + 3, y + 3, 250, 250, paint, 0.5, 0.6, 5);
-          for (let rx = x + 18; rx < x + 240; rx += 16) fillRect(p, rx, y + 22, 7, 212, 'rgba(0,0,0,0.18)', 0.62);
-          for (const [cx, cy] of [[x + 3, y + 3], [x + 229, y + 3], [x + 3, y + 229], [x + 229, y + 229]]) plate(p, cx, cy, 24, 24, '#1c1c1c', 0.6, 0.7, 3);
-          if ((x + y + n) % 3 === 0) for (const bx of [x + 96, x + 156]) { fillRect(p, bx, y + 30, 6, 196, '#c8c8c0', 0.75); rivet(p, bx + 3, y + 128, 6, '#d8d8d0'); }
-          stencil(p, ['TAU-3', 'CARGO', 'K-17', 'VOLATILE'][Math.floor(hashInt(x, y, 9) * 4)], x + 128, y + 70, 30, 'rgba(235,230,215,0.55)');
-        }
-        streaks(p, 40, '96,48,26', 0, 420, 0.35); scratches(p, 200, 0.35);
-      }, { grime: 0.4, rust: 0.35, wear: 0.35 });
+      // Cargo containers: one corrugated face per tile, with door bars, corner castings and a stencilled code.
+      const container = (name, paint, label) => make(name, 512, 512, '#1c1a18', p => {
+        plate(p, 0, 0, 512, 512, paint, 0.5, 0.6, 6);
+        for (let x = 40; x < 472; x += 32) { fillRect(p, x, 36, 14, 440, 'rgba(0,0,0,0.16)', 0.66); fillRect(p, x + 14, 36, 4, 440, 'rgba(255,255,255,0.06)', 0.58); }
+        for (const y of [0, 476]) plate(p, 0, y, 512, 36, '#2a2826', 0.6, 0.7, 4);
+        for (const [cx, cy] of [[0, 0], [470, 0], [0, 470], [470, 470]]) plate(p, cx, cy, 42, 42, '#1a1918', 0.62, 0.74, 4);
+        for (const bx of [300, 352, 404, 456]) { fillRect(p, bx, 44, 8, 424, '#b8b8b0', 0.78); rivet(p, bx + 4, 250, 7, '#d0d0c8'); }
+        groove(p, 278, 40, 278, 472, 3, 0.3);
+        stencil(p, label, 150, 150, 52, 'rgba(235,230,215,0.6)');
+        stencil(p, 'MAX GROSS 30480 KG', 150, 210, 16, 'rgba(235,230,215,0.45)');
+        streaks(p, 34, '96,48,26', 30, 420, 0.4); scratches(p, 220, 0.35);
+      }, { grime: 0.4, rust: 0.4, wear: 0.35 });
+      container('wallContainer', '#8a3a26', 'TAU 417');
+      container('wallContainerB', '#2c6466', 'K-17');
       make('wallTech', 512, 512, '#46525a', p => {
         for (const [x, y] of QUADS) {
           plate(p, x + 4, y + 4, 248, 248, '#8a979e', 0.5, 0.6, 5);
@@ -1563,8 +1706,8 @@
         }
       }, { grime: 0.15, rust: 0, wear: 0.05 });
       make('crystal', 512, 512, '#0c0816', p => {
-        for (let i = 0; i < 70; i++) {
-          const x = rnd() * 512, y = rnd() * 512, w = between(14, 46), h = between(50, 150), cyan = rnd() > 0.45;
+        for (let i = 0; i < 34; i++) {
+          const x = rnd() * 512, y = rnd() * 512, w = between(30, 70), h = between(90, 220), cyan = rnd() > 0.45;
           const shine = p.c.createLinearGradient(x - w, y, x + w, y);
           shine.addColorStop(0, cyan ? '#1f5f7a' : '#4a2a7a'); shine.addColorStop(0.5, cyan ? '#8ff4ff' : '#c49aff'); shine.addColorStop(1, cyan ? '#123a4a' : '#2a1648');
           for (const ox of [-512, 0, 512]) {
@@ -1840,8 +1983,8 @@
       ceiling: [0.4, 1, 1.5], pickupHealth: [0.6, 1, 2.4], pickupWeapon: [0.6, 1, 2.4], exitFrame: [0.5, 1, 2.6],
       wallComputer: [0.5, 1, 2.2], wallRust: [0.35, 1, 1.2], floorSludge: [1.2, 0.6, 1.8], gateDoor: [0.5, 1, 2],
       secretPanel: [0.4, 1, 1.6], lock: [0.6, 1, 2.6], chain: [0.9, 1, 0.5], floorLava: [0.6, 0.8, 2.4],
-      wallIce: [0.8, 1, 1.6], wallHive: [0.5, 1, 2.2], wallBasalt: [0.35, 1, 2.6], wallContainer: [0.45, 1, 1.2], wallTech: [0.6, 1, 2.2],
-      wallVoid: [0.9, 1, 2.6], crystal: [1.1, 1, 2.4], floorIce: [1.1, 0.8, 1.4], floorHive: [0.5, 1, 2], floorWater: [1.5, 0.5, 1.6],
+      wallIce: [0.8, 1, 1.6], wallHive: [0.5, 1, 2.2], wallBasalt: [0.35, 1, 2.6], wallContainer: [0.45, 1, 1.2], wallContainerB: [0.45, 1, 1.2], wallTech: [0.6, 1, 2.2],
+      wallVoid: [0.9, 1, 2.6], crystal: [1.1, 1, 1.5], floorIce: [1.1, 0.8, 1.4], floorHive: [0.5, 1, 2], floorWater: [1.5, 0.5, 1.6],
       floorVent: [0.5, 1, 2.6], floorVoid: [0.9, 1, 2.4],
     };
     const materials = {};
@@ -1857,7 +2000,7 @@
     // Surfaces inside tunnels go in their own groups so the sun and sky can be dimmed there.
     const LOWER_VARIANTS = [['wallLower', 0.6], ['wallVent', 0.14], ['wallDoor', 0.12], ['wallPipes', 0.14]];
     const UPPER_VARIANTS = [['wallUpper', 0.68], ['wallWindows', 0.22], ['wallSign', 0.1]];
-    const TEXTURE_HEIGHT = { wallRust: 8, wallIce: 10, wallHive: 10, wallBasalt: 14, wallContainer: 10, wallTech: 10, wallVoid: 10 };
+    const TEXTURE_HEIGHT = { wallRust: 8, wallIce: 10, wallHive: 10, wallBasalt: 14, wallContainer: 7, wallContainerB: 7, wallTech: 10, wallVoid: 10 };
     const pickVariant = (options, value) => { for (const [name, weight] of options) if ((value -= weight) < 0) return name; return options[0][0]; };
     const radarEdges = [], beacons = [];
     let levelMeshes = [];
@@ -3878,7 +4021,7 @@
       laserCooldown = Math.max(0, laserCooldown - dt);
       for (const laser of lasers) {
         if (laserCooldown > 0 || laserState(laser) !== 'on') continue;
-        if (laser.beams.some(([a, b]) => segmentHitsSphere(a, b, ship.position, 1.4))) { damage(14, 'LASER GRID'); laserCooldown = 0.5; sparks(ship.position, 10, [1.0, 0.3, 0.3], 10); }
+        if (laser.beams.some(([a, b]) => segmentHitsSphere(a, b, ship.position, 1.7))) { damage(14, 'LASER GRID'); laserCooldown = 0.5; sparks(ship.position, 10, [1.0, 0.3, 0.3], 10); }
       }
       shieldDelay = Math.max(0, shieldDelay - dt);
       if (shieldDelay === 0) shield = Math.min(SHIELD_MAX, shield + SHIELD_MAX * 0.07 * dt);
