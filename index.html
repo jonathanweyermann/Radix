@@ -245,7 +245,8 @@
     const GRID_X0 = -256 * WORLD_SCALE, GRID_Z0 = -48 * WORLD_SCALE, GRID_W = 128, GRID_D = 200;
     //   gates: doors [x0, z0, x1, z1, side the player meets them on, 'chain' | 'secret' | 'boss' | 'core'] that seal their cells.
     //     Chain gates open once both chain locks on their face are shot; secret panels open after a few hits;
-    //     boss gates open when the sector's boss is destroyed; core gates when every data core in the sector is.
+    //     boss gates open when the sector's boss is destroyed; core gates when every data core in the sector is;
+    //     cracked walls only give way to missiles, plasma and the rail.
     //   brief: an objective shown a few seconds into the sector
     //   walls: optional weighted wall-texture variants for the lower and upper bands
     //   vents: floor material whose updraft lifts the ship; lasers: timed beam grids [x0, z0, x1, z1, bottom, top, period, offset]
@@ -375,6 +376,7 @@
           [-160, 240, -144, 400, PLATE, BASE, 3], [-144, 384, -80, 400, PLATE, BASE, 3],
           [-8, 440, 8, 520, PLATE, BASE, 5],
           [-40, 520, 40, 620, PAD, BASE, 25],
+          [80, 388, 124, 428, PAD, BASE, 9],
         ],
         stairs: [[-64, 192, -40, 256, PAD, BASE, 9, 'z', 12], [40, 192, 64, 256, PAD, BASE, 9, 'z', 12]],
         blocks: [
@@ -386,7 +388,7 @@
         girders: [[-64, 10, 140, 64, 13, 144], [-24, -2, 316, 24, 1, 320], [-80, 8, 428, 80, 11, 432]],
         gates: [
           [-8, 88, 8, 92, 'south', 'chain'], [-8, 364, 8, 368, 'south', 'chain'], [-84, 384, -80, 400, 'west', 'chain'],
-          [-8, 440, 8, 444, 'south', 'chain'], [-180, 160, -176, 176, 'east', 'secret'],
+          [-8, 440, 8, 444, 'south', 'chain'], [-180, 160, -176, 176, 'east', 'secret'], [80, 400, 84, 416, 'west', 'cracked'],
         ],
         zones: [
           { name: 'ENTRY LOCK', area: [-24, -32, 24, 24], barrels: 3 },
@@ -400,6 +402,7 @@
           { name: 'CRYO CHAMBER', area: [-80, 372, 80, 440], barrels: 8, drones: 3, turrets: 2, wardens: 1, aegis: 1, lancers: 1, health: 1, high: true },
           { name: 'EXIT DUCT', area: [-8, 440, 8, 520], hunters: 2 },
           { name: 'EXIT VAULT', area: [-40, 520, 40, 620], barrels: 4, strikers: 2, missile: 1, launcher: 1 },
+          { name: 'ICE CELLAR', area: [84, 388, 124, 428], health: 1, missile: 2 },
         ],
       },
       {
@@ -517,6 +520,7 @@
           [-100, 440, 100, 500, PLATE, 5],
           [-12, 500, 12, 560, PLATE, 5, 17],
           [-40, 560, 40, 640, PAD, 5],
+          [100, 456, 148, 488, PAD, 5, 17],
         ],
         stairs: [[-100, 400, -76, 440, PAD, -7, 5, 'z'], [76, 400, 100, 440, PAD, -7, 5, 'z']],
         blocks: [
@@ -528,7 +532,7 @@
         girders: [[-112, 10, 200, 112, 13, 204], [-216, 8, 176, -148, 11, 180], [-100, 6, 308, 100, 9, 312], [-100, 16, 390, 100, 19, 394], [-100, 18, 488, 100, 21, 492]],
         gates: [
           [-116, 160, -112, 172, 'east', 'chain'], [112, 160, 116, 172, 'west', 'chain'], [-12, 240, 12, 244, 'south', 'chain'],
-          [-12, 500, 12, 504, 'south', 'chain'], [216, 160, 220, 176, 'west', 'secret'],
+          [-12, 500, 12, 504, 'south', 'chain'], [216, 160, 220, 176, 'west', 'secret'], [100, 464, 104, 480, 'west', 'cracked'],
         ],
         zones: [
           { name: 'MOORING PAD', area: [-24, -32, 24, 32], barrels: 3 },
@@ -542,6 +546,7 @@
           { name: 'CRANE DECK', area: [-100, 400, 100, 500], barrels: 8, drones: 3, wardens: 1, lancers: 1, missile: 1, high: true },
           { name: 'CONTROL BORE', area: [-12, 500, 12, 560], hunters: 2 },
           { name: 'LAUNCH PAD', area: [-40, 560, 40, 640], strikers: 2, wardens: 1 },
+          { name: 'SMUGGLER HOLD', area: [104, 456, 148, 488], health: 1, missile: 2 },
         ],
       },
       {
@@ -605,6 +610,7 @@
           [128, 152, 140, 168, PLATE, -3, 9], [140, 120, 216, 200, PLATE, -3, 13],
           [216, 152, 224, 168, PLATE, -3, 9], [224, 140, 252, 180, PAD, -3, 9],
           [-128, 288, 128, 368, PLATE, 9], [-112, 300, -80, 332, PAD, 15], [80, 300, 112, 332, PAD, 15],
+          [-176, 304, -128, 344, PAD, 9, 21],
           [-128, 368, 128, 432, LAVA, -35], [-16, 388, 16, 412, VENT, -35],
           [-96, 432, 96, 520, GRATE, 15],
           [-12, 520, 12, 560, PLATE, 15, 27],
@@ -626,7 +632,7 @@
         girders: [[-128, 12, 110, 128, 15, 114], [-128, 16, 352, 128, 19, 356], [-128, 4, 388, 128, 7, 392], [-128, 16, 412, 128, 19, 416]],
         gates: [
           [-12, 224, 12, 228, 'south', 'chain'], [-124, 224, -104, 228, 'south', 'chain'], [128, 152, 132, 168, 'west', 'chain'],
-          [-12, 520, 12, 524, 'south', 'chain'], [216, 152, 220, 168, 'west', 'secret'],
+          [-12, 520, 12, 524, 'south', 'chain'], [216, 152, 220, 168, 'west', 'secret'], [-132, 316, -128, 332, 'east', 'cracked'],
         ],
         zones: [
           { name: 'BASE PAD', area: [-24, -32, 24, 32], barrels: 3 },
@@ -641,6 +647,7 @@
           { name: 'SUMMIT RING', area: [-96, 432, 96, 520], barrels: 8, turrets: 2, wardens: 2, strikers: 1, aegis: 1, health: 1, missile: 1, high: true },
           { name: 'DOCKING BORE', area: [-12, 520, 12, 580], hunters: 2 },
           { name: 'CRADLE', area: [-40, 580, 40, 660], strikers: 2, wardens: 1 },
+          { name: 'ANCHOR VAULT', area: [-176, 304, -128, 344], health: 1, missile: 2 },
         ],
       },
       {
@@ -652,9 +659,10 @@
           [-12, 40, 12, 140, PLATE],
           [-80, 140, 80, 220, GRATE, -5], [-24, 160, 24, 200, SLAG],
           [-180, 180, -100, 300, PLATE, 1], [100, 180, 180, 300, PLATE, 1],
-          [-120, 320, 120, 420, GRATE, 7],
+          [-120, 320, 120, 420, GRATE, 7], [120, 352, 164, 392, PAD, 7, 19],
           [-40, 460, 40, 540, PAD, 21],
         ],
+        gates: [[120, 364, 124, 380, 'west', 'cracked']],
         stairs: [
           [-100, 184, -80, 216, PAD, 1, -5, 'x'], [80, 184, 100, 216, PAD, -5, 1, 'x'],
           [-124, 300, -104, 320, PAD, 1, 7, 'z'], [104, 300, 124, 320, PAD, 1, 7, 'z'],
@@ -677,6 +685,7 @@
           { name: 'EAST TERRACE', area: [80, 180, 180, 320], barrels: 8, drones: 3, hunters: 2, miners: 1, health: 1, high: true },
           { name: 'UPPER TERRACE', area: [-120, 320, 120, 460], barrels: 14, drones: 4, wardens: 2, lancers: 2, aegis: 1, health: 1, missile: 1, weapon: 1, high: true },
           { name: 'SUMMIT', area: [-40, 460, 40, 540], barrels: 6, drones: 2, wardens: 1, strikers: 1, launcher: 1 },
+          { name: 'PUMP VAULT', area: [124, 352, 164, 392], health: 1, missile: 2 },
         ],
       },
       {
@@ -1138,7 +1147,7 @@
         const face = spansX ? (normal[2] < 0 ? z0 - 0.7 : z1 + 0.7) : (normal[0] < 0 ? x0 - 0.7 : x1 + 0.7);
         const [start, end] = spansX ? [x0, x1] : [z0, z1];
         const at = (along, y) => spansX ? [along, y, face] : [face, y, along];
-        const gate = { kind, x0, z0, x1, z1, door: { x0, y0, z0, x1, y1, z1 }, yaw: spansX ? 0 : -Math.PI / 2,
+        const gate = { kind, x0, z0, x1, z1, armor: kind === 'cracked' ? 6 : 0, door: { x0, y0, z0, x1, y1, z1 }, yaw: spansX ? 0 : -Math.PI / 2,
           exposure: y1 < WALL_TOP ? 0.3 : 1, locks: [], hp: 3, flash: 0, open: 0, opening: false };
         if (kind === 'chain') for (const t of [1 / 3, 2 / 3]) {
           const lock = { position: at(start + (end - start) * t, y0 + Math.min(6, (y1 - y0) / 2)), hp: 3, flash: 0, links: [] };
@@ -1899,6 +1908,13 @@
         }
         scratches(p, 60, 0.15);
       }, { grime: 0.15, rust: 0, wear: 0.05 });
+      make('crackedWall', 512, 512, '#27333b', p => {
+        bulkPanel(p, 10, 12, 492, 488);
+        for (let i = 0; i < 4; i++) trace(p, wander(between(150, 360), between(120, 390), 9, between(20, 34), 1.1),
+          [[p.c, 'rgba(255,120,40,0.25)', 14], [p.b, gray(0.2), 5], [p.c, '#ffb060', 3], [p.g, '#fff', 4]]);
+        stencil(p, 'REINFORCED', 256, 470, 22, 'rgba(240,210,150,0.45)');
+        streaks(p, 20, '96,48,26', 20, 400, 0.25); scratches(p, 120);
+      }, { grime: 0.45, rust: 0.25 });
       return textures;
     }
 
@@ -2114,7 +2130,7 @@
       barrel: [0.55, 1, 1], barrelLid: [0.5, 1, 1], drone: [0.7, 1, 3],
       ceiling: [0.4, 1, 1.5], pickupHealth: [0.6, 1, 2.4], pickupWeapon: [0.6, 1, 2.4], exitFrame: [0.5, 1, 2.6],
       wallComputer: [0.5, 1, 2.2], wallRust: [0.35, 1, 1.2], floorSludge: [1.2, 0.6, 1.8], gateDoor: [0.5, 1, 2],
-      secretPanel: [0.4, 1, 1.6], lock: [0.6, 1, 2.6], chain: [0.9, 1, 0.5], floorLava: [0.6, 0.8, 2.4],
+      secretPanel: [0.4, 1, 1.6], crackedWall: [0.4, 1, 2.4], lock: [0.6, 1, 2.6], chain: [0.9, 1, 0.5], floorLava: [0.6, 0.8, 2.4],
       wallIce: [0.8, 1, 1.6], wallHive: [0.5, 1, 2.2], wallBasalt: [0.35, 1, 2.6], wallContainer: [0.45, 1, 1.2], wallContainerB: [0.45, 1, 1.2], wallTech: [0.6, 1, 2.2],
       wallVoid: [0.9, 1, 2.6], crystal: [1.1, 1, 1.5], floorIce: [1.1, 0.8, 1.4], floorHive: [0.5, 1, 2], floorWater: [1.5, 0.5, 1.6],
       floorVent: [0.5, 1, 2.6], floorVoid: [0.9, 1, 2.4],
@@ -2262,7 +2278,7 @@
       for (const gate of gates) {
         const { x0, y0, z0, x1, y1, z1 } = gate.door;
         groups = {};
-        box(gate.kind === 'secret' ? 'secretPanel' : 'gateDoor', false, [x0, y0, z0], [x1, y1, z1], (p, normal) =>
+        box((gate.kind === 'secret' ? 'secretPanel' : gate.kind === 'cracked' ? 'crackedWall' : 'gateDoor'), false, [x0, y0, z0], [x1, y1, z1], (p, normal) =>
           normal[1] ? [p[0] / 8, p[2] / 8] : [(p[0] + p[2]) / 8, (y1 - p[1]) / 8]);
         gate.mesh = createMesh(Object.values(groups)[0]);
       }
@@ -3314,7 +3330,7 @@
       for (const gate of gates) {
         if (gate.open >= 1) continue;
         const height = gate.door.y1 - gate.door.y0, eased = gate.open * gate.open * (3 - 2 * gate.open);
-        useMaterial(materials[gate.kind === 'secret' ? 'secretPanel' : 'gateDoor']);
+        useMaterial(materials[(gate.kind === 'secret' ? 'secretPanel' : gate.kind === 'cracked' ? 'crackedWall' : 'gateDoor')]);
         drawMesh(gate.mesh, modelMatrix([0, -(height + 0.5) * eased, 0]), gate.flash * 0.5, level.tint || WHITE, gate.exposure);
         useMaterial(materials.chain);
         for (const lock of gate.locks) if (lock.hp > 0) for (const link of lock.links)
@@ -3401,7 +3417,7 @@
       r.save(); r.beginPath(); r.arc(cx,cy,51,0,Math.PI*2); r.clip();
       r.strokeStyle = '#ff9a3a'; r.lineWidth = 2.2; r.beginPath();
       for (const gate of gates) {
-        if (gate.kind === 'secret' || gate.open > 0.85) continue;
+        if (gate.kind === 'secret' || gate.kind === 'cracked' || gate.open > 0.85) continue;
         const corners = [[gate.x0, gate.z0], [gate.x1, gate.z0], [gate.x1, gate.z1], [gate.x0, gate.z1]].map(([x, z]) => {
           const dx = x - sx, dz = z - sz; return [cx + (cos*dx - sin*dz) * 0.55, cy - (sin*dx + cos*dz) * 0.55];
         });
@@ -3514,7 +3530,7 @@
       }
       ctx.strokeStyle = '#ff9a3a'; ctx.lineWidth = 2;
       for (const gate of gates) {
-        if (gate.kind === 'secret' || gate.open > 0.85 || !seen((gate.x0 + gate.x1) / 2, (gate.z0 + gate.z1) / 2)) continue;
+        if (gate.kind === 'secret' || gate.kind === 'cracked' || gate.open > 0.85 || !seen((gate.x0 + gate.x1) / 2, (gate.z0 + gate.z1) / 2)) continue;
         const [ax, ay] = toScreen(gate.x0, gate.z1), [bx, by] = toScreen(gate.x1, gate.z0);
         ctx.strokeRect(ax, ay, bx - ax, by - ay);
       }
@@ -3998,7 +4014,19 @@
       const at = audioContext.currentTime;
       synth(180, 520, 0.35, 0.05 * volume, 'sawtooth', at); synth(90, 60, 0.5, 0.06 * volume, 'square', at);
     }
+    // Heavy hits wear down cracked walls within reach of the blast.
+    function crackWalls(position, amount, reach) {
+      for (const gate of gates) {
+        if (gate.kind !== 'cracked' || gate.opening) continue;
+        const { x0, y0, z0, x1, y1, z1 } = gate.door, near = [clamp(position[0], x0, x1), clamp(position[1], y0, y1), clamp(position[2], z0, z1)];
+        if (Math.hypot(...sub(near, position)) > reach) continue;
+        gate.armor -= amount; gate.flash = 1;
+        if (gate.armor <= 0) openGate(gate, 'REINFORCED WALL BREACHED');
+        else registerHit('WALL CRACKING');
+      }
+    }
     function detonateMissile(position, direct) {
+      crackWalls(position, 3, 7);
       explosions.push({ position: position.slice(), life: 0.65, scale: 0.7 });
       sparks(position, 18, [1.0, 0.6, 0.25], 18);
       playExplosionSound();
@@ -4013,6 +4041,7 @@
     // Plasma bursts on impact, hurting everything close by apart from what it hit directly.
     function plasmaSplash(position, skip) {
       sparks(position, 10, [0.9, 0.5, 1.0], 12);
+      crackWalls(position, 1, 4);
       for (const enemy of enemies)
         if (enemy.hp > 0 && enemy !== skip && Math.hypot(...sub(enemy.position, position)) < 4.5 + ENEMY_TYPES[enemy.type].radius) hurtEnemy(enemy, 2);
     }
@@ -4038,6 +4067,7 @@
       }
       const gate = gateAt(to);
       if (gate && gate.kind === 'secret' && !gate.opening) { gate.hp -= amount; gate.flash = 1; if (gate.hp <= 0) openGate(gate, 'SECRET AREA FOUND'); }
+      crackWalls(to, 3, 3);
       sparks(to, 14, [0.6, 0.9, 1.0], 16);
       playRail();
     }
@@ -4170,6 +4200,7 @@
             gate.hp -= shot.damage; gate.flash = 1;
             if (gate.hp <= 0) openGate(gate, 'SECRET AREA FOUND');
           }
+          if (gate && gate.kind === 'cracked' && shot.kind !== 'plasma') { gate.flash = 0.4; registerHit('REINFORCED // USE MISSILES OR PLASMA'); }
           if (shot.kind === 'plasma') plasmaSplash(previous, null);
           sparks(previous, 7, [0.5, 0.9, 1.0], 12); hit = true;
         }
@@ -4237,7 +4268,7 @@
       }
       if (Math.hypot(...sub(exitCenter(), ship.position)) < 7) {
         // A results line while the warp pulls the ship in: hostiles, secrets found and the sector time, kept as a best time.
-        const secrets = gates.filter(g => g.kind === 'secret'), found = secrets.filter(g => g.opening).length;
+        const secrets = gates.filter(g => g.kind === 'secret' || g.kind === 'cracked'), found = secrets.filter(g => g.opening).length;
         const clock = `${Math.floor(sectorTime / 60)}:${String(Math.floor(sectorTime % 60)).padStart(2, '0')}`;
         const record = save.sectors[levelIndex] ||= {}, best = !record.best || sectorTime < record.best;
         if (best) { record.best = Math.round(sectorTime); writeSave(); }
