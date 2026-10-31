@@ -1366,7 +1366,16 @@
       }
 
       const textures = {};
-      const make = (name, w, h, base, paint, options) => { const p = painter(w, h, base); paint(p); textures[name] = finish(p, options); };
+      // Each texture is registered as a painter and painted when first needed, from its own seed so it looks the same
+      // whichever order the sectors ask for them.
+      const make = (name, w, h, base, paint, options) => {
+        textures[name] = () => {
+          let n = 0x71ea;
+          for (const ch of name) n = Math.imul(n ^ ch.charCodeAt(0), 16777619) >>> 0;
+          state = n; fieldSeed = 17 + n % 997;
+          const p = painter(w, h, base); paint(p); return finish(p, options);
+        };
+      };
       const bulkPanel = (p, x, y, w, h) => {
         plate(p, x, y, w, h, '#435667', 0.5, 0.64, 8);
         plate(p, x + 30, y + 30, w - 60, h - 60, '#384a56', 0.64, 0.58, 5);
@@ -2159,13 +2168,19 @@
       floorVent: [0.5, 1, 2.6], floorVoid: [0.9, 1, 2.4],
     };
     const materials = {};
-    function loadMaterials() {
-      for (const [name, texture] of Object.entries(createTextures())) {
-        const [specular, bump, emissive] = MATERIAL_SETTINGS[name];
+    // Surfaces are painted the first time a sector needs them (painting every one up front took seconds on phones);
+    // the ones every sector uses are painted at start-up.
+    const textureFactories = createTextures();
+    const COMMON_MATERIALS = ['barrel', 'barrelLid', 'drone', 'hazard', 'pickupHealth', 'pickupWeapon', 'crystal', 'lock', 'chain', 'gateDoor', 'secretPanel', 'crackedWall'];
+    function ensureMaterials(names) {
+      for (const name of names) {
+        if (materials[name] || !textureFactories[name]) continue;
+        const texture = textureFactories[name](), [specular, bump, emissive] = MATERIAL_SETTINGS[name];
         materials[name] = { name, specular, bump, emissive,
           albedo: uploadTexture(texture.color, texture.w, texture.h), detail: uploadTexture(texture.normal, texture.w, texture.h) };
       }
     }
+    function loadMaterials() { ensureMaterials(COMMON_MATERIALS); }
 
     // Turn the cell grid into floors, ceilings, banded walls, steps, corner posts, girders and the exit gate.
     // Surfaces inside tunnels go in their own groups so the sun and sky can be dimmed there.
@@ -2931,6 +2946,7 @@
       carve(level); setupGates(level); setupHazards(level); spawnLevel(level);
       radarEdges.length = 0; beacons.length = 0;
       levelMeshes = buildLevel(level);
+      ensureMaterials(levelMeshes.map(mesh => mesh.name));
       ship.position = level.start.slice(); ship.yaw = level.yaw; ship.pitch = 0; ship.roll = 0; ship.speed = 8; ship.strafe = [0, 0];
       health = startHealth; levelWeapon = weaponLevel; levelMissiles = missileAmmo; levelLauncher = launcherLevel; rails.length = 0; railCount = 0; shield = SHIELD_MAX; shieldDelay = 0;
       missiles.length = 0; enemyMissiles.length = 0; lockTarget = null; lockTimer = 0;
