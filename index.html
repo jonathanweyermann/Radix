@@ -230,21 +230,27 @@
     };
 
     // Each level is a grid of 4-unit cells carved out of solid ground.
-    //   rooms:  open space [x0, z0, x1, z1, floor material, floor height, ceiling height]; no ceiling means open sky
+    //   rooms:  open space [x0, z0, x1, z1, floor material, floor height, ceiling height, side texture]; no ceiling means open sky,
+    //           and a side texture dresses the faces that rise from lower neighbours up to this floor (crates, ledges, ice shelves)
     //   stairs: rooms whose floor climbs [x0, z0, x1, z1, material, height at x0/z0 side, height at x1/z1 side, axis, headroom]
     //   blocks: solid pillars put back [x0, z0, x1, z1, wall kind]
     //   girders: beams [x0, y0, z0, x1, y1, z1] to fly over, under or between
     //   exit: the warp gate [x, y, z, gate spans x]
-    // Levels are written in design units (floor BASE, open sky at TOP) and scaled up by WORLD_SCALE when the game starts.
+    // Levels are written in design units (floor BASE, open sky at TOP unless the level sets its own top) and scaled
+    // up by WORLD_SCALE when the game starts. Tall sectors raise the top to stack ledges and shafts far above the floor.
     const WORLD_SCALE = 1.25, BASE = -11, TOP = 33;
-    const FLOOR = BASE * WORLD_SCALE, SKY_LIMIT = 32 * WORLD_SCALE, WALL_TOP = TOP * WORLD_SCALE, CELL = 4 * WORLD_SCALE;
+    const FLOOR = BASE * WORLD_SCALE, CELL = 4 * WORLD_SCALE;
+    let WALL_TOP = TOP * WORLD_SCALE;
     const GRID_X0 = -256 * WORLD_SCALE, GRID_Z0 = -48 * WORLD_SCALE, GRID_W = 128, GRID_D = 200;
     //   gates: doors [x0, z0, x1, z1, side the player meets them on, 'chain' | 'secret' | 'boss'] that seal their cells.
     //     Chain gates open once both chain locks on their face are shot; secret panels open after a few hits;
     //     boss gates open when the sector's sentinel is destroyed.
     //   walls: optional weighted wall-texture variants for the lower and upper bands
-    const FLOOR_MATERIALS = ['floorPlate', 'floorGrate', 'floorPad', 'floorFoundry', 'floorSludge', 'floorLava'];
-    const PLATE = 0, GRATE = 1, PAD = 2, SLAG = 3, SLUDGE = 4, LAVA = 5, BULKHEAD = 1, COLUMN = 2, REACTOR = 3;
+    //   vents: floor material whose updraft lifts the ship; lasers: timed beam grids [x0, z0, x1, z1, bottom, top, period, offset]
+    //   music: the sector's track
+    const FLOOR_MATERIALS = ['floorPlate', 'floorGrate', 'floorPad', 'floorFoundry', 'floorSludge', 'floorLava', 'floorIce', 'floorHive', 'floorWater', 'floorVent', 'floorVoid'];
+    const PLATE = 0, GRATE = 1, PAD = 2, SLAG = 3, SLUDGE = 4, LAVA = 5, ICE = 6, HIVE = 7, WATER = 8, VENT = 9, VOID = 10;
+    const BULKHEAD = 1, COLUMN = 2, REACTOR = 3, CRYSTAL = 4;
     const LEVELS = [
       {
         name: 'DELTA-9', title: 'RELAY STATION', start: [0, -4, 0], yaw: 0, exit: [0, -2, 440, true],
@@ -690,8 +696,10 @@
     function scaleLevel(def) {
       const scale = (list, keep = []) => list.map(row => row.map((v, k) => typeof v === 'number' && !keep.includes(k) ? v * WORLD_SCALE : v));
       def.start = def.start.map(v => v * WORLD_SCALE);
+      def.top = (def.top || TOP) * WORLD_SCALE;
+      def.lasers = (def.lasers || []).map(row => row.map((v, k) => k < 6 ? v * WORLD_SCALE : v));
       def.exit = def.exit.map(v => typeof v === 'number' ? v * WORLD_SCALE : v);
-      def.rooms = scale(def.rooms, [4]);
+      def.rooms = scale(def.rooms, [4, 7]);
       def.stairs = scale(def.stairs || [], [4]);
       def.blocks = scale(def.blocks, [4]);
       def.girders = scale(def.girders);
@@ -703,6 +711,7 @@
 
     const open = new Uint8Array(GRID_W * GRID_D), solidKind = new Uint8Array(GRID_W * GRID_D);
     const floorY = new Float32Array(GRID_W * GRID_D), ceilY = new Float32Array(GRID_W * GRID_D), sealed = new Uint8Array(GRID_W * GRID_D);
+    const sideOf = new Array(GRID_W * GRID_D).fill(null);
     let level = LEVELS[0], levelIndex = 0;
     const gates = [];
     const fillCells = ([x0, z0, x1, z1], fill) => {
@@ -710,9 +719,9 @@
         for (let gx = (x0 - GRID_X0) / CELL; gx < (x1 - GRID_X0) / CELL; gx++) fill(gz * GRID_W + gx, GRID_X0 + gx * CELL, GRID_Z0 + gz * CELL);
     };
     function carve(def) {
-      open.fill(0); solidKind.fill(BULKHEAD); floorY.fill(FLOOR); ceilY.fill(WALL_TOP);
-      for (const [x0, z0, x1, z1, material, floor = FLOOR, ceil = WALL_TOP] of def.rooms)
-        fillCells([x0, z0, x1, z1], i => { open[i] = 1 + material; floorY[i] = floor; ceilY[i] = ceil; });
+      open.fill(0); solidKind.fill(BULKHEAD); floorY.fill(FLOOR); ceilY.fill(WALL_TOP); sideOf.fill(null);
+      for (const [x0, z0, x1, z1, material, floor = FLOOR, ceil = WALL_TOP, side = null] of def.rooms)
+        fillCells([x0, z0, x1, z1], i => { open[i] = 1 + material; floorY[i] = floor; ceilY[i] = ceil; sideOf[i] = side; });
       for (const [x0, z0, x1, z1, material, from, to, axis, headroom] of def.stairs || []) {
         const span = axis === 'x' ? x1 - x0 : z1 - z0;
         fillCells([x0, z0, x1, z1], (i, x, z) => {
@@ -733,6 +742,7 @@
     // Sludge and lava hurt the ship when it flies low over them; returns the hazard's floor material or 0.
     const hazardAt = (x, z) => { const i = cellIndex(x, z); return i >= 0 && (open[i] === 1 + SLUDGE || open[i] === 1 + LAVA) ? open[i] - 1 : 0; };
     const isOpen = (x, z) => cellIndex(x, z) >= 0;
+    const ventAt = (x, z, y) => { const i = cellIndex(x, z); return i >= 0 && open[i] === 1 + VENT && y < floorY[i] + 45; };
     const floorAt = (x, z) => { const i = cellIndex(x, z); return i < 0 ? WALL_TOP : floorY[i]; };
     const coveredAt = (x, z) => { const i = cellIndex(x, z); return i >= 0 && ceilY[i] < WALL_TOP; };
     const freeAt = (x, y, z, pad = 0) => { const i = cellIndex(x, z); return i >= 0 && y >= floorY[i] + pad && y <= ceilY[i] - pad; };
@@ -864,6 +874,24 @@
         gates.push(gate);
       }
     }
+    // Laser grids: beams stacked every 3.2 units across a passage, on for the first half of each period and
+    // flickering a warning just before they come back on. Vents are listed so their updrafts can be drawn.
+    const lasers = [], vents = [];
+    let laserCooldown = 0;
+    function setupHazards(def) {
+      lasers.length = 0; vents.length = 0;
+      for (const [x0, z0, x1, z1, bottom, top, period, offset] of def.lasers) {
+        const beams = [];
+        for (let y = bottom; y <= top + 0.01; y += 3.2) beams.push([[x0, y, z0], [x1, y, z1]]);
+        lasers.push({ beams, period, offset });
+      }
+      for (let gz = 0; gz < GRID_D; gz++) for (let gx = 0; gx < GRID_W; gx++)
+        if (cellAt(gx, gz) === 1 + VENT) vents.push({ position: [GRID_X0 + (gx + 0.5) * CELL, floorY[gz * GRID_W + gx], GRID_Z0 + (gz + 0.5) * CELL], phase: hashInt(gx, gz, 3) });
+    }
+    const laserState = ({ period, offset }) => {
+      const t = ((time + offset) % period + period) % period;
+      return t < period * 0.5 ? 'on' : t > period - 0.5 ? 'warn' : 'off';
+    };
     const gateAt = (p) => gates.find(g => !g.opening && p[0] > g.x0 - 0.5 && p[0] < g.x1 + 0.5 && p[2] > g.z0 - 0.5 && p[2] < g.z1 + 0.5);
     const shots = [], enemyShots = [], explosions = [], particles = [], missiles = [], enemyMissiles = [];
     const LOCK_TIME = 0.45, MISSILE_MAX = 24, SHIELD_MAX = 34;
@@ -1427,6 +1455,169 @@
         plate(p, 0, 0, 128, 128, '#7a8489', 0.5, 0.8, 20);
         scratches(p, 40, 0.4);
       }, { grime: 0.3, rust: 0.3, wear: 0.4 });
+      // Themed surfaces for the later and reworked sectors.
+      const trace = (p, points, layers) => {
+        for (const [brush, style, line] of layers) {
+          brush.strokeStyle = style; brush.lineWidth = line; brush.lineJoin = 'round'; brush.lineCap = 'round'; brush.beginPath();
+          points.forEach(([px, py], j) => j ? brush.lineTo(px, py) : brush.moveTo(px, py)); brush.stroke();
+        }
+      };
+      const wander = (x, y, steps, stride, turn) => {
+        let angle = rnd() * Math.PI * 2; const points = [[x, y]];
+        for (let s = 0; s < steps; s++) { angle += between(-turn, turn); x += Math.cos(angle) * stride; y += Math.sin(angle) * stride; points.push([x, y]); }
+        return points;
+      };
+      // Feathery frost: a short stem with paired side branches.
+      const frost = (p, x, y, size) => {
+        const angle = rnd() * Math.PI * 2;
+        for (let k = 0; k < 3; k++) {
+          const a = angle + k * Math.PI / 3 * 2, ex = x + Math.cos(a) * size, ey = y + Math.sin(a) * size;
+          trace(p, [[x, y], [ex, ey]], [[p.c, 'rgba(235,250,255,0.6)', 1.4], [p.b, gray(0.72), 1.2]]);
+          for (const t of [0.4, 0.7]) for (const turn of [-0.6, 0.6]) {
+            const bx = x + (ex - x) * t, by = y + (ey - y) * t, b = a + turn;
+            trace(p, [[bx, by], [bx + Math.cos(b) * size * 0.35, by + Math.sin(b) * size * 0.35]], [[p.c, 'rgba(235,250,255,0.45)', 1], [p.b, gray(0.68), 1]]);
+          }
+        }
+      };
+      // A tiling grid of slightly stretched hexagons: 8 across and 10 down in 512 pixels.
+      const hexCells = (p, paint) => {
+        for (let row = 0; row < 10; row++) for (let col = 0; col < 8; col++) {
+          const cx = col * 64 + (row % 2) * 32, cy = row * 51.2;
+          for (const ox of [-512, 0, 512]) for (const oy of [-512, 0, 512]) {
+            const x = cx + ox, y = cy + oy;
+            if (x < -40 || x > 552 || y < -40 || y > 552) continue;
+            const shape = (brush, inset) => {
+              const hx = 32 - inset, hy = 34 - inset;
+              brush.beginPath(); brush.moveTo(x, y - hy); brush.lineTo(x + hx, y - hy / 2); brush.lineTo(x + hx, y + hy / 2);
+              brush.lineTo(x, y + hy); brush.lineTo(x - hx, y + hy / 2); brush.lineTo(x - hx, y - hy / 2); brush.closePath();
+            };
+            paint(shape, hashInt(row, col, 41));
+          }
+        }
+      };
+      make('wallIce', 512, 512, '#2c4a5c', p => {
+        for (const [x, y] of QUADS) { plate(p, x + 5, y + 5, 246, 246, '#5d8aa3', 0.5, 0.62, 7); plate(p, x + 40, y + 40, 176, 176, '#78a8c0', 0.62, 0.58, 4); }
+        for (const v of [0, 254]) { glow(p, 0, v, 512, 4, '#a6f2ff', 0.7); glow(p, v, 0, 4, 512, '#a6f2ff', 0.7); }
+        for (let i = 0; i < 46; i++) frost(p, rnd() * 512, rnd() * 512, between(8, 26));
+        for (let i = 0; i < 8; i++) stain(p, rnd() * 512, rnd() * 512, between(30, 90), between(20, 60), '230,248,255', between(0.12, 0.25));
+        streaks(p, 26, '215,240,255', 0, 380, 0.22); scratches(p, 60, 0.2);
+      }, { grime: 0.1, rust: 0, wear: 0.1, speckle: 0.1 });
+      make('wallHive', 512, 512, '#2a1604', p => {
+        hexCells(p, (shape, n) => {
+          p.c.fillStyle = '#5a3410'; shape(p.c, 0); p.c.fill(); p.b.fillStyle = gray(0.72); shape(p.b, 0); p.b.fill();
+          p.c.fillStyle = n > 0.82 ? '#ffb54a' : n > 0.5 ? '#7a4a14' : '#3b2208'; shape(p.c, 6); p.c.fill();
+          p.b.fillStyle = gray(n > 0.5 ? 0.42 : 0.3); shape(p.b, 6); p.b.fill();
+          if (n > 0.82) { p.g.fillStyle = gray(0.9); shape(p.g, 8); p.g.fill(); }
+        });
+        for (let i = 0; i < 10; i++) stain(p, rnd() * 512, rnd() * 512, between(20, 70), between(30, 90), '255,190,80', between(0.08, 0.18));
+        streaks(p, 30, '40,22,4', 0, 420, 0.35);
+      }, { grime: 0.3, rust: 0, wear: 0.05, cavity: 1 });
+      make('wallBasalt', 512, 512, '#120e0c', p => {
+        for (let x = 0; x < 512;) {
+          const w = between(34, 70), shade = Math.round(between(30, 52));
+          plate(p, x + 2, 0, Math.min(w, 512 - x) - 4, 512, `rgb(${shade},${shade - 6},${shade - 10})`, 0.5, 0.66, 6);
+          for (let y = between(20, 120); y < 512; y += between(90, 200)) groove(p, x + 2, y, x + w - 2, y + between(-12, 12), 2.5, 0.3);
+          x += w;
+        }
+        for (let i = 0; i < 7; i++) trace(p, wander(rnd() * 512, rnd() * 512, 14, between(10, 22), 0.8),
+          [[p.c, 'rgba(255,100,20,0.25)', 12], [p.b, gray(0.25), 3], [p.c, '#ffa04a', 2.5], [p.g, '#fff', 3.5]]);
+        streaks(p, 20, '8,6,5', 0, 400, 0.4); scratches(p, 80, 0.2);
+      }, { grime: 0.45, rust: 0.05, wear: 0.15 });
+      make('wallContainer', 512, 512, '#2a2420', p => {
+        const paints = ['#8a3a26', '#2f6a6a', '#b08a2a', '#3d4f7a', '#6a6f3a'];
+        for (const [y, n] of [[0, 0], [256, 1]]) for (const x of [0, 256]) {
+          const paint = paints[Math.floor(hashInt(x, y, 7) * paints.length)];
+          plate(p, x + 3, y + 3, 250, 250, paint, 0.5, 0.6, 5);
+          for (let rx = x + 18; rx < x + 240; rx += 16) fillRect(p, rx, y + 22, 7, 212, 'rgba(0,0,0,0.18)', 0.62);
+          for (const [cx, cy] of [[x + 3, y + 3], [x + 229, y + 3], [x + 3, y + 229], [x + 229, y + 229]]) plate(p, cx, cy, 24, 24, '#1c1c1c', 0.6, 0.7, 3);
+          if ((x + y + n) % 3 === 0) for (const bx of [x + 96, x + 156]) { fillRect(p, bx, y + 30, 6, 196, '#c8c8c0', 0.75); rivet(p, bx + 3, y + 128, 6, '#d8d8d0'); }
+          stencil(p, ['TAU-3', 'CARGO', 'K-17', 'VOLATILE'][Math.floor(hashInt(x, y, 9) * 4)], x + 128, y + 70, 30, 'rgba(235,230,215,0.55)');
+        }
+        streaks(p, 40, '96,48,26', 0, 420, 0.35); scratches(p, 200, 0.35);
+      }, { grime: 0.4, rust: 0.35, wear: 0.35 });
+      make('wallTech', 512, 512, '#46525a', p => {
+        for (const [x, y] of QUADS) {
+          plate(p, x + 4, y + 4, 248, 248, '#8a979e', 0.5, 0.6, 5);
+          plate(p, x + 24, y + 24, 208, 150, '#a3aeb4', 0.6, 0.56, 3);
+          glow(p, x + 24, y + 196, 208, 8, '#6fe0ff', 1);
+          for (let vx = x + 36; vx < x + 220; vx += 14) fillRect(p, vx, y + 212, 8, 26, '#2d3439', 0.35);
+        }
+        for (const [rx, ry] of [[128, 128], [384, 128], [128, 384], [384, 384]]) glow(p, rx - 3, ry - 60, 6, 40, '#ff8a3a', 0.8);
+        scratches(p, 70, 0.15);
+      }, { grime: 0.18, rust: 0, wear: 0.12 });
+      make('wallVoid', 512, 512, '#08060c', p => {
+        for (const [x, y] of QUADS) { plate(p, x + 6, y + 6, 244, 244, '#1b1326', 0.5, 0.64, 8); plate(p, x + 50, y + 50, 156, 156, '#140e1e', 0.64, 0.55, 5); }
+        for (let i = 0; i < 9; i++) trace(p, wander(rnd() * 512, rnd() * 512, 16, between(12, 24), 0.9),
+          [[p.c, 'rgba(180,90,255,0.22)', 10], [p.c, '#d49aff', 2], [p.g, '#fff', 3], [p.b, gray(0.3), 2]]);
+        for (let i = 0; i < 14; i++) {
+          const x = rnd() * 512, y = rnd() * 512, r = between(6, 16);
+          for (const [brush, style] of [[p.c, '#7a4ad0'], [p.g, gray(0.6)], [p.b, gray(0.8)]]) {
+            brush.fillStyle = style; brush.beginPath(); brush.moveTo(x, y - r * 1.6); brush.lineTo(x + r * 0.6, y); brush.lineTo(x, y + r * 0.8); brush.lineTo(x - r * 0.6, y); brush.closePath(); brush.fill();
+          }
+        }
+      }, { grime: 0.15, rust: 0, wear: 0.05 });
+      make('crystal', 512, 512, '#0c0816', p => {
+        for (let i = 0; i < 70; i++) {
+          const x = rnd() * 512, y = rnd() * 512, w = between(14, 46), h = between(50, 150), cyan = rnd() > 0.45;
+          const shine = p.c.createLinearGradient(x - w, y, x + w, y);
+          shine.addColorStop(0, cyan ? '#1f5f7a' : '#4a2a7a'); shine.addColorStop(0.5, cyan ? '#8ff4ff' : '#c49aff'); shine.addColorStop(1, cyan ? '#123a4a' : '#2a1648');
+          for (const ox of [-512, 0, 512]) {
+            const facet = (brush, style) => { brush.fillStyle = style; brush.beginPath(); brush.moveTo(x + ox, y - h / 2); brush.lineTo(x + ox + w / 2, y); brush.lineTo(x + ox, y + h / 2); brush.lineTo(x + ox - w / 2, y); brush.closePath(); brush.fill(); };
+            facet(p.c, shine); facet(p.b, gray(between(0.55, 0.85))); facet(p.g, gray(between(0.15, 0.5)));
+          }
+        }
+      }, { grime: 0.05, rust: 0, wear: 0, cavity: 0.4, strength: 4 });
+      make('floorIce', 512, 512, '#2a4658', p => {
+        for (const [x, y] of QUADS) plate(p, x + 3, y + 3, 250, 250, '#5f8ea6', 0.5, 0.56, 4);
+        for (let i = 0; i < 12; i++) trace(p, wander(rnd() * 512, rnd() * 512, 8, between(14, 30), 0.9), [[p.c, 'rgba(230,248,255,0.5)', 1.5], [p.b, gray(0.35), 1.5]]);
+        for (let i = 0; i < 24; i++) frost(p, rnd() * 512, rnd() * 512, between(6, 18));
+        for (let i = 0; i < 10; i++) stain(p, rnd() * 512, rnd() * 512, between(30, 90), between(20, 60), '235,250,255', between(0.12, 0.3));
+      }, { grime: 0.1, rust: 0, wear: 0.05, strength: 4 });
+      make('floorHive', 512, 512, '#1e1004', p => {
+        hexCells(p, (shape, n) => {
+          p.c.fillStyle = '#4a2a0c'; shape(p.c, 0); p.c.fill(); p.b.fillStyle = gray(0.66); shape(p.b, 0); p.b.fill();
+          p.c.fillStyle = n > 0.88 ? '#e8962e' : '#2e1906'; shape(p.c, 5); p.c.fill(); p.b.fillStyle = gray(0.4); shape(p.b, 5); p.b.fill();
+          if (n > 0.88) { p.g.fillStyle = gray(0.7); shape(p.g, 7); p.g.fill(); }
+        });
+        for (let i = 0; i < 12; i++) stain(p, rnd() * 512, rnd() * 512, between(30, 90), between(20, 60), '120,90,20', between(0.2, 0.4));
+      }, { grime: 0.35, rust: 0, wear: 0.05 });
+      // Harbour water: dark swell with glinting ripples; its UVs drift in the shader.
+      make('floorWater', 512, 512, '#06202a', p => {
+        p.g.fillStyle = gray(0.12); p.g.fillRect(0, 0, 512, 512);
+        for (let i = 0; i < 30; i++) stain(p, rnd() * 512, rnd() * 512, between(40, 120), between(14, 40), rnd() > 0.5 ? '30,110,130' : '2,14,20', between(0.25, 0.5));
+        for (let i = 0; i < 60; i++) {
+          const x = rnd() * 452 + 30, y = rnd() * 452 + 30, r = between(10, 40);
+          for (const [brush, style, line] of [[p.c, 'rgba(160,230,240,0.35)', 1.5], [p.b, gray(0.62), 3], [p.g, gray(0.35), 1]]) {
+            brush.strokeStyle = style; brush.lineWidth = line; brush.beginPath(); brush.ellipse(x, y, r, r * 0.45, 0, between(0, 3), between(3.5, 6.2)); brush.stroke();
+          }
+        }
+      }, { grime: 0.05, rust: 0, cavity: 0, wear: 0, strength: 2 });
+      // Updraft vents: fans over a glowing pit, which push the ship upward.
+      make('floorVent', 512, 512, '#141010', p => {
+        for (const [x, y] of QUADS) {
+          plate(p, x + 4, y + 4, 248, 248, '#3a3430', 0.5, 0.6, 5);
+          const cx = x + 128, cy = y + 128;
+          for (const [brush, style] of [[p.c, '#ff8a2a'], [p.b, gray(0.15)], [p.g, gray(0.9)]]) { brush.fillStyle = style; brush.beginPath(); brush.arc(cx, cy, 98, 0, Math.PI * 2); brush.fill(); }
+          for (let k = 0; k < 7; k++) {
+            const a = k / 7 * Math.PI * 2;
+            for (const [brush, style] of [[p.c, '#2a2624'], [p.b, gray(0.6)], [p.g, '#000']]) {
+              brush.save(); brush.translate(cx, cy); brush.rotate(a); brush.fillStyle = style;
+              brush.beginPath(); brush.moveTo(10, -8); brush.lineTo(96, -26); brush.lineTo(96, 14); brush.lineTo(10, 8); brush.closePath(); brush.fill(); brush.restore();
+            }
+          }
+          rivet(p, cx, cy, 16, '#8a8580');
+          stripes(p, x + 4, y + 4, 248, 14, '#d2a332', '#17191b', 28, 0.62);
+        }
+      }, { grime: 0.4, rust: 0.12, wear: 0.2 });
+      make('floorVoid', 512, 512, '#07050b', p => {
+        for (const [x, y] of QUADS) plate(p, x + 4, y + 4, 248, 248, '#16101e', 0.5, 0.58, 5);
+        for (let i = 0; i < 10; i++) {
+          let x = Math.round(rnd() * 16) * 32, y = Math.round(rnd() * 16) * 32; const points = [[x, y]];
+          for (let s = 0; s < 6; s++) { if (rnd() > 0.5) x += (rnd() > 0.5 ? 1 : -1) * 64; else y += (rnd() > 0.5 ? 1 : -1) * 64; points.push([x, y]); }
+          trace(p, points, [[p.c, 'rgba(170,90,255,0.25)', 9], [p.c, '#c58cff', 2.5], [p.g, '#fff', 3], [p.b, gray(0.62), 3]]);
+        }
+        scratches(p, 60, 0.15);
+      }, { grime: 0.15, rust: 0, wear: 0.05 });
       return textures;
     }
 
@@ -1643,6 +1834,9 @@
       ceiling: [0.4, 1, 1.5], pickupHealth: [0.6, 1, 2.4], pickupWeapon: [0.6, 1, 2.4], exitFrame: [0.5, 1, 2.6],
       wallComputer: [0.5, 1, 2.2], wallRust: [0.35, 1, 1.2], floorSludge: [1.2, 0.6, 1.8], gateDoor: [0.5, 1, 2],
       secretPanel: [0.4, 1, 1.6], lock: [0.6, 1, 2.6], chain: [0.9, 1, 0.5], floorLava: [0.6, 0.8, 2.4],
+      wallIce: [0.8, 1, 1.6], wallHive: [0.5, 1, 2.2], wallBasalt: [0.35, 1, 2.6], wallContainer: [0.45, 1, 1.2], wallTech: [0.6, 1, 2.2],
+      wallVoid: [0.9, 1, 2.6], crystal: [1.1, 1, 2.4], floorIce: [1.1, 0.8, 1.4], floorHive: [0.5, 1, 2], floorWater: [1.5, 0.5, 1.6],
+      floorVent: [0.5, 1, 2.6], floorVoid: [0.9, 1, 2.4],
     };
     const materials = {};
     function loadMaterials() {
@@ -1657,7 +1851,7 @@
     // Surfaces inside tunnels go in their own groups so the sun and sky can be dimmed there.
     const LOWER_VARIANTS = [['wallLower', 0.6], ['wallVent', 0.14], ['wallDoor', 0.12], ['wallPipes', 0.14]];
     const UPPER_VARIANTS = [['wallUpper', 0.68], ['wallWindows', 0.22], ['wallSign', 0.1]];
-    const TEXTURE_HEIGHT = { wallRust: 8 };
+    const TEXTURE_HEIGHT = { wallRust: 8, wallIce: 10, wallHive: 10, wallBasalt: 14, wallContainer: 10, wallTech: 10, wallVoid: 10 };
     const pickVariant = (options, value) => { for (const [name, weight] of options) if ((value -= weight) < 0) return name; return options[0][0]; };
     const radarEdges = [], beacons = [];
     let levelMeshes = [];
@@ -1712,6 +1906,7 @@
           // A bulkhead wall rising from `bottom` to `top`: kick plate and panels, upper cladding, then a lit crown.
           const bulkhead = (kind, bottom, top) => {
             if (kind === REACTOR) return band('reactor', bottom, top, WALL_TOP, 8);
+            if (kind === CRYSTAL) return band('crystal', bottom, top, WALL_TOP, 10);
             const crown = Math.max(bottom, top - 4);
             if (kind === COLUMN) band('column', bottom, crown, WALL_TOP, 8);
             else {
@@ -1729,8 +1924,9 @@
           }
           const neighborFloor = floorY[n], neighborCeil = ceilY[n];
           if (neighborFloor > floor + 0.01) {
-            const top = Math.min(neighborFloor, ceil);
-            band(lower, floor, top, floor + lowerSize, lowerSize);
+            const top = Math.min(neighborFloor, ceil), side = sideOf[n];
+            if (side) band(side, floor, top, top, TEXTURE_HEIGHT[side] || 10);
+            else band(lower, floor, top, floor + lowerSize, lowerSize);
             if (neighborFloor - floor > 3) radarEdges.push([a[0], a[1], b[0], b[1]]);
           }
           if (neighborCeil < ceil - 0.01) {
@@ -2393,9 +2589,9 @@
     }
 
     function loadLevel(index, startHealth) {
-      levelIndex = index; level = LEVELS[index];
+      levelIndex = index; level = LEVELS[index]; WALL_TOP = level.top;
       for (const { mesh } of [...levelMeshes, ...gates]) { gl.deleteBuffer(mesh.buffer); gl.deleteVertexArray(mesh.vao); }
-      carve(level); setupGates(level); spawnLevel(level);
+      carve(level); setupGates(level); setupHazards(level); spawnLevel(level);
       radarEdges.length = 0; beacons.length = 0;
       levelMeshes = buildLevel(level);
       ship.position = level.start.slice(); ship.yaw = level.yaw; ship.pitch = 0; ship.roll = 0; ship.speed = 8; ship.strafe = [0, 0];
@@ -2584,6 +2780,7 @@
       for (const pickup of pickups) if (!pickup.taken) list.push([pickup.position, 13, PICKUP_COLORS[pickup.type]]);
       for (const gate of gates) for (const lock of gate.locks) if (lock.hp > 0) list.push([lock.position, 9, [1.0, 0.35, 0.15]]);
       list.push([exitCenter(), 45, [0.3, 1.2, 0.7]]);
+      for (const laser of lasers) if (laserState(laser) === 'on') { const [a, b] = laser.beams[0]; list.push([mul(add(a, b), 0.5), 26, [1.2, 0.2, 0.15]]); }
       const near = list.map(light => [light, dot(sub(light[0], camera.position), sub(light[0], camera.position))])
         .filter(([light, d]) => d < (light[1] + 160) ** 2).sort((a, b) => a[1] - b[1]).slice(0, 16).map(([light]) => light);
       const positions = new Float32Array(64), colors = new Float32Array(48);
@@ -2611,6 +2808,22 @@
         const blink = 0.5 + 0.5 * Math.sin(time * 2.4 + beacon.phase);
         billboard(beacon.position, 0.7, [1.0, 0.65, 0.2], 0.4 + blink * 0.9);
         billboard(beacon.position, 2.4, [1.0, 0.5, 0.15], 0.1 + blink * 0.16);
+      }
+      for (const laser of lasers) {
+        const state = laserState(laser), [a0] = laser.beams[0];
+        if (!nearby(a0, 260)) continue;
+        for (const [a, b] of laser.beams) {
+          billboard(a, 0.8, [1.0, 0.3, 0.25], 1.2); billboard(b, 0.8, [1.0, 0.3, 0.25], 1.2);
+          if (state === 'on') { streak(a, b, 0.22, [1.0, 0.35, 0.3], 1.8); streak(a, b, 0.9, [1.0, 0.1, 0.1], 0.35); }
+          else if (state === 'warn' && Math.sin(time * 50) > 0) streak(a, b, 0.07, [1.0, 0.5, 0.4], 0.9);
+        }
+      }
+      for (const vent of vents) {
+        if (!nearby(vent.position, 150)) continue;
+        for (let k = 0; k < 2; k++) {
+          const rise = ((time * 16 + (vent.phase + k * 0.5) * 40) % 40), x = vent.position[0] + (k - 0.5) * 2.2, z = vent.position[2] + (vent.phase - 0.5) * 2.4;
+          streak([x, vent.position[1] + rise, z], [x, vent.position[1] + rise + 3.5, z], 0.12, [1.0, 0.65, 0.3], 0.9 * (1 - rise / 40));
+        }
       }
       const sentinel = enemies.find(e => e.type === 'sentinel' && e.hp > 0);
       for (const enemy of enemies) {
@@ -2735,6 +2948,7 @@
         useMaterial(materials[name], name === 'reactor' ? reactorPulse : name === 'exitFrame' ? gatePulse : 1);
         if (name === 'floorSludge') gl.uniform2f(u.uScroll, time * 0.012, time * 0.02);
         if (name === 'floorLava') gl.uniform2f(u.uScroll, time * 0.006, time * 0.01);
+        if (name === 'floorWater') gl.uniform2f(u.uScroll, time * 0.01, -time * 0.016);
         drawMesh(mesh, IDENTITY, 0, level.tint || WHITE, exposure);
         gl.uniform2f(u.uScroll, 0, 0);
       }
@@ -2893,7 +3107,7 @@
     function paintMapCell(gx, gz) {
       const i = gz * GRID_W + gx, material = open[i] - 1, x = gx * MAP_PX, y = (GRID_D - 1 - gz) * MAP_PX;
       const h = clamp((floorY[i] - FLOOR) / (WALL_TOP - FLOOR), 0, 1);
-      mapCtx.fillStyle = material === SLUDGE ? '#355f22' : material === LAVA ? '#7a3412'
+      mapCtx.fillStyle = material === SLUDGE ? '#355f22' : material === LAVA ? '#7a3412' : material === WATER ? '#17465a' : material === VENT ? '#80601e'
         : `rgb(${Math.round(16 + h * 40)},${Math.round(40 + h * 95)},${Math.round(50 + h * 95)})`;
       mapCtx.fillRect(x, y, MAP_PX, MAP_PX);
       for (const [dx, dz, rx, ry, rw, rh] of [[-1, 0, 0, 0, 1, MAP_PX], [1, 0, MAP_PX - 1, 0, 1, MAP_PX], [0, 1, 0, 0, MAP_PX, 1], [0, -1, 0, MAP_PX - 1, MAP_PX, 1]]) {
@@ -3566,14 +3780,15 @@
       // Strafing slides along the view's right and up axes, easing in and out.
       const easing = Math.min(1, dt * 6), view = basis(ship.yaw, ship.pitch, ship.roll);
       ship.strafe = [ship.strafe[0] + (slideX * STRAFE_SPEED - ship.strafe[0]) * easing, ship.strafe[1] + (slideY * STRAFE_SPEED - ship.strafe[1]) * easing];
-      ship.position = add(ship.position, add(mul(view.forward, ship.speed * dt),
+      const updraft = ventAt(ship.position[0], ship.position[2], ship.position[1]) ? 13 : 0;
+      ship.position = add(ship.position, add(add(mul(view.forward, ship.speed * dt), [0, updraft * dt, 0]),
         add(mul(view.right, ship.strafe[0] * dt), mul(view.up, ship.strafe[1] * dt))));
       wallCooldown = Math.max(0, wallCooldown - dt);
       const fits = (p) => shipFits(p) && !insideGirder(p, 0.8);
       if (!fits(ship.position)) {
         // Slide along whatever was hit: keep the horizontal move, or else the vertical one.
         const [x, y, z] = ship.position, girder = insideGirder(ship.position, 0.8), covered = coveredAt(x, z);
-        const label = girder ? 'GIRDER IMPACT' : !walkable(x, z, 0.7) ? 'WALL IMPACT' : y > SKY_LIMIT - 0.01 && !covered ? 'ALTITUDE LIMIT'
+        const label = girder ? 'GIRDER IMPACT' : !walkable(x, z, 0.7) ? 'WALL IMPACT' : y > WALL_TOP - 1.5 && !covered ? 'ALTITUDE LIMIT'
           : covered && y > floorAt(x, z) + 5 ? 'CEILING IMPACT' : 'HULL SCRAPE';
         const slideXZ = [x, previous[1], z], slideUp = [previous[0], y, previous[2]];
         ship.position = fits(slideXZ) ? slideXZ : fits(slideUp) ? slideUp : previous.slice();
@@ -3585,6 +3800,11 @@
       const hazard = hazardAt(ship.position[0], ship.position[2]);
       if (hazard && ship.position[1] < floorAt(ship.position[0], ship.position[2]) + 4.5 && sludgeCooldown === 0) {
         damage(hazard === LAVA ? 7 : 5, hazard === LAVA ? 'MOLTEN SLAG' : 'TOXIC SLUDGE'); sludgeCooldown = 0.6;
+      }
+      laserCooldown = Math.max(0, laserCooldown - dt);
+      for (const laser of lasers) {
+        if (laserCooldown > 0 || laserState(laser) !== 'on') continue;
+        if (laser.beams.some(([a, b]) => segmentHitsSphere(a, b, ship.position, 1.4))) { damage(14, 'LASER GRID'); laserCooldown = 0.5; sparks(ship.position, 10, [1.0, 0.3, 0.3], 10); }
       }
       shieldDelay = Math.max(0, shieldDelay - dt);
       if (shieldDelay === 0) shield = Math.min(SHIELD_MAX, shield + SHIELD_MAX * 0.07 * dt);
