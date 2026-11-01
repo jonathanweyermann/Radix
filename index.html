@@ -3067,9 +3067,13 @@
     // A run starts whenever a sector is started from the menu or a new game begins; warps add to its totals.
     const run = { from: 0, time: 0, kills: 0 };
     const startRun = (index) => Object.assign(run, { from: index, time: 0, kills: 0 });
+    // Testing: every sector can be picked from the menu. A sector not reached yet starts with a loadout a pilot
+    // would roughly have by then. Set UNLOCK_ALL to false to lock sectors until they are reached again.
+    const UNLOCK_ALL = true;
+    const testKit = (index) => ({ weapon: Math.min(WEAPONS.length, 1 + Math.floor(index / 2)), missiles: Math.min(MISSILE_MAX, index * 2), launcher: index >= 9 ? 3 : index >= 2 ? 2 : 1 });
     function startSector(index) {
       startRun(index);
-      const kit = save.sectors[index] || { weapon: 1, missiles: 0 };
+      const kit = save.sectors[index] || (UNLOCK_ALL && index > 0 ? testKit(index) : { weapon: 1, missiles: 0 });
       weaponLevel = clamp(kit.weapon, 1, WEAPONS.length); missileAmmo = kit.missiles; launcherLevel = clamp(kit.launcher || 1, 1, LAUNCHERS.length);
       loadLevel(index, 100);
     }
@@ -3102,8 +3106,10 @@
         const label = document.createElement('span'), detail = document.createElement('small');
         label.textContent = `${i + 1}. ${def.name} ${def.title}`;
         const best = kit && kit.best ? ` / ${Math.floor(kit.best / 60)}:${String(kit.best % 60).padStart(2, '0')}` : '';
-        detail.textContent = kit ? `${WEAPONS[clamp(kit.weapon || 1, 1, WEAPONS.length) - 1].name} / ${kit.missiles || 0} MSL${best}` : i === 0 ? 'MK I / 0 MSL' : 'LOCKED';
-        button.append(label, detail); button.disabled = !kit && i > 0;
+        const test = !kit && i > 0 && UNLOCK_ALL ? testKit(i) : null;
+        detail.textContent = kit ? `${WEAPONS[clamp(kit.weapon || 1, 1, WEAPONS.length) - 1].name} / ${kit.missiles || 0} MSL${best}`
+          : test ? `TEST // ${WEAPONS[test.weapon - 1].name} / ${test.missiles} MSL` : i === 0 ? 'MK I / 0 MSL' : 'LOCKED';
+        button.append(label, detail); button.disabled = !kit && i > 0 && !UNLOCK_ALL;
         button.addEventListener('click', () => { startSector(i); showBriefing(); });
         return button;
       }));
