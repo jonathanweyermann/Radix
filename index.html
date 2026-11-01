@@ -163,6 +163,8 @@
     <div class="menu-box">
       <h1>RADIX<small>BEYOND THE VOID</small></h1>
       <div class="row" style="margin-top: 26px"><button class="primary" id="resumeButton">RESUME</button><button class="primary" id="newGameButton">NEW GAME</button><button class="primary" id="fullscreenButton">FULL SCREEN</button><button class="primary" id="pitchButton">PITCH: NORMAL</button></div>
+      <h2 id="graphicsHead">GRAPHICS</h2>
+      <div class="row" id="graphicsRow"></div>
       <h2>DIFFICULTY</h2>
       <div class="row" id="difficultyRow"></div>
       <h2>SECTOR SELECT</h2>
@@ -194,7 +196,18 @@
   (() => {
     'use strict';
     const world = document.getElementById('world');
-    const gl = world.getContext('webgl2', { antialias: true, alpha: false, powerPreference: 'high-performance' });
+    // Graphics quality. HIGH renders at up to twice the screen's pixel density with 16 dynamic lights; MEDIUM at one
+    // pixel per screen pixel with 8; LOW at 60% resolution with 4 lights, flat (unbumped) lighting, no specular
+    // highlights, no clouds, fewer glows and no antialiasing (which takes effect after a reload).
+    const GRAPHICS = {
+      high: { label: 'HIGH', scale: 2, lights: 16, detail: 1 },
+      medium: { label: 'MEDIUM', scale: 1, lights: 8, detail: 1 },
+      low: { label: 'LOW', scale: 0.6, lights: 4, detail: 0 },
+    };
+    let graphics = (() => { try { return JSON.parse(localStorage.getItem('radix-beyond-the-void')).graphics; } catch { return null; } })();
+    if (!GRAPHICS[graphics]) graphics = 'high';
+    const antialiased = graphics !== 'low';
+    const gl = world.getContext('webgl2', { antialias: antialiased, alpha: false, powerPreference: 'high-performance' });
     const canvas = document.getElementById('space');
     // Phones and tablets get on-screen controls; ?touch forces them on, ?desktop off.
     const touchMode = /[?&]touch\b/.test(location.search) ||
@@ -2043,6 +2056,7 @@
       uniform sampler2D uDetail;
       uniform vec3 uCamera, uSunDir, uSunColor, uSkyLight, uGroundLight, uFogColor, uHeadPos, uHeadDir, uTint;
       uniform float uFlash, uSpecular, uBump, uEmissive, uExposure;
+      uniform int uQuality;
       uniform vec4 uLights[16];
       uniform vec3 uLightColors[16];
       uniform int uLightCount;
@@ -2050,27 +2064,30 @@
       void main() {
         vec3 albedo = texture(uAlbedo, vUv).rgb * uTint;
         vec4 detail = texture(uDetail, vUv);
-        vec3 n = normalize(vNormal);
-        vec3 dp1 = dFdx(vPos), dp2 = dFdy(vPos);
-        vec2 du1 = dFdx(vUv), du2 = dFdy(vUv);
-        vec3 c2 = cross(dp2, n), c1 = cross(n, dp1);
-        vec3 t = c2 * du1.x + c1 * du2.x, b = c2 * du1.y + c1 * du2.y;
-        float frame = inversesqrt(max(max(dot(t, t), dot(b, b)), 1e-20));
-        vec3 bump = detail.xyz * 2.0 - 1.0;
-        vec3 N = normalize((t * bump.x + b * bump.y) * frame * uBump + n * bump.z);
+        vec3 n = normalize(vNormal), N = n;
+        bool full = uQuality > 0;
+        if (full) {
+          vec3 dp1 = dFdx(vPos), dp2 = dFdy(vPos);
+          vec2 du1 = dFdx(vUv), du2 = dFdy(vUv);
+          vec3 c2 = cross(dp2, n), c1 = cross(n, dp1);
+          vec3 t = c2 * du1.x + c1 * du2.x, b = c2 * du1.y + c1 * du2.y;
+          float frame = inversesqrt(max(max(dot(t, t), dot(b, b)), 1e-20));
+          vec3 bump = detail.xyz * 2.0 - 1.0;
+          N = normalize((t * bump.x + b * bump.y) * frame * uBump + n * bump.z);
+        }
         vec3 V = normalize(uCamera - vPos);
         vec3 diffuse = mix(uGroundLight, uSkyLight, N.y * 0.5 + 0.5) * vShade * (0.25 + 0.75 * uExposure);
         vec3 spec = vec3(0.0);
         float sun = max(dot(N, uSunDir), 0.0) * uExposure;
         diffuse += uSunColor * sun * (0.45 + 0.55 * vShade);
-        spec += uSunColor * pow(max(dot(N, normalize(uSunDir + V)), 0.0), 40.0) * sun;
+        if (full) spec += uSunColor * pow(max(dot(N, normalize(uSunDir + V)), 0.0), 40.0) * sun;
         vec3 toHead = uHeadPos - vPos;
         float headDist = length(toHead);
         vec3 headL = toHead / max(headDist, 0.001);
         float beam = smoothstep(0.78, 0.97, dot(-headL, uHeadDir)) * pow(clamp(1.0 - headDist / 95.0, 0.0, 1.0), 2.0);
         float headN = max(dot(N, headL), 0.0);
         diffuse += vec3(1.0, 0.92, 0.78) * 1.1 * headN * beam;
-        spec += vec3(1.0, 0.92, 0.78) * pow(max(dot(N, normalize(headL + V)), 0.0), 50.0) * headN * beam;
+        if (full) spec += vec3(1.0, 0.92, 0.78) * pow(max(dot(N, normalize(headL + V)), 0.0), 50.0) * headN * beam;
         for (int i = 0; i < 16; i++) {
           if (i >= uLightCount) break;
           vec3 L = uLights[i].xyz - vPos;
@@ -2080,7 +2097,7 @@
           fall *= fall;
           float nl = max(dot(N, L), 0.0);
           diffuse += uLightColors[i] * nl * fall;
-          spec += uLightColors[i] * pow(max(dot(N, normalize(L + V)), 0.0), 50.0) * nl * fall;
+          if (full) spec += uLightColors[i] * pow(max(dot(N, normalize(L + V)), 0.0), 50.0) * nl * fall;
         }
         float gloss = uSpecular * (0.3 + dot(albedo, vec3(0.6, 0.9, 0.5)));
         vec3 color = albedo * diffuse + spec * gloss + albedo * detail.a * uEmissive + uFlash * vec3(1.0, 0.82, 0.65);
@@ -2100,6 +2117,7 @@
       in vec2 vNdc;
       uniform vec3 uForward, uRight, uUp, uSunDir, uFogColor, uZenith, uPlanetDir, uPlanetA, uPlanetB;
       uniform float uPlanetSize;
+      uniform int uQuality;
       uniform vec2 uSpread;
       uniform float uTime;
       out vec4 outColor;
@@ -2133,7 +2151,7 @@
           }
         }
         if (h > 0.0) {
-          float cloud = fbm(dir.xz / (h + 0.15) * 1.1 + vec2(uTime * 0.012, uTime * 0.005));
+          float cloud = uQuality > 0 ? fbm(dir.xz / (h + 0.15) * 1.1 + vec2(uTime * 0.012, uTime * 0.005)) : 0.0;
           float mask = smoothstep(0.5, 0.82, cloud) * smoothstep(0.0, 0.35, h);
           color = mix(color, mix(vec3(0.3, 0.36, 0.44), vec3(0.95, 0.62, 0.42), pow(sun, 4.0) * 0.8), mask * 0.6);
           float star = hash(floor(vec2(atan(dir.z, dir.x), asin(h)) * 220.0));
@@ -2486,7 +2504,7 @@
       width = window.innerWidth; height = window.innerHeight;
       canvas.width = Math.round(width * dpr); canvas.height = Math.round(height * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const detail = Math.min(dpr, touchMode ? 1.25 : 2);
+      const detail = Math.min(dpr, touchMode ? 1.25 : 2, GRAPHICS[graphics].scale);
       world.width = Math.round(width * detail); world.height = Math.round(height * detail);
       radar.width = Math.round(118 * dpr); radar.height = Math.round(118 * dpr);
       radarCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -3061,6 +3079,7 @@
       writeSave();
     }
     const menu = document.getElementById('menu'), resumeButton = document.getElementById('resumeButton');
+    const graphicsRow = document.getElementById('graphicsRow'), graphicsHead = document.getElementById('graphicsHead');
     const sectorList = document.getElementById('sectorList'), arsenalList = document.getElementById('arsenalList'), difficultyRow = document.getElementById('difficultyRow'), menuNote = document.getElementById('menuNote');
     let menuOpen = false, menuOpenedAt = 0, started = false, sectorTime = 0, briefTimer = 0;
     const WARP_TIME = 2.4;
@@ -3079,6 +3098,18 @@
     }
     function renderMenu() {
       resumeButton.textContent = started ? 'RESUME' : `CONTINUE // SECTOR ${levelIndex + 1}`;
+      graphicsHead.textContent = fps ? `GRAPHICS // ${Math.round(fps)} FPS IN FLIGHT` : 'GRAPHICS';
+      graphicsRow.replaceChildren(...Object.entries(GRAPHICS).map(([id, { label }]) => {
+        const button = document.createElement('button');
+        button.textContent = label; button.className = id === graphics ? 'on' : '';
+        button.addEventListener('click', () => {
+          graphics = save.graphics = id; writeSave(); resize(); fps = 0; flightTime = 0;
+          menuNote.textContent = (id !== 'low') === antialiased ? `Graphics set to ${label}. The frame rate shows here after some flying.`
+            : `Graphics set to ${label}. Antialiasing changes after the page reloads.`;
+          renderMenu();
+        });
+        return button;
+      }));
       difficultyRow.replaceChildren(...Object.entries(DIFFICULTIES).map(([id, { label }]) => {
         const button = document.createElement('button');
         button.textContent = label; button.className = id === save.difficulty ? 'on' : '';
@@ -3381,7 +3412,7 @@
       list.push([exitCenter(), 45, [0.3, 1.2, 0.7]]);
       for (const laser of lasers) if (laserState(laser) === 'on') { const [a, b] = laser.beams[0]; list.push([mul(add(a, b), 0.5), 26, [1.2, 0.2, 0.15]]); }
       const near = list.map(light => [light, dot(sub(light[0], camera.position), sub(light[0], camera.position))])
-        .filter(([light, d]) => d < (light[1] + 160) ** 2).sort((a, b) => a[1] - b[1]).slice(0, 16).map(([light]) => light);
+        .filter(([light, d]) => d < (light[1] + 160) ** 2).sort((a, b) => a[1] - b[1]).slice(0, GRAPHICS[graphics].lights).map(([light]) => light);
       const positions = new Float32Array(64), colors = new Float32Array(48);
       near.forEach(([position, radius, color], i) => { positions.set([...position, radius], i * 4); colors.set(color, i * 3); });
       return { positions, colors, count: near.length };
@@ -3403,10 +3434,10 @@
       };
       const nearby = (position, limit) => dot(sub(position, camera.position), sub(position, camera.position)) < limit * limit;
       for (const beacon of beacons) {
-        if (!nearby(beacon.position, 240)) continue;
+        if (!nearby(beacon.position, GRAPHICS[graphics].detail ? 240 : 120)) continue;
         const blink = 0.5 + 0.5 * Math.sin(time * 2.4 + beacon.phase);
         billboard(beacon.position, 0.7, [1.0, 0.65, 0.2], 0.4 + blink * 0.9);
-        billboard(beacon.position, 2.4, [1.0, 0.5, 0.15], 0.1 + blink * 0.16);
+        if (GRAPHICS[graphics].detail) billboard(beacon.position, 2.4, [1.0, 0.5, 0.15], 0.1 + blink * 0.16);
       }
       for (const laser of lasers) {
         const state = laserState(laser), [a0] = laser.beams[0];
@@ -3551,7 +3582,7 @@
       gl.uniform2f(s.uSpread, width / 2 / focal, height / 2 / focal); gl.uniform3fv(s.uSunDir, sky.sunDir);
       gl.uniform3fv(s.uFogColor, sky.fog); gl.uniform3fv(s.uZenith, sky.zenith); gl.uniform1f(s.uTime, time);
       const planet = level.planet;
-      gl.uniform3fv(s.uPlanetDir, planet.dir); gl.uniform3fv(s.uPlanetA, planet.a); gl.uniform3fv(s.uPlanetB, planet.b); gl.uniform1f(s.uPlanetSize, planet.size);
+      gl.uniform3fv(s.uPlanetDir, planet.dir); gl.uniform3fv(s.uPlanetA, planet.a); gl.uniform3fv(s.uPlanetB, planet.b); gl.uniform1f(s.uPlanetSize, planet.size); gl.uniform1i(s.uQuality, GRAPHICS[graphics].detail);
       gl.bindVertexArray(skyMesh); gl.drawArrays(gl.TRIANGLES, 0, 3);
 
       gl.enable(gl.DEPTH_TEST); gl.depthMask(true);
@@ -3562,7 +3593,7 @@
       gl.uniform3fv(u.uCamera, camera.position); gl.uniform3fv(u.uSunDir, sky.sunDir);
       gl.uniform3fv(u.uSunColor, sky.sun); gl.uniform3f(u.uSkyLight, 0.46, 0.54, 0.66); gl.uniform3f(u.uGroundLight, 0.17, 0.16, 0.17);
       gl.uniform3fv(u.uFogColor, sky.fog); gl.uniform3fv(u.uHeadPos, camera.position); gl.uniform3fv(u.uHeadDir, camera.view.forward);
-      gl.uniform4fv(u.uLights, lights.positions); gl.uniform3fv(u.uLightColors, lights.colors); gl.uniform1i(u.uLightCount, lights.count);
+      gl.uniform4fv(u.uLights, lights.positions); gl.uniform3fv(u.uLightColors, lights.colors); gl.uniform1i(u.uLightCount, lights.count); gl.uniform1i(u.uQuality, GRAPHICS[graphics].detail);
       const reactorPulse = 1 + 0.3 * Math.sin(time * 2.2), gatePulse = 1 + 0.35 * Math.sin(time * 5);
       for (const { name, exposure, mesh } of levelMeshes) {
         useMaterial(materials[name], name === 'reactor' ? reactorPulse : name === 'exitFrame' ? gatePulse : 1);
@@ -4640,8 +4671,13 @@
         bossState.textContent = left ? `SHIELDED // ${left} ${part}${left > 1 ? 'S' : ''} LEFT` : boss.hp <= boss.maxHp * 0.4 ? 'CORE CRITICAL' : GUARDS[boss.type] ? 'SHIELD DOWN' : 'ENGAGED';
       }
     }
+    let fps = 0, flightTime = 0, slowHinted = false;
     function frame(now) {
-      const dt = clamp((now - lastTime) / 1000, 0, 0.05); lastTime = now;
+      const raw = (now - lastTime) / 1000, dt = clamp(raw, 0, 0.05); lastTime = now;
+      if (!paused && !destroyed && raw > 0 && raw < 1) {
+        fps = fps ? fps + (1 / raw - fps) * 0.05 : 1 / raw; flightTime += raw;
+        if (!slowHinted && graphics !== 'low' && flightTime > 6 && fps < 24) { slowHinted = true; notice('LOW FRAME RATE // TRY GRAPHICS: LOW IN THE MENU', 4); }
+      }
       update(dt);
       scheduleMusic();
       render();
