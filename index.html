@@ -364,7 +364,7 @@
         ],
       },
       {
-        name: 'DELTA-9', title: 'TOXIN REFINERY', music: 'toxin', start: [0, -4, 0], yaw: 0, exit: [0, 6, 468, true],
+        name: 'DELTA-9', title: 'TOXIN REFINERY', music: 'toxin', top: 45, start: [0, -4, 0], yaw: 0, exit: [0, 24, 700, true],
         sky: { zenith: [0.04, 0.06, 0.03], fog: [0.19, 0.23, 0.15], sun: [0.7, 0.75, 0.5], sunDir: [-0.3, 0.45, 0.8] },
         walls: { lower: [['wallRust', 0.45], ['wallPipes', 0.3], ['wallVent', 0.25]], upper: [['wallRust', 0.55], ['wallUpper', 0.45]] },
         rooms: [
@@ -383,6 +383,14 @@
           [-176, 208, -152, 300, PLATE, BASE, 5], [-152, 284, -72, 300, PLATE, BASE, 5],
           [-8, 320, 8, 400, PLATE, BASE, 5],
           [-48, 400, 48, 480, SLUDGE], [-48, 456, 48, 480, PAD, -3], [-48, 400, -32, 456, PLATE, -5], [32, 400, 48, 456, PLATE, -5],
+          [-8, 480, 8, 520, PLATE, -3, 9],
+          [-96, 520, 96, 616, GRATE], [-96, 580, 96, 592, SLUDGE, -19], [-96, 520, -72, 616, PLATE, 7, SKY, 'wallPipes'], [72, 544, 96, 616, PLATE, 19, SKY, 'wallPipes'],
+          [-140, 552, -96, 584, PAD, 7, 21],
+          [152, 248, 160, 264, PLATE, -3, 9],
+          [160, 240, 240, 400, GRATE], [208, 256, 232, 296, SLUDGE, -19], [176, 264, 200, 288, PLATE, 9, SKY, 'wallRust'], [208, 320, 232, 344, PLATE, 13, SKY, 'wallRust'], [168, 360, 192, 384, PLATE, 5, SKY, 'wallRust'],
+          [176, 400, 192, 536, PLATE, BASE, 5], [96, 520, 176, 536, PLATE, BASE, 5],
+          [-24, 616, 24, 664, VENT],
+          [-40, 664, 40, 720, PAD, 17],
         ],
         blocks: [
           [-40, 148, -32, 156, COLUMN], [32, 96, 40, 104, COLUMN], [40, 152, 48, 160, COLUMN],
@@ -390,14 +398,18 @@
           [-148, 160, -140, 172, COLUMN], [-128, 176, -120, 184, COLUMN],
           [-8, 272, 8, 288, REACTOR], [-68, 244, -60, 252, COLUMN], [60, 244, 68, 252, COLUMN], [-68, 308, -60, 316, COLUMN], [60, 308, 68, 316, COLUMN],
           [200, 160, 216, 176, BULKHEAD],
+          [-64, 544, -48, 560, REACTOR], [48, 556, 64, 572, REACTOR], [-52, 596, -36, 612, REACTOR], [216, 368, 232, 384, REACTOR],
+          [-28, 700, -20, 708, COLUMN], [20, 700, 28, 708, COLUMN],
         ],
-        girders: [[-64, 2, 104, 64, 5, 108], [112, 6, 160, 176, 9, 164], [-72, 12, 260, 72, 15, 264], [-48, 8, 428, 48, 11, 432]],
+        girders: [[-64, 2, 104, 64, 5, 108], [112, 6, 160, 176, 9, 164], [-72, 12, 260, 72, 15, 264], [-48, 8, 428, 48, 11, 432],
+          [-96, 25, 564, 96, 28, 568], [-72, 11, 604, 72, 14, 608], [160, 17, 300, 240, 20, 304]],
         gates: [
           [64, 120, 68, 136, 'west', 'chain'], [-8, 176, 8, 180, 'south', 'chain'],
           [-76, 284, -72, 300, 'west', 'chain'], [-8, 320, 8, 324, 'south', 'chain'],
           [176, 160, 180, 176, 'west', 'secret'], [-180, 148, -176, 164, 'east', 'secret'],
+          [152, 248, 156, 264, 'west', 'chain'], [-24, 616, 24, 620, 'south', 'chain'], [-100, 560, -96, 576, 'east', 'cracked'],
         ],
-        lasers: [[-8, 212, 8, 212, -10, 3, 3.4, 0]],
+        lasers: [[-8, 212, 8, 212, -10, 3, 3.4, 0], [176, 460, 192, 460, -10.4, 5, 4, 0.5]],
         zones: [
           { name: 'RECEIVING BAY', area: [-24, -32, 24, 32], barrels: 4 },
           { name: 'LOW DUCT', area: [-8, 32, 8, 80], barrels: 2 },
@@ -413,7 +425,14 @@
           { name: 'NORTH DUCT', area: [-8, 176, 8, 240], barrels: 2, hunters: 1 },
           { name: 'REFINERY HALL', area: [-72, 240, 72, 320], barrels: 10, drones: 4, wardens: 2, miners: 1, health: 1, high: true },
           { name: 'OUTFLOW DUCT', area: [-8, 320, 8, 400], barrels: 2, drones: 2 },
-          { name: 'OUTFLOW POOL', area: [-48, 400, 48, 480], drones: 3, hunters: 2, wardens: 1 },
+          { name: 'OUTFLOW POOL', area: [-48, 400, 48, 480], drones: 3, hunters: 2, health: 1 },
+          { name: 'SCRUBBER PIPE', area: [-8, 480, 8, 520], hunters: 1 },
+          { name: 'PURGE VAULT', area: [-140, 552, -96, 584], health: 1, missile: 1 },
+          { name: 'SCRUBBER TOWERS', area: [-96, 520, 96, 616], barrels: 10, drones: 4, hunters: 2, wardens: 1, lancers: 1, health: 1, missile: 1, high: true },
+          { name: 'TANK FARM', area: [160, 240, 240, 400], barrels: 12, drones: 3, miners: 1, strikers: 1, health: 1, high: true },
+          { name: 'EAST PIPELINE', area: [96, 400, 192, 536], hunters: 2 },
+          { name: 'FLARE CHIMNEY', area: [-24, 616, 24, 664], drones: 1 },
+          { name: 'FLARE DECK', area: [-40, 664, 40, 720], barrels: 4, drones: 2, wardens: 1 },
         ],
       },
       {
@@ -1266,12 +1285,15 @@
         const face = spansX ? (normal[2] < 0 ? z0 - 0.7 : z1 + 0.7) : (normal[0] < 0 ? x0 - 0.7 : x1 + 0.7);
         const [start, end] = spansX ? [x0, x1] : [z0, z1];
         const at = (along, y) => spansX ? [along, y, face] : [face, y, along];
+        // Locks hang above whichever floor is higher, the gate's or the approach's, so a raised walkway never buries them.
+        const ahead = spansX ? cellIndex((x0 + x1) / 2, face + normal[2] * 2) : cellIndex(face + normal[0] * 2, (z0 + z1) / 2);
+        const base = ahead >= 0 ? Math.min(Math.max(y0, floorY[ahead]), y1 - 3) : y0;
         const gate = { kind, x0, z0, x1, z1, armor: kind === 'cracked' ? 6 : 0, door: { x0, y0, z0, x1, y1, z1 }, yaw: spansX ? 0 : -Math.PI / 2,
           exposure: y1 < WALL_TOP ? 0.3 : 1, locks: [], hp: 3, flash: 0, open: 0, opening: false };
         if (kind === 'chain') for (const t of [1 / 3, 2 / 3]) {
-          const lock = { position: at(start + (end - start) * t, y0 + Math.min(6, (y1 - y0) / 2)), hp: 3, flash: 0, links: [] };
+          const lock = { position: at(start + (end - start) * t, base + Math.min(6, (y1 - base) / 2)), hp: 3, flash: 0, links: [] };
           const edge = t < 0.5 ? start + 0.5 : end - 0.5;
-          for (const anchor of [at(edge, y0 + Math.min(y1 - y0 - 1, 14)), at(edge, y0 + 1)]) {
+          for (const anchor of [at(edge, base + Math.min(y1 - base - 1, 14)), at(edge, base + 1)]) {
             const span = sub(anchor, lock.position), length = Math.hypot(...span), steps = Math.floor(length / 0.7);
             const roll = spansX ? Math.atan2(span[1], span[0]) : Math.atan2(span[1], span[2]);
             for (let k = 1; k < steps; k++) lock.links.push({ position: add(lock.position, mul(span, k / steps)), roll, flat: k % 2 });
