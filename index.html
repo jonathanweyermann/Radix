@@ -766,7 +766,7 @@
         ],
       },
       {
-        name: 'TAU-3', title: 'TETHER ANCHOR', music: 'tether', top: 49, start: [0, -4, 0], yaw: 0, exit: [0, 37, 620, true], tint: [1.0, 1.0, 1.04],
+        name: 'TAU-3', title: 'TETHER ANCHOR', music: 'tether', top: 65, start: [0, -4, 0], yaw: 0, exit: [0, 54, 728, true], tint: [1.0, 1.0, 1.04],
         sky: { zenith: [0.12, 0.22, 0.42], fog: [0.62, 0.7, 0.8], sun: [1.0, 0.95, 0.85], sunDir: [0.3, 0.7, 0.6] },
         walls: { lower: [['wallTech', 0.4], ['wallDoor', 0.2], ['wallPipes', 0.2], ['wallComputer', 0.2]], upper: [['wallTech', 0.4], ['wallWindows', 0.4], ['wallSign', 0.2]] },
         rooms: [
@@ -780,6 +780,12 @@
           [-96, 432, 96, 520, GRATE, 15],
           [-12, 520, 12, 560, PLATE, 15, 27],
           [-40, 580, 40, 660, PAD, 29],
+          [128, 320, 160, 336, PLATE, 9, 21],
+          [160, 240, 248, 400, GRATE, -27], [160, 240, 176, 400, GRATE, 9, SKY, 'wallTech'], [228, 280, 248, 360, GRATE, 21, SKY, 'wallTech'], [184, 368, 200, 400, GRATE, 33, SKY, 'wallTech'],
+          [176, 300, 192, 316, VENT, -27], [208, 200, 248, 240, PAD, 9, 21],
+          [200, 400, 216, 520, PLATE, 21, 33], [96, 504, 200, 520, PLATE, 21, 33],
+          [-56, 660, 56, 744, GRATE, 29], [-48, 680, -32, 696, VENT, 29],
+          [-20, 712, 20, 744, PAD, 47, SKY, 'wallTech'],
         ],
         stairs: [
           [-12, 32, 12, 96, PLATE, BASE, -3, 'z'],
@@ -793,12 +799,16 @@
           [-20, 320, 20, 336, BULKHEAD], [-60, 344, -52, 352, COLUMN], [52, 344, 60, 352, COLUMN],
           [-8, 468, 8, 484, REACTOR], [-64, 448, -56, 456, COLUMN], [56, 448, 64, 456, COLUMN], [-64, 496, -56, 504, COLUMN], [56, 496, 64, 504, COLUMN],
           [-28, 620, -20, 628, COLUMN], [20, 620, 28, 628, COLUMN],
+          [196, 272, 212, 288, REACTOR], [208, 332, 224, 348, REACTOR], [32, 684, 40, 692, COLUMN], [-40, 724, -32, 732, COLUMN],
         ],
-        girders: [[-128, 12, 110, 128, 15, 114], [-128, 16, 352, 128, 19, 356], [-128, 4, 388, 128, 7, 392], [-128, 16, 412, 128, 19, 416]],
+        girders: [[-128, 12, 110, 128, 15, 114], [-128, 16, 352, 128, 19, 356], [-128, 4, 388, 128, 7, 392], [-128, 16, 412, 128, 19, 416],
+          [160, 17, 320, 248, 20, 324], [-56, 41, 700, 56, 44, 704]],
         gates: [
           [-12, 224, 12, 228, 'south', 'chain'], [-124, 224, -104, 228, 'south', 'chain'], [128, 152, 132, 168, 'west', 'chain'],
           [-12, 520, 12, 524, 'south', 'chain'], [216, 152, 220, 168, 'west', 'secret'], [-132, 316, -128, 332, 'east', 'cracked'],
+          [128, 320, 132, 336, 'west', 'chain'], [220, 236, 236, 240, 'north', 'cracked'], [-40, 660, 40, 664, 'south', 'chain'],
         ],
+        lasers: [[200, 460, 216, 460, 22, 32.3, 3.2, 0]],
         zones: [
           { name: 'BASE PAD', area: [-24, -32, 24, 32], barrels: 3 },
           { name: 'ANCHOR RAMP', area: [-12, 32, 12, 96], barrels: 2, drones: 1 },
@@ -813,6 +823,13 @@
           { name: 'DOCKING BORE', area: [-12, 520, 12, 580], hunters: 2 },
           { name: 'CRADLE', area: [-40, 580, 40, 660], strikers: 2, wardens: 1 },
           { name: 'ANCHOR VAULT', area: [-176, 304, -128, 344], health: 1, missile: 2 },
+          { name: 'WEIGHT TUNNEL', area: [128, 320, 160, 336], hunters: 1 },
+          { name: 'WEIGHT VAULT', area: [208, 200, 248, 240], health: 1, missile: 1 },
+          { name: 'COUNTERWEIGHT SHAFT', area: [160, 240, 248, 400], drones: 3, skimmers: 2, lancers: 1, aegis: 1, health: 1, missile: 1, high: true },
+          { name: 'CABLE GALLERY', area: [200, 400, 216, 520], hunters: 2 },
+          { name: 'CABLE LINK', area: [96, 504, 200, 520], drones: 1 },
+          { name: 'STATION DOCK', area: [-20, 712, 20, 744], barrels: 2, wardens: 1 },
+          { name: 'ORBITAL LIFT', area: [-56, 660, 56, 744], drones: 3, strikers: 2, lancers: 1, health: 1, high: true },
         ],
       },
       {
