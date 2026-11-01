@@ -698,7 +698,7 @@
         ],
       },
       {
-        name: 'TAU-3', title: 'HIVE WARRENS', music: 'hive', start: [0, -4, 0], yaw: 0, exit: [0, 17, 640, true], tint: [1.06, 1.0, 0.86],
+        name: 'TAU-3', title: 'HIVE WARRENS', music: 'hive', top: 49, start: [0, -4, 0], yaw: 0, exit: [0, 40, 728, true], tint: [1.06, 1.0, 0.86],
         sky: { zenith: [0.05, 0.04, 0.02], fog: [0.2, 0.17, 0.1], sun: [0.8, 0.65, 0.4], sunDir: [0.3, 0.6, 0.7] },
         walls: { lower: [['wallHive', 0.6], ['wallPipes', 0.2], ['wallRust', 0.2]], upper: [['wallHive', 0.7], ['wallRust', 0.3]] },
         rooms: [
@@ -714,6 +714,13 @@
           [-80, 512, -72, 528, PLATE, 9, 19], [-124, 500, -80, 540, PAD, 9, 19],
           [-8, 560, 8, 600, PLATE, 9, 21],
           [-40, 600, 40, 672, PAD, 9],
+          [-196, 140, -184, 156, PLATE, 3, 15],
+          [-252, 96, -196, 240, HIVE, -27], [-252, 96, -232, 240, HIVE, BASE, SKY, 'wallHive'], [-216, 180, -196, 240, HIVE, 3, SKY, 'wallHive'],
+          [-240, 120, -220, 140, HIVE, 15, SKY, 'wallHive'], [-232, 160, -216, 176, VENT, -27],
+          [-252, 40, -212, 96, PAD, BASE, 9],
+          [-236, 240, -220, 316, PLATE, 3, 15], [-220, 300, -160, 316, PLATE, 3, 15],
+          [-72, 672, 72, 744, HIVE, 1], [-72, 704, -48, 744, HIVE, 13, SKY, 'wallHive'], [48, 672, 72, 700, HIVE, 25, SKY, 'wallHive'],
+          [-20, 712, 20, 744, PAD, 33, SKY, 'wallHive'],
         ],
         stairs: [[-120, 112, -56, 128, PLATE, 3, BASE, 'x', 11], [-8, 400, 8, 480, PLATE, BASE, 9, 'z', 11]],
         blocks: [
@@ -722,12 +729,16 @@
           [-12, 328, 12, 352, REACTOR], [-72, 300, -64, 308, COLUMN], [64, 300, 72, 308, COLUMN], [-72, 372, -64, 380, COLUMN], [64, 372, 72, 380, COLUMN],
           [24, 500, 32, 508, COLUMN], [44, 528, 52, 536, COLUMN],
           [-24, 640, -16, 648, COLUMN], [16, 640, 24, 648, COLUMN],
+          [-48, 692, -40, 700, REACTOR], [40, 700, 48, 708, REACTOR], [-208, 116, -200, 124, REACTOR],
         ],
-        girders: [[-56, 2, 120, 56, 5, 124], [-104, 6, 312, 104, 9, 316], [-104, 14, 364, 104, 17, 368], [-72, 16, 520, 72, 19, 524]],
+        girders: [[-56, 2, 120, 56, 5, 124], [-104, 6, 312, 104, 9, 316], [-104, 14, 364, 104, 17, 368], [-72, 16, 520, 72, 19, 524],
+          [-252, 25, 196, -196, 28, 200], [-72, 37, 684, 72, 40, 688]],
         gates: [
           [176, 168, 192, 172, 'south', 'chain'], [104, 300, 108, 316, 'east', 'chain'], [-108, 300, -104, 316, 'west', 'chain'],
           [-8, 400, 8, 404, 'south', 'boss'], [-76, 512, -72, 528, 'east', 'secret'],
+          [-196, 140, -192, 156, 'east', 'chain'], [-240, 92, -224, 96, 'north', 'cracked'], [-40, 672, 40, 676, 'south', 'chain'],
         ],
+        lasers: [[-236, 280, -220, 280, 4, 14.3, 3, 0]],
         extras: { enemies: [['queen', 0, 9, 372], ['egg', -88, -5, 336], ['egg', 88, -5, 336], ['egg', -40, -5, 388], ['egg', 40, -5, 388]] },
         brief: 'THE HIVE QUEEN NESTS AT THE HEART OF THE WARRENS',
         zones: [
@@ -746,6 +757,12 @@
           { name: 'ROYAL CACHE', area: [-124, 500, -72, 540], weapon: 1, launcher: 1, health: 1, missile: 1 },
           { name: 'BREACH TUNNEL', area: [-8, 560, 8, 600], hunters: 2 },
           { name: 'SURFACE BREACH', area: [-40, 600, 40, 672], drones: 2, strikers: 2, wardens: 1 },
+          { name: 'LARVA VAULT', area: [-252, 40, -212, 96], health: 1, missile: 1 },
+          { name: 'LARVA PITS', area: [-252, 96, -196, 240], drones: 2, broods: 2, skimmers: 1, health: 1, high: true },
+          { name: 'RESIN CHOKE', area: [-236, 240, -220, 316], hunters: 2 },
+          { name: 'CHOKE LINK', area: [-220, 300, -160, 316], hunters: 1 },
+          { name: 'CROWN EXIT', area: [-20, 712, 20, 744], barrels: 2, wardens: 1 },
+          { name: 'CROWN NEST', area: [-72, 672, 72, 744], drones: 3, broods: 1, strikers: 1, lancers: 1, aegis: 1, health: 1, high: true },
         ],
       },
       {
