@@ -2685,7 +2685,8 @@
       return { side: createMesh(side), lid: createMesh(lid) };
     }
     // Flat-shaded hull from points and triangles, textured by projecting each face onto its main axis.
-    function faceted(v, tris, uvSize = 3) {
+    function faceted(v, tris, uvSize = 3) { return createMesh(facetedData(v, tris, uvSize)); }
+    function facetedData(v, tris, uvSize = 3) {
       const data = [];
       for (const ids of tris) {
         const [a, b, c] = ids.map(i => v[i]);
@@ -2697,7 +2698,7 @@
           data.push(...p, ...n, s, t, 1);
         }
       }
-      return createMesh(data);
+      return data;
     }
     const HULL_TRIS = [[0, 1, 2], [0, 2, 3], [0, 3, 4], [0, 4, 1], [5, 2, 1], [5, 3, 2], [5, 4, 3], [5, 1, 4], [1, 2, 6], [1, 6, 4], [2, 4, 6], [3, 7, 2], [3, 4, 7], [2, 7, 4]];
     const barrelMesh = buildBarrel();
@@ -2737,7 +2738,23 @@
       [[0, 1, 2], [0, 2, 3], [4, 6, 5], [4, 7, 6], [0, 4, 5], [0, 5, 1], [3, 2, 6], [3, 6, 7], [0, 3, 7], [0, 7, 4], [1, 5, 6], [1, 6, 2]], Math.max(hx, hy, hz) * 2);
     const pylonMesh = boxHull(0.8, 1.7, 0.8);
     enemyMeshes.miner = boxHull(1.6, 1.0, 2.1);
-    const lockMesh = boxHull(1.1, 1.1, 0.45), linkMeshes = [boxHull(0.42, 0.16, 0.06), boxHull(0.42, 0.06, 0.16)];
+    const lockMesh = boxHull(1.1, 1.1, 0.45), BOX_TRIS = [[0, 1, 2], [0, 2, 3], [4, 6, 5], [4, 7, 6], [0, 4, 5], [0, 5, 1], [3, 2, 6], [3, 6, 7], [0, 3, 7], [0, 7, 4], [1, 5, 6], [1, 6, 2]];
+    const linkData = [[0.42, 0.16, 0.06], [0.42, 0.06, 0.16]].map(([hx, hy, hz]) =>
+      facetedData([[-hx, -hy, -hz], [hx, -hy, -hz], [hx, hy, -hz], [-hx, hy, -hz], [-hx, -hy, hz], [hx, -hy, hz], [hx, hy, hz], [-hx, hy, hz]], BOX_TRIS, 0.84));
+    // A lock's chain links are baked into one mesh so the whole chain costs a single draw call.
+    function chainMesh(lock, yaw) {
+      if (lock.chain) return lock.chain;
+      const data = [];
+      for (const link of lock.links) {
+        const m = modelMatrix(link.position, yaw, link.roll), source = linkData[link.flat];
+        for (let i = 0; i < source.length; i += 9) {
+          const [x, y, z, nx, ny, nz] = source.slice(i, i + 6);
+          data.push(m[0] * x + m[4] * y + m[8] * z + m[12], m[1] * x + m[5] * y + m[9] * z + m[13], m[2] * x + m[6] * y + m[10] * z + m[14],
+            m[0] * nx + m[4] * ny + m[8] * nz, m[1] * nx + m[5] * ny + m[9] * nz, m[2] * nx + m[6] * ny + m[10] * nz, source[i + 6], source[i + 7], source[i + 8]);
+        }
+      }
+      return (lock.chain = createMesh(data));
+    }
     const pickupMesh = faceted([[0, 1.7, 0], [0, -1.7, 0], [1.3, 0, 0], [0, 0, 1.3], [-1.3, 0, 0], [0, 0, -1.3]],
       [[0, 2, 3], [0, 3, 4], [0, 4, 5], [0, 5, 2], [1, 3, 2], [1, 4, 3], [1, 5, 4], [1, 2, 5]], 2.6);
     const skyMesh = (() => {
@@ -3307,7 +3324,9 @@
 
     function loadLevel(index, startHealth) {
       levelIndex = index; level = LEVELS[index]; WALL_TOP = level.top;
-      for (const { mesh } of [...levelMeshes, ...gates]) { gl.deleteBuffer(mesh.buffer); gl.deleteVertexArray(mesh.vao); }
+      for (const { mesh } of [...levelMeshes, ...gates, ...gates.flatMap(gate => gate.locks.filter(lock => lock.chain).map(lock => ({ mesh: lock.chain })))]) {
+        gl.deleteBuffer(mesh.buffer); gl.deleteVertexArray(mesh.vao);
+      }
       carve(level); setupGates(level); setupHazards(level); spawnLevel(level);
       radarEdges.length = 0; beacons.length = 0;
       levelMeshes = buildLevel(level);
@@ -3654,7 +3673,10 @@
     const PICKUP_COLORS = { health: [0.35, 1.0, 0.55], weapon: [1.0, 0.62, 0.18], missile: [1.0, 0.3, 0.5], launcher: [0.7, 0.45, 1.0] };
     const exposureAt = (p) => coveredAt(p[0], p[2]) ? 0.3 : 1;
     const exitCenter = () => level.exit.slice(0, 3);
+    let boundMaterial = null, boundPulse = 0;
     function useMaterial(material, pulse = 1) {
+      if (material === boundMaterial && pulse === boundPulse) return;
+      boundMaterial = material; boundPulse = pulse;
       const u = surfaceProgram.uniforms;
       gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, material.albedo);
       gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, material.detail);
@@ -3700,7 +3722,7 @@
         const offset = mul(side, w / sideLength), start = sub(a, mul(along, w)), end = add(b, mul(along, w));
         quad([sub(start, offset), sub(end, offset), add(end, offset), add(start, offset)], [[2, 0], [3, 0], [3, 1], [2, 1]], color, alpha);
       };
-      const nearby = (position, limit) => dot(sub(position, camera.position), sub(position, camera.position)) < limit * limit;
+      const seen = inView(camera), nearby = (position, limit) => dot(sub(position, camera.position), sub(position, camera.position)) < limit * limit && seen(position, 14);
       for (const beacon of beacons) {
         if (!nearby(beacon.position, GRAPHICS[graphics].detail ? 240 : 120)) continue;
         const blink = 0.5 + 0.5 * Math.sin(time * 2.4 + beacon.phase);
@@ -3839,6 +3861,17 @@
       for (const spark of particles) streak(sub(spark.position, mul(spark.velocity, 0.035)), spark.position, 0.12, spark.color, spark.life / spark.maxLife * 2);
       return data;
     }
+    // Returns a test for whether a sphere can show on screen, so objects behind or beside the camera skip their draw calls.
+    function inView(camera) {
+      const focal = focalLength(), spread = Math.hypot(width / 2, height / 2) / focal, slack = Math.sqrt(1 + spread * spread);
+      const [cx, cy, cz] = camera.position, [fx, fy, fz] = camera.view.forward;
+      return (p, radius) => {
+        const dx = p[0] - cx, dy = p[1] - cy, dz = p[2] - cz, along = dx * fx + dy * fy + dz * fz, square = dx * dx + dy * dy + dz * dz;
+        if (square < radius * radius) return true;
+        const reach = along * spread + radius * slack;
+        return reach > 0 && square - along * along <= reach * reach;
+      };
+    }
     function render() {
       const camera = cameraForShip(), viewProj = viewProjection(camera), focal = focalLength(), sky = level.sky;
       gl.viewport(0, 0, world.width, world.height);
@@ -3863,6 +3896,7 @@
       gl.uniform3fv(u.uFogColor, sky.fog); gl.uniform3fv(u.uHeadPos, camera.position); gl.uniform3fv(u.uHeadDir, camera.view.forward);
       gl.uniform4fv(u.uLights, lights.positions); gl.uniform3fv(u.uLightColors, lights.colors); gl.uniform1i(u.uLightCount, lights.count); gl.uniform1i(u.uQuality, GRAPHICS[graphics].detail);
       const reactorPulse = 1 + 0.3 * Math.sin(time * 2.2), gatePulse = 1 + 0.35 * Math.sin(time * 5);
+      boundMaterial = null;
       for (const { name, exposure, mesh } of levelMeshes) {
         useMaterial(materials[name], name === 'reactor' ? reactorPulse : name === 'exitFrame' ? gatePulse : 1);
         if (name === 'floorSludge') gl.uniform2f(u.uScroll, time * 0.012, time * 0.02);
@@ -3872,19 +3906,19 @@
         gl.uniform2f(u.uScroll, 0, 0);
       }
       // Gate doors sink into the floor as they open; their padlocks and chains hang on the near face.
+      const seen = inView(camera);
       for (const gate of gates) {
-        if (gate.open >= 1) continue;
+        if (gate.open >= 1 || !seen([(gate.x0 + gate.x1) / 2, (gate.door.y0 + gate.door.y1) / 2, (gate.z0 + gate.z1) / 2], Math.hypot(gate.x1 - gate.x0, gate.door.y1 - gate.door.y0, gate.z1 - gate.z0) / 2 + 2)) continue;
         const height = gate.door.y1 - gate.door.y0, eased = gate.open * gate.open * (3 - 2 * gate.open);
         useMaterial(materials[(gate.kind === 'secret' ? 'secretPanel' : gate.kind === 'cracked' ? 'crackedWall' : 'gateDoor')]);
         drawMesh(gate.mesh, modelMatrix([0, -(height + 0.5) * eased, 0]), gate.flash * 0.5, level.tint || WHITE, gate.exposure);
         useMaterial(materials.chain);
-        for (const lock of gate.locks) if (lock.hp > 0) for (const link of lock.links)
-          drawMesh(linkMeshes[link.flat], modelMatrix(link.position, gate.yaw, link.roll), lock.flash * 0.3, WHITE, gate.exposure);
+        for (const lock of gate.locks) if (lock.hp > 0) drawMesh(chainMesh(lock, gate.yaw), IDENTITY, lock.flash * 0.3, WHITE, gate.exposure);
         useMaterial(materials.lock, 1 + 0.4 * Math.sin(time * 6));
         for (const lock of gate.locks) if (lock.hp > 0) drawMesh(lockMesh, modelMatrix(lock.position, gate.yaw), lock.flash, WHITE, gate.exposure);
       }
       const near = (p, limit) => dot(sub(p, camera.position), sub(p, camera.position)) < limit * limit;
-      const liveBarrels = barrels.filter(barrel => !barrel.exploded && near(barrel.position, 300))
+      const liveBarrels = barrels.filter(barrel => !barrel.exploded && near(barrel.position, 300) && seen(barrel.position, 2.5))
         .map(barrel => [modelMatrix([barrel.position[0], barrel.floor, barrel.position[2]], barrel.spin),
           barrel.flash + (barrel.hp < 2 ? 0.08 + 0.06 * Math.sin(time * 10) : 0), exposureAt(barrel.position)]);
       useMaterial(materials.barrel);
@@ -3895,6 +3929,7 @@
       for (const enemy of enemies) {
         if (enemy.hp <= 0 || enemy.cloaked || !near(enemy.position, 400)) continue;
         const kind = ENEMY_TYPES[enemy.type];
+        if (!seen(enemy.position, kind.radius * 2 + 4)) continue;
         if (enemy.type === 'sentry') { useMaterial(materials.hazard); drawMesh(pylonMesh, modelMatrix([enemy.base[0], enemy.base[1] - 1.8, enemy.base[2]]), 0, WHITE, exposureAt(enemy.position)); useMaterial(materials.drone); }
         // Data cores and the herald's crown and nodes are cut from glowing crystal rather than hull plate.
         if (CRYSTALLINE[enemy.type]) {
@@ -3907,7 +3942,7 @@
           enemy.flash * 0.8, enemy.elite ? [kind.tint[0] * 1.35, kind.tint[1] * 1.1, kind.tint[2] * 0.55] : kind.tint, exposureAt(enemy.position));
       }
       for (const pickup of pickups) {
-        if (pickup.taken || !near(pickup.position, 300)) continue;
+        if (pickup.taken || !near(pickup.position, 300) || !seen(pickup.position, 2.5)) continue;
         useMaterial(materials[pickup.type === 'health' ? 'pickupHealth' : 'pickupWeapon']);
         drawMesh(pickupMesh, modelMatrix(add(pickup.position, [0, Math.sin(time * 2 + pickup.phase) * 0.4, 0]), time * 1.5 + pickup.phase, 0, pickup.type === 'launcher' ? 1.3 : 1), 0,
           pickup.type === 'missile' ? [1.3, 0.5, 0.85] : pickup.type === 'launcher' ? [0.8, 0.55, 1.6] : WHITE, exposureAt(pickup.position));
@@ -4941,20 +4976,38 @@
       }
     }
     let fps = 0, flightTime = 0, slowHinted = false;
+    // ?perf shows how many milliseconds of CPU each part of the frame takes, averaged over the last second.
+    const perfStats = new URLSearchParams(location.search).has('perf') && Object.assign(document.body.appendChild(document.createElement('div')),
+      { style: 'position:fixed;left:8px;bottom:8px;z-index:99;font:12px monospace;color:#9fe;background:#000a;padding:4px 6px;white-space:pre;pointer-events:none' });
+    let perfSums = [0, 0, 0, 0], perfFrames = 0, perfStart = 0;
+    function perfReport(parts) {
+      parts.forEach((ms, i) => perfSums[i] += ms); perfFrames++;
+      const now = performance.now();
+      if (now - perfStart < 1000) return;
+      const [logic, world3d, hud, maps] = perfSums.map(ms => (ms / perfFrames).toFixed(2));
+      perfStats.textContent = `${perfFrames} FPS  logic ${logic}  3d ${world3d}  hud ${hud}  map+radar ${maps}  ms`;
+      perfSums = [0, 0, 0, 0]; perfFrames = 0; perfStart = now;
+    }
     function frame(now) {
       const raw = (now - lastTime) / 1000, dt = clamp(raw, 0, 0.05); lastTime = now;
       if (!paused && !destroyed && raw > 0 && raw < 1) {
         fps = fps ? fps + (1 / raw - fps) * 0.05 : 1 / raw; flightTime += raw;
         if (!slowHinted && graphics !== 'low' && graphics !== 'retro' && flightTime > 6 && fps < 24) { slowHinted = true; notice('LOW FRAME RATE // TRY GRAPHICS: LOW IN THE MENU', 4); }
       }
+      const t0 = performance.now();
       update(dt);
       scheduleMusic();
+      const t1 = performance.now();
       render();
+      const t2 = performance.now();
       ctx.clearRect(0, 0, width, height);
       drawReticle();
       drawTargets();
+      const t3 = performance.now();
       drawMap();
       drawRadar();
+      const t4 = performance.now();
+      if (perfStats) perfReport([t1 - t0, t2 - t1, t3 - t2, t4 - t3]);
       if (screenOpen === 'briefing') drawSystemMap(now);
       if (screenOpen === 'intro') soundHint.hidden = !!audioContext && audioContext.state === 'running';
       requestAnimationFrame(frame);
