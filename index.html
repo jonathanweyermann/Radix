@@ -199,15 +199,17 @@
     const world = document.getElementById('world');
     // Graphics quality. HIGH renders at up to twice the screen's pixel density with 16 dynamic lights; MEDIUM at one
     // pixel per screen pixel with 8; LOW at 60% resolution with 4 lights, flat (unbumped) lighting, no specular
-    // highlights, no clouds, fewer glows and no antialiasing (which takes effect after a reload).
+    // highlights, no clouds, fewer glows and no antialiasing (which takes effect after a reload). RETRO is LOW drawn at a
+    // fixed 400 pixels across with 2 lights, scaled up with hard pixel edges.
     const GRAPHICS = {
       high: { label: 'HIGH', scale: 2, lights: 16, detail: 1 },
       medium: { label: 'MEDIUM', scale: 1, lights: 8, detail: 1 },
       low: { label: 'LOW', scale: 0.6, lights: 4, detail: 0 },
+      retro: { label: 'RETRO', scale: 0.6, lights: 2, detail: 0, pixels: 400 },
     };
     let graphics = (() => { try { return JSON.parse(localStorage.getItem('radix-beyond-the-void')).graphics; } catch { return null; } })();
     if (!GRAPHICS[graphics]) graphics = 'high';
-    const antialiased = graphics !== 'low';
+    const antialiased = graphics !== 'low' && graphics !== 'retro';
     const gl = world.getContext('webgl2', { antialias: antialiased, alpha: false, powerPreference: 'high-performance' });
     const canvas = document.getElementById('space');
     // Phones and tablets get on-screen controls; ?touch forces them on, ?desktop off.
@@ -2764,7 +2766,9 @@
       canvas.width = Math.round(width * dpr); canvas.height = Math.round(height * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       const detail = Math.min(dpr, touchMode ? 1.25 : 2, GRAPHICS[graphics].scale);
-      world.width = Math.round(width * detail); world.height = Math.round(height * detail);
+      const pixels = GRAPHICS[graphics].pixels, pixelScale = pixels ? pixels / width : detail;
+      world.width = Math.round(width * pixelScale); world.height = Math.round(height * pixelScale);
+      world.style.imageRendering = pixels ? 'pixelated' : '';
       radar.width = Math.round(118 * dpr); radar.height = Math.round(118 * dpr);
       radarCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
@@ -4941,7 +4945,7 @@
       const raw = (now - lastTime) / 1000, dt = clamp(raw, 0, 0.05); lastTime = now;
       if (!paused && !destroyed && raw > 0 && raw < 1) {
         fps = fps ? fps + (1 / raw - fps) * 0.05 : 1 / raw; flightTime += raw;
-        if (!slowHinted && graphics !== 'low' && flightTime > 6 && fps < 24) { slowHinted = true; notice('LOW FRAME RATE // TRY GRAPHICS: LOW IN THE MENU', 4); }
+        if (!slowHinted && graphics !== 'low' && graphics !== 'retro' && flightTime > 6 && fps < 24) { slowHinted = true; notice('LOW FRAME RATE // TRY GRAPHICS: LOW IN THE MENU', 4); }
       }
       update(dt);
       scheduleMusic();
