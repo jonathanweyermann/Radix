@@ -20,8 +20,8 @@
     .stats { text-align: right; color: #b1ecf8; font-size: 12px; line-height: 1.7; letter-spacing: .13em; }
     .stats strong { color: white; }
     .mission { color: #f5b76b; font-size: 11px; letter-spacing: .2em; text-align: right; }
-    .cockpit { position: absolute; left: 0; right: 0; bottom: 0; height: 206px; padding: 15px 28px 38px; display: grid; grid-template-columns: minmax(180px,1fr) 250px minmax(180px,1fr); gap: 20px; background: linear-gradient(#283743ee,#0d1721 20%,#101d28 80%,#050a10); border-top: 5px solid #697d88; box-shadow: 0 -8px 26px #000b, inset 0 1px #b5c3c6; }
-    .panel { background: #08131c; border: 3px ridge #5a6d77; box-shadow: inset 0 0 20px #02090f, 0 4px 12px #0009; padding: 10px 14px; min-width: 0; }
+    .cockpit { position: absolute; left: 0; right: 0; bottom: 0; height: 206px; padding: 15px 28px 38px; display: grid; grid-template-columns: minmax(180px,1fr) 250px minmax(180px,1fr); gap: 20px; background: linear-gradient(#28374355,#0d172133 25%,#101d2866 75%,#050a10cc); border-top: 5px solid #697d88aa; box-shadow: inset 0 1px #b5c3c666; }
+    .panel { background: #08131c88; border: 3px ridge #5a6d77aa; box-shadow: inset 0 0 20px #02090f88; padding: 10px 14px; min-width: 0; text-shadow: 0 0 3px #000, 0 0 8px #000; }
     .panel-title { color: #f0a65c; font-size: 11px; letter-spacing: .2em; margin-bottom: 8px; }
     .panel-row { display: flex; justify-content: space-between; gap: 10px; color: #85b5be; font-size: 11px; line-height: 1.38; letter-spacing: .12em; }
     .panel-row strong { color: #ecf4dc; }
@@ -82,7 +82,8 @@
     body.touch .brand, body.touch .controls, body.touch .readouts, body.touch .panel-title { display: none; }
     body.touch .top { top: 12px; left: 16px; right: 16px; justify-content: flex-end; }
     body.touch .cockpit { height: 96px; padding: 6px max(10px, env(safe-area-inset-right)) 6px max(10px, env(safe-area-inset-left)); grid-template-columns: 1fr 86px 1fr; gap: 8px; border-top-width: 3px; }
-    body.touch .panel { padding: 4px 8px; border-width: 2px; overflow: hidden; }
+    body.touch .panel { padding: 4px 8px; border-width: 2px; overflow: hidden; background: #08131c66; }
+    body.touch .cockpit { background: linear-gradient(#28374322,#0d172122 40%,#050a1099); }
     body.touch .panel-row { font-size: 9px; line-height: 1.25; }
     body.touch #radar { width: 80px; height: 80px; border-width: 3px; }
     body.touch .cockpit .hull { margin: 0 0 3px; font-size: 9px; }
@@ -145,7 +146,7 @@
       <div class="panel"><div class="panel-title">NEUTRON CANNON</div><div class="panel-row"><span>SECTOR</span><strong id="sectorText">1 / 4</strong></div><div class="panel-row"><span>CANNON</span><strong id="cannonText">MK I</strong></div><div class="panel-row"><span>MISSILES</span><strong id="missileText">0</strong></div><div class="panel-row"><span>BARRELS</span><strong id="barrelText">0 / 0</strong></div><div class="panel-row"><span>HOSTILES</span><strong id="killText">0 / 0</strong></div><div class="panel-row"><span>MUSIC</span><strong id="musicText">ON</strong></div></div>
       <div class="radar-wrap"><canvas id="radar" width="118" height="118"></canvas><div class="readouts">SPEED<strong id="speedText">8.0</strong>HEADING<strong id="headingText">000</strong>ALT<strong id="altitudeText">-4</strong></div></div>
       <div class="panel"><div class="panel-title">SHIP STATUS</div><div class="hull shield">SHIELD <strong id="shieldText">100</strong>%<div class="meter"><span id="shieldBar"></span></div></div><div class="hull">HULL <strong id="healthText">100</strong>%<div class="meter"><span id="healthBar"></span></div></div><div class="speed">THRUST<div class="meter"><span id="speedBar"></span></div></div></div>
-      <div class="controls"><b>MOUSE</b> STEER / FIRE &nbsp; <b>WASD</b> STRAFE &nbsp; <b>↑/↓</b> PITCH &nbsp; <b>←/→</b> TURN &nbsp; <b>Q/E</b> ROLL &nbsp; <b>X</b> ACCELERATE &nbsp; <b>Z</b> BRAKE &nbsp; <b>F/J</b> FIRE &nbsp; <b>C/RMB</b> MISSILE &nbsp; <b>TAB</b> MAP &nbsp; <b>P</b> PAUSE &nbsp; <b>M</b> MUSIC</div>
+      <div class="controls"><b>MOUSE</b> STEER / FIRE &nbsp; <b>WASD</b> STRAFE &nbsp; <b>↑/↓</b> PITCH &nbsp; <b>←/→</b> TURN &nbsp; <b>Q/E</b> ROLL &nbsp; <b>X</b> ACCELERATE &nbsp; <b>Z</b> BRAKE &nbsp; <b>F/J</b> FIRE &nbsp; <b>C</b> MISSILE &nbsp; <b>RMB</b> BOOST &nbsp; <b>TAB</b> MAP &nbsp; <b>P</b> PAUSE &nbsp; <b>M</b> MUSIC</div>
     </div>
   </div>
   <div class="touch-ui" id="touchUi">
@@ -2792,19 +2793,23 @@
       keys.add(key);
     });
     window.addEventListener('keyup', (event) => keys.delete(event.key.toLowerCase()));
-    window.addEventListener('blur', () => { keys.clear(); mouseFiring = false; releaseTouch(); });
+    window.addEventListener('blur', () => { keys.clear(); mouseFiring = false; releaseTouch(); endBoost(); });
     // Switching apps or tabs pauses into the menu, which matters on phones where there is no mouse capture to lose.
     document.addEventListener('visibilitychange', () => { if (document.hidden && started && !menuOpen && !screenOpen && !destroyed && !finished) openMenu(); });
     canvas.addEventListener('contextmenu', (event) => event.preventDefault());
     canvas.addEventListener('pointerdown', (event) => {
       if (event.pointerType === 'touch') return;
-      if (event.button === 2) { missileRequest = true; ensureAudio(); return; }
+      if (event.button === 2) { startBoost(); ensureAudio(); return; }
       if (event.button !== 0) return;
       mouseFiring = true;
       ensureAudio();
       if (document.pointerLockElement !== canvas && !menuOpen) canvas.requestPointerLock();
     });
-    window.addEventListener('pointerup', (event) => { if (event.button === 0) mouseFiring = false; });
+    window.addEventListener('pointerup', (event) => { if (event.button === 0) mouseFiring = false; if (event.button === 2) endBoost(); });
+    // Holding the right mouse button gives full thrust; letting go restores the speed the ship had before.
+    let boostFrom = null;
+    const startBoost = () => { if (boostFrom === null) boostFrom = ship.speed; };
+    const endBoost = () => { if (boostFrom !== null) { ship.speed = boostFrom; boostFrom = null; } };
     document.addEventListener('pointerlockchange', () => {
       if (document.pointerLockElement === canvas) return;
       mouseFiring = false;
@@ -3514,6 +3519,7 @@
     launchButton.addEventListener('click', launch);
     for (const screen of [intro, briefing]) screen.addEventListener('pointerdown', () => ensureAudio());
     function openMenu() {
+      endBoost();
       menuOpen = true; menuOpenedAt = performance.now(); paused = true; mouseFiring = false; keys.clear(); releaseTouch();
       pausedText.classList.remove('show');
       renderMenu(); menu.classList.add('show'); resumeButton.focus();
@@ -4812,7 +4818,7 @@
         sparks(pickup.position, 18, PICKUP_COLORS[pickup.type], 10);
         playPickup(pickup.type);
         if (pickup.type === 'health') { health = Math.min(100, health + 35); notice('HULL REPAIRED +35', 1.6); }
-        else if (pickup.type === 'missile') { missileAmmo = Math.min(MISSILE_MAX, missileAmmo + 6); notice('SEEKER MISSILES +6 // C OR RIGHT CLICK', 2); }
+        else if (pickup.type === 'missile') { missileAmmo = Math.min(MISSILE_MAX, missileAmmo + 6); notice('SEEKER MISSILES +6 // PRESS C', 2); }
         else if (pickup.type === 'launcher') {
           if (launcherLevel < LAUNCHERS.length) { launcherLevel++; missileAmmo = Math.min(MISSILE_MAX, missileAmmo + 4); notice(`LAUNCHER UPGRADED // ${LAUNCHERS[launcherLevel - 1].name} // MISSILES +4`, 2.2); }
           else { missileAmmo = Math.min(MISSILE_MAX, missileAmmo + 6); notice('LAUNCHER AT MAXIMUM // MISSILES +6', 1.6); }
@@ -4863,6 +4869,7 @@
       ship.roll += bank * dt * 1.4;
       ship.roll += (-(turn * 0.35 + slideX * 0.2) - ship.roll) * Math.min(1, dt * 0.7);
       ship.speed = clamp(ship.speed + (Number(down('x', ' ') || touch.thrust) * 18 - Number(down('z') || touch.brake) * 24) * dt, 0, 45);
+      if (boostFrom !== null) ship.speed += (45 - ship.speed) * Math.min(1, dt * 5);
       // Strafing slides along the view's right and up axes, easing in and out.
       const easing = Math.min(1, dt * 6), view = basis(ship.yaw, ship.pitch, ship.roll);
       ship.strafe = [ship.strafe[0] + (slideX * STRAFE_SPEED - ship.strafe[0]) * easing, ship.strafe[1] + (slideY * STRAFE_SPEED - ship.strafe[1]) * easing];
