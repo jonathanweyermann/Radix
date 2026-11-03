@@ -274,7 +274,9 @@
     };
 
     // Each level is a grid of 4-unit cells carved out of solid ground.
-    //   rooms:  open space [x0, z0, x1, z1, floor material, floor height, ceiling height, side texture, roof height, roof material];
+    //   rooms:  open space [x0, z0, x1, z1, floor material, floor height, ceiling height, side texture, roof height, roof material,
+    //           underside height]; an underside puts open space below the floor too, down to the sector's floor, so a
+    //           module or deck can float with room all round it;
     //           no ceiling means open sky, and a side texture dresses the faces that rise from lower neighbours up to this floor
     //           (crates, ledges, ice shelves). A roof makes a building or bridge: covered below the ceiling, open sky above the roof.
     //   stairs: rooms whose floor climbs [x0, z0, x1, z1, material, height at x0/z0 side, height at x1/z1 side, axis, headroom]
@@ -297,6 +299,9 @@
     //     through the exit gate, which stays locked until every goal before it is done)
     //   moon: { radius } wraps the sector around a small moon with no walls at its edge, airless sky and open ground beyond
     //   interior: the sector is sealed inside a hull, with a ceiling at the top over every open space
+    //   lit: covered rooms are lit as brightly as open ones (for ceilings that are light panels, not shade)
+    //   space: the sector is open space: stars all round, no ground drawn, and the edges, floor and top of the operations
+    //     area marked with lights and stopping the ship without harm. Zones there can spawn at an `altitude: [low, high]`.
     //   cylinder: the sector lines the inside of a spinning cylinder. The map's width is its circumference, wrapping round
     //     at its east and west edges; the ground curves up on both sides to meet overhead, and climbing past the axis
     //     carries the ship over to the far side. Its z ends are the end caps.
@@ -305,6 +310,8 @@
     //     and columns block exactly the space they sweep; a cube blocks a sphere a little inside its corners.
     //   terrain: natural ground for rooms of MOON or GRASS floor with the terrain's `side` texture (default 'wallMoon'):
     //     { lakes: [x, z, radius, depth] basins, water (the lakes' surface height above the room floor), trees (how many),
+    //     canyons: [[depth, half width, [x, z], [x, z], ...]] winding channels along each path, terrace (cut slopes into
+    //     ledges this tall),
     //     hills (height of the rolling ground),
     //     craters: [x, z, radius, depth], ridges: [x, z0, z1, half width, height], small and boulders (how many small craters
     //     and loose rocks to scatter), clear: areas [x0, z0, x1, z1] kept flat for buildings }. Its floors follow a smooth
@@ -312,9 +319,18 @@
     //   walls: optional weighted wall-texture variants for the lower and upper bands
     //   vents: floor material whose updraft lifts the ship; lasers: timed beam grids [x0, z0, x1, z1, bottom, top, period, offset]
     //   music: the sector's track
-    const FLOOR_MATERIALS = ['floorPlate', 'floorGrate', 'floorPad', 'floorFoundry', 'floorSludge', 'floorLava', 'floorIce', 'floorHive', 'floorWater', 'floorVent', 'floorVoid', 'floorMoon', 'floorGrass'];
-    const PLATE = 0, GRATE = 1, PAD = 2, SLAG = 3, SLUDGE = 4, LAVA = 5, ICE = 6, HIVE = 7, WATER = 8, VENT = 9, VOID = 10, MOON = 11, GRASS = 12;
+    const FLOOR_MATERIALS = ['floorPlate', 'floorGrate', 'floorPad', 'floorFoundry', 'floorSludge', 'floorLava', 'floorIce', 'floorHive', 'floorWater', 'floorVent', 'floorVoid', 'floorMoon', 'floorGrass', 'floorSand'];
+    const PLATE = 0, GRATE = 1, PAD = 2, SLAG = 3, SLUDGE = 4, LAVA = 5, ICE = 6, HIVE = 7, WATER = 8, VENT = 9, VOID = 10, MOON = 11, GRASS = 12, SAND = 13;
     const BULKHEAD = 1, COLUMN = 2, REACTOR = 3, CRYSTAL = 4, SKY = undefined;
+    // A floating module for open space: walls `wall` thick, solid from `under` to `roof`, around a deck open from `floor` to
+    // `ceil`; each door [x0, z0, x1, z1, top] cuts a doorway through the walls up to `top`.
+    function podRooms([x0, z0, x1, z1], { floor, ceil, under, roof, side = 'wallTech', material = PLATE, doors = [], wall = 4 }) {
+      return [
+        [x0, z0, x1, z1, material, roof, SKY, side, undefined, null, under],
+        [x0 + wall, z0 + wall, x1 - wall, z1 - wall, material, floor, ceil, side, roof, null, under],
+        ...doors.map(([a, b, c, d, top]) => [a, b, c, d, material, floor, top, side, roof, null, under]),
+      ];
+    }
     const LEVELS = [
       {
         name: 'DELTA-9', title: 'RELAY STATION', music: 'relay', start: [0, -4, 0], yaw: 0, exit: [0, 16, 680, true],
@@ -913,6 +929,106 @@
         ],
       },
       {
+        // The orbital yards over Tau-3: an industrial drum round a second, inner drum. The outer floor is plate, canals of
+        // slag and sludge, and machinery, under the inner cylinder's lit underside; pillars hold the two apart, a bulkhead rings
+        // the drum, and gaps in the inner cylinder lead up into its core round the sun line.
+        name: 'TAU-3', title: 'ORBITAL YARDS', music: 'yards', top: 77, start: [0, -3, -24], yaw: 0, exit: [0, 0, 730, true],
+        cylinder: true, lit: true, tint: [1.0, 0.93, 0.84],
+        sky: { zenith: [0.2, 0.18, 0.16], fog: [0.16, 0.13, 0.11], sun: [0.75, 0.66, 0.56], sunDir: [0.25, 1, 0.2] },
+        walls: { lower: [['wallRust', 0.3], ['wallPipes', 0.3], ['wallVent', 0.2], ['wallContainer', 0.2]], upper: [['wallRust', 0.5], ['wallUpper', 0.5]] },
+        rooms: [
+          [-256, -48, 256, 752, PLATE, BASE, BASE + 46, 'wallRust', BASE + 52, 'floorGrate'],
+          [-256, 0, 256, 4, GRATE, BASE, BASE + 46, 'wallRust', BASE + 52, 'floorGrate'],
+          [-256, 64, 256, 68, GRATE, BASE, BASE + 46, 'wallRust', BASE + 52, 'floorGrate'],
+          [-256, 128, 256, 132, GRATE, BASE, BASE + 46, 'wallRust', BASE + 52, 'floorGrate'],
+          [-256, 192, 256, 196, GRATE, BASE, BASE + 46, 'wallRust', BASE + 52, 'floorGrate'],
+          [-256, 256, 256, 260, GRATE, BASE, BASE + 46, 'wallRust', BASE + 52, 'floorGrate'],
+          [-256, 320, 256, 324, GRATE, BASE, BASE + 46, 'wallRust', BASE + 52, 'floorGrate'],
+          [-256, 384, 256, 388, GRATE, BASE, BASE + 46, 'wallRust', BASE + 52, 'floorGrate'],
+          [-256, 448, 256, 452, GRATE, BASE, BASE + 46, 'wallRust', BASE + 52, 'floorGrate'],
+          [-256, 512, 256, 516, GRATE, BASE, BASE + 46, 'wallRust', BASE + 52, 'floorGrate'],
+          [-256, 576, 256, 580, GRATE, BASE, BASE + 46, 'wallRust', BASE + 52, 'floorGrate'],
+          [-256, 640, 256, 644, GRATE, BASE, BASE + 46, 'wallRust', BASE + 52, 'floorGrate'],
+          [-256, 704, 256, 708, GRATE, BASE, BASE + 46, 'wallRust', BASE + 52, 'floorGrate'],
+          [-120, -48, -104, 752, LAVA, BASE - 6, BASE + 46, 'wallRust', BASE + 52, 'floorGrate'],
+          [104, -48, 120, 752, SLUDGE, BASE - 4, BASE + 46, 'wallRust', BASE + 52, 'floorGrate'],
+          [232, -48, 240, 752, LAVA, BASE - 6, BASE + 46, 'wallRust', BASE + 52, 'floorGrate'],
+          [-16, -40, 16, -8, PAD, BASE + 1, BASE + 46, 'wallTech', BASE + 52, 'floorGrate'],
+          [-24, 712, 24, 748, PAD, BASE + 2, BASE + 46, 'wallTech', BASE + 52, 'floorGrate'],
+          [-80, 40, -56, 72, PLATE, BASE + 14, BASE + 46, 'wallPipes', BASE + 52, 'floorGrate'],
+          [40, 60, 72, 84, PLATE, BASE + 20, BASE + 46, 'wallContainer', BASE + 52, 'floorGrate'],
+          [-60, 120, -28, 144, PLATE, BASE + 26, BASE + 46, 'wallVent', BASE + 52, 'floorGrate'],
+          [28, 140, 60, 176, PLATE, BASE + 10, BASE + 46, 'wallContainerB', BASE + 52, 'floorGrate'],
+          [140, 40, 176, 80, PLATE, BASE + 18, BASE + 46, 'wallPipes', BASE + 52, 'floorGrate'],
+          [180, 140, 220, 160, PLATE, BASE + 24, BASE + 46, 'wallRust', BASE + 52, 'floorGrate'],
+          [-200, 60, -160, 100, PLATE, BASE + 22, BASE + 46, 'wallContainer', BASE + 52, 'floorGrate'],
+          [-180, 160, -140, 200, PLATE, BASE + 12, BASE + 46, 'wallPipes', BASE + 52, 'floorGrate'],
+          [-60, 260, -20, 300, PLATE, BASE + 30, BASE + 46, 'wallVent', BASE + 52, 'floorGrate'],
+          [30, 240, 70, 280, PLATE, BASE + 16, BASE + 46, 'wallContainer', BASE + 52, 'floorGrate'],
+          [140, 220, 172, 252, PLATE, BASE + 28, BASE + 46, 'wallPipes', BASE + 52, 'floorGrate'],
+          [-220, 260, -180, 300, PLATE, BASE + 20, BASE + 46, 'wallRust', BASE + 52, 'floorGrate'],
+          [-60, 520, -24, 556, PLATE, BASE + 24, BASE + 46, 'wallPipes', BASE + 52, 'floorGrate'],
+          [40, 540, 80, 580, PLATE, BASE + 18, BASE + 46, 'wallContainerB', BASE + 52, 'floorGrate'],
+          [150, 600, 190, 640, PLATE, BASE + 30, BASE + 46, 'wallVent', BASE + 52, 'floorGrate'],
+          [-200, 600, -160, 644, PLATE, BASE + 16, BASE + 46, 'wallContainer', BASE + 52, 'floorGrate'],
+          [-90, 640, -60, 680, PLATE, BASE + 22, BASE + 46, 'wallRust', BASE + 52, 'floorGrate'],
+          [60, 660, 96, 692, PLATE, BASE + 12, BASE + 46, 'wallPipes', BASE + 52, 'floorGrate'],
+          [-24, 80, 24, 100, PLATE, BASE, BASE + 30, 'wallPipes', BASE + 52, 'floorGrate'],
+          [-140, 180, -100, 210, PLATE, BASE, BASE + 26, 'wallPipes', BASE + 52, 'floorGrate'],
+          [80, 300, 120, 330, PLATE, BASE, BASE + 32, 'wallPipes', BASE + 52, 'floorGrate'],
+          [-60, 420, -20, 450, PLATE, BASE, BASE + 28, 'wallPipes', BASE + 52, 'floorGrate'],
+          [160, 470, 200, 500, PLATE, BASE, BASE + 30, 'wallPipes', BASE + 52, 'floorGrate'],
+          [-200, 520, -160, 550, PLATE, BASE, BASE + 24, 'wallPipes', BASE + 52, 'floorGrate'],
+          [0, 600, 40, 630, PLATE, BASE, BASE + 30, 'wallPipes', BASE + 52, 'floorGrate'],
+          [-104, 16, -96, 24, PLATE, BASE + 52, SKY, 'wallPipes'],
+          [96, 16, 104, 24, PLATE, BASE + 52, SKY, 'wallPipes'],
+          [-104, 176, -96, 184, PLATE, BASE + 52, SKY, 'wallPipes'],
+          [96, 176, 104, 184, PLATE, BASE + 52, SKY, 'wallPipes'],
+          [-34, 336, -26, 344, PLATE, BASE + 52, SKY, 'wallPipes'],
+          [26, 336, 34, 344, PLATE, BASE + 52, SKY, 'wallPipes'],
+          [-184, 396, -176, 404, PLATE, BASE + 52, SKY, 'wallPipes'],
+          [176, 396, 184, 404, PLATE, BASE + 52, SKY, 'wallPipes'],
+          [-104, 556, -96, 564, PLATE, BASE + 52, SKY, 'wallPipes'],
+          [96, 556, 104, 564, PLATE, BASE + 52, SKY, 'wallPipes'],
+          [-34, 686, -26, 694, PLATE, BASE + 52, SKY, 'wallPipes'],
+          [26, 686, 34, 694, PLATE, BASE + 52, SKY, 'wallPipes'],
+          [196, 256, 204, 264, PLATE, BASE + 52, SKY, 'wallPipes'],
+          [-204, 136, -196, 144, PLATE, BASE + 52, SKY, 'wallPipes'],
+          [-256, 380, 256, 384, PLATE, BASE + 52, SKY, 'wallTech'],
+          [-12, 380, 12, 384, PLATE, BASE, BASE + 20, 'wallTech', BASE + 52, 'floorGrate'],
+          [-16, 200, 16, 232, GRATE, BASE, SKY, 'wallTech'],
+          [150, 300, 182, 332, GRATE, BASE, SKY, 'wallTech'],
+          [-180, 440, -148, 472, GRATE, BASE, SKY, 'wallTech'],
+          [-16, 470, 16, 502, GRATE, BASE, SKY, 'wallTech'],
+          [100, 620, 132, 652, GRATE, BASE, SKY, 'wallTech'],
+        ],
+        stairs: [],
+        blocks: [],
+        girders: [[-256, 24, 300, 256, 27, 304], [-256, 30, 600, 256, 33, 604], [-80, 12, 40, -76, 15, 360], [76, 18, 400, 80, 21, 720], [-160, 8, 460, -40, 11, 464], [160, 26, 100, 164, 29, 360]],
+        gates: [[-12, 380, 12, 384, 'south', 'chain']],
+        spinners: [
+          { kind: 'ring', at: [-160, 12, 250], axis: [1, 0, 0], radius: 18, inner: 12, length: 4, speed: 0.9, materials: ['wallPipes', 'crown', 'crown'] },
+          { kind: 'ring', at: [-150, 12, 250], axis: [1, 0, 0], radius: 12, inner: 7, length: 4, speed: -1.35, materials: ['wallPipes', 'crown', 'crown'] },
+          { kind: 'ring', at: [60, 14, 470], axis: [0, 0, 1], radius: 16, inner: 10, length: 6, speed: 0.7, materials: ['wallRust', 'crown', 'crown'] },
+          { kind: 'core', at: [200, 0, 320], axis: [0, 1, 0], radius: 9, inner: 0, length: 22, speed: 0.4, materials: ['floorLava', null, 'floorLava'] },
+          { kind: 'core', at: [-60, 0, 610], axis: [0, 1, 0], radius: 9, inner: 0, length: 22, speed: -0.4, materials: ['floorLava', null, 'floorLava'] },
+        ],
+        extras: { barrels: [[-8, 30], [10, 40], [-20, 220], [20, 470], [-30, 600], [44, 700]] },
+        objectives: [
+          { kind: 'destroy', text: 'DESTROY THE PRESS CONTROLLERS', targets: [['core', -44, BASE + 32, 132, 'PRESS CONTROLLER'], ['core', 156, BASE + 34, 236, 'PRESS CONTROLLER'], ['core', -200, BASE + 26, 280, 'PRESS CONTROLLER']] },
+          { kind: 'gate', text: 'SHOOT THE LOCKS ON THE YARD BULKHEAD', gate: 0 },
+          { kind: 'reach', text: 'CLIMB INTO THE INNER CYLINDER', at: [0, BASE + 64, 486], radius: 16 },
+          { kind: 'destroy', text: 'DESTROY THE SPINDLE DYNAMOS', targets: [['core', 0, BASE + 62, 540, 'SPINDLE DYNAMO'], ['core', 170, BASE + 62, 580, 'SPINDLE DYNAMO'], ['core', -170, BASE + 62, 620, 'SPINDLE DYNAMO']] },
+          { kind: 'exit', text: 'REACH THE END-CAP GATE' },
+        ],
+        zones: [
+          { name: 'LANDING DECK', area: [-48, -48, 48, 40], barrels: 2 },
+          { name: 'PRESS FLOOR', area: [-256, 40, 256, 380], drones: 6, hunters: 3, strikers: 1, wardens: 1, health: 2, weapon: 1, missile: 1 },
+          { name: 'FITTING YARD', area: [-256, 384, 256, 752], drones: 5, skimmers: 3, lancers: 1, escorts: 1, health: 1, missile: 1 },
+          { name: 'INNER CYLINDER', area: [-256, -48, 256, 752], altitude: [BASE + 56, BASE + 68], drones: 3, skimmers: 2 },
+        ],
+      },
+      {
         name: 'SIGMA-4', title: 'REFINERY TERRACES', music: 'terraces', top: 61, start: [0, -4, 0], yaw: 0, exit: [0, 48, 640, true],
         sky: { zenith: [0.1, 0.16, 0.3], fog: [0.52, 0.44, 0.38], sun: [0.95, 0.75, 0.55], sunDir: [0.3, 0.6, -0.45] },
         walls: { lower: [['wallRust', 0.35], ['wallContainer', 0.25], ['wallPipes', 0.4]], upper: [['wallRust', 0.5], ['wallUpper', 0.5]] },
@@ -1039,6 +1155,104 @@
           { name: 'EXTRACTION PAD', area: [-40, 636, 40, 716], barrels: 2 },
           { name: 'GREY PLAIN', area: [-256, -48, 256, 412], drones: 5, skimmers: 2, strikers: 1, health: 1, high: true },
           { name: 'FAR SIDE', area: [-256, 568, 256, 752], drones: 4, skimmers: 2, strikers: 1, wardens: 1, missile: 1, health: 1, high: true },
+        ],
+      },
+      {
+        // Omega's high station, hanging in open space over the crown world. The operations area is a box about four hundred
+        // units each way, marked by lights at its edges; you approach from outside and fly in through the docking port.
+        name: 'OMEGA', title: 'HIGH STATION', music: 'station', top: 200, start: [0, 0, -30], yaw: 0, exit: [0, 20, 720, true],
+        space: true, roof: 'floorPlate', hull: 'floorPlate',
+        sky: { zenith: [0.0, 0.0, 0.01], fog: [0.01, 0.012, 0.02], sun: [1.15, 1.05, 0.95], sunDir: [0.6, 0.45, 0.3] },
+        walls: { lower: [['wallTech', 0.45], ['wallPipes', 0.2], ['wallWindows', 0.2], ['wallVent', 0.15]] },
+        rooms: [
+          [-256, -48, 256, 752, VOID, -200],
+          // The hub, behind its docking port; inside, an antechamber and the core hall with three pedestals.
+          ...podRooms([-84, 316, 84, 484], { floor: -10, ceil: 34, under: -18, roof: 42, material: GRATE, doors: [[-12, 316, 12, 320, 14]] }),
+          [-80, 360, 80, 364, PLATE, 42, SKY, 'wallTech', undefined, null, -18], [-8, 360, 8, 364, PLATE, -10, 20, 'wallTech', 42, null, -18],
+          [-54, 416, -46, 424, PAD, -6, 34, 'wallTech', 42, null, -18], [46, 416, 54, 424, PAD, -6, 34, 'wallTech', 42, null, -18], [-4, 451, 4, 459, PAD, -6, 34, 'wallTech', 42, null, -18],
+          // The west lab, high on its truss, and the east hangar, low on its own.
+          ...podRooms([-224, 356, -156, 444], { floor: 30, ceil: 54, under: 24, roof: 60, doors: [[-160, 392, -156, 408, 44]] }),
+          ...podRooms([156, 336, 232, 444], { floor: -40, ceil: -10, under: -46, roof: -4, doors: [[156, 376, 160, 404, -18]] }),
+          // Solar wings, one high on the approach and one low past the hub.
+          [-256, 100, -120, 260, PLATE, -200, 80, 'wallTech', 82, 'solarPanel'], [120, 540, 256, 700, PLATE, -200, -60, 'wallTech', -58, 'solarPanel'],
+        ],
+        stairs: [],
+        blocks: [],
+        girders: [[84, -28, 396, 156, -24, 404], [-156, 44, 396, -84, 48, 404], [-3, -75, 397, 3, -18, 403], [-2, 42, 398, 2, 150, 402],
+          [-30, 100, 399, 30, 102, 401], [-20, 140, 399, 20, 142, 401], [52, -112, 392, 68, -108, 408], [-38, -112, 444, -22, -108, 460], [-38, -112, 340, -22, -108, 356],
+          [-120, 80, 180, -84, 82, 184], [120, -60, 600, 156, -58, 604]],
+        gates: [[-12, 316, 12, 320, 'south', 'chain']],
+        spinners: [
+          { kind: 'ring', at: [0, 10, 400], axis: [0, 1, 0], radius: 150, inner: 138, length: 20, speed: 0.08, materials: ['wallWindows', 'wallTech', 'crown'] },
+          { kind: 'core', at: [0, -110, 400], axis: [0, 1, 0], radius: 18, inner: 0, length: 70, speed: 0.2, materials: ['reactor', null, 'reactor'] },
+          { kind: 'ring', at: [0, -90, 400], axis: [0, 1, 0], radius: 36, inner: 32, length: 4, speed: 0.6, materials: ['wallTech', 'crown', 'crown'] },
+          { kind: 'ring', at: [0, -130, 400], axis: [0, 1, 0], radius: 36, inner: 32, length: 4, speed: -0.5, materials: ['wallTech', 'crown', 'crown'] },
+          { kind: 'ring', at: [0, 20, 720], axis: [0, 0, 1], radius: 26, inner: 22, length: 4, speed: 0.4, materials: ['crown', 'wallTech', 'crown'] },
+        ],
+        extras: {},
+        objectives: [
+          { kind: 'destroy', text: 'DESTROY THE HULL TURRETS', targets: [['sentry', -60, 45.4, 340], ['sentry', 60, 45.4, 460], ['sentry', -190, 63.4, 380], ['sentry', 195, -0.6, 420]] },
+          { kind: 'gate', text: 'SHOOT THE LOCKS ON THE DOCKING PORT', gate: 0 },
+          { kind: 'destroy', text: 'DESTROY THE HUB CONTROL CORES', targets: [['core', -50, 2, 420, 'CONTROL CORE'], ['core', 50, 2, 420, 'CONTROL CORE'], ['core', 0, 2, 455, 'CONTROL CORE']] },
+          { kind: 'destroy', text: 'DESTROY THE REACTOR STABILIZERS', targets: [['core', 60, -100, 400, 'STABILIZER'], ['core', -30, -100, 452, 'STABILIZER'], ['core', -30, -100, 348, 'STABILIZER']] },
+          { kind: 'exit', text: 'REACH THE DEPARTURE GATE' },
+        ],
+        zones: [
+          { name: 'HUB ANTECHAMBER', area: [-80, 320, 80, 360], drones: 2, health: 1 },
+          { name: 'HUB CORE HALL', area: [-80, 364, 80, 480], drones: 3, wardens: 1, missile: 1 },
+          { name: 'WEST LAB', area: [-220, 360, -160, 440], health: 1, weapon: 1, drones: 1 },
+          { name: 'EAST HANGAR', area: [160, 340, 228, 440], hunters: 2, missile: 1, barrels: 4 },
+          { name: 'APPROACH', area: [-256, -48, 256, 300], altitude: [-60, 80], drones: 4, skimmers: 3, strikers: 1 },
+          { name: 'HABITAT RING', area: [-170, 230, 170, 570], altitude: [30, 90], skimmers: 2, drones: 2, lancers: 1 },
+          { name: 'REACTOR DEEP', area: [-120, 300, 120, 500], altitude: [-170, -60], drones: 3, aegis: 1, lancers: 1 },
+          { name: 'OUTER PERIMETER', area: [-256, 500, 256, 752], altitude: [-80, 120], drones: 3, skimmers: 2, escorts: 1 },
+        ],
+      },
+      {
+        // The rift lands on Omega's surface: a flat world cut by a deep winding rift and its side canyons, with terraced walls,
+        // a thin river along the bottom, and mesas standing above the plateau. Goals sit on the rims, down in the rift and on a mesa.
+        name: 'OMEGA', title: 'RIFT LANDS', music: 'rift', top: 90, start: [-70, 48, -24], yaw: 0, exit: [16, -57, 664, true], canyon: true,
+        sky: { zenith: [0.22, 0.32, 0.58], fog: [0.78, 0.56, 0.4], sun: [1.15, 0.92, 0.72], sunDir: [0.5, 0.45, 0.3] },
+        walls: { lower: [['wallTech', 0.6], ['wallComputer', 0.4]], upper: [['wallTech', 1]] },
+        rooms: [
+          [-256, -48, 256, 752, SAND, 30, SKY, 'wallSandstone'],
+          // Rim beacon pads.
+          [66, 116, 74, 124, PAD, 34, SKY, 'wallTech'], [-124, 296, -116, 304, PAD, 34, SKY, 'wallTech'], [106, 466, 114, 474, PAD, 34, SKY, 'wallTech'],
+          // The generator bunker on the rift floor, raised above the river, with its door to the south.
+          ...[[0, 424, 40, 456, PLATE, -44, SKY, 'wallTech'], [4, 428, 36, 452, PLATE, -66, -52, 'wallTech', -44], [16, 424, 24, 428, PLATE, -66, -56, 'wallTech', -44]],
+          // Gun pads on the east mesa.
+          [146, 596, 154, 604, PAD, 64, SKY, 'wallTech'], [171, 646, 179, 654, PAD, 64, SKY, 'wallTech'],
+          // The exit platform at the rift's north end.
+          [-4, 650, 36, 678, PAD, -66, SKY, 'wallTech'],
+        ],
+        terrain: {
+          side: 'wallSandstone', hills: 14, terrace: 10, boulders: 140, water: -100,
+          craters: [], lakes: [],
+          ridges: [[160, 560, 700, 30, 30], [-170, 100, 220, 26, 26], [200, 120, 260, 22, 20]],
+          canyons: [[104, 34, [0, -48], [30, 80], [-40, 200], [-60, 320], [20, 440], [60, 560], [0, 700], [0, 752]],
+            [74, 22, [-60, 320], [-160, 360], [-230, 480], [-256, 520]], [64, 18, [20, 440], [140, 420], [220, 300], [256, 260]]],
+          clear: [[-90, -48, -50, 0], [62, 112, 78, 128], [-128, 292, -112, 308], [102, 462, 118, 478], [-4, 420, 44, 460], [142, 592, 158, 608], [167, 642, 183, 658], [-8, 646, 40, 682]],
+        },
+        stairs: [],
+        blocks: [],
+        girders: [[-20, 20, 196, 20, 24, 200], [-90, -10, 330, -40, -6, 334]],
+        gates: [],
+        extras: {},
+        objectives: [
+          { kind: 'destroy', text: 'DESTROY THE RIM BEACONS', targets: [['core', 70, 42, 120, 'RIM BEACON'], ['core', -120, 42, 300, 'RIM BEACON'], ['core', 110, 42, 470, 'RIM BEACON']] },
+          { kind: 'reach', text: 'DIVE INTO THE RIFT', at: [-60, -55, 320], radius: 24 },
+          { kind: 'destroy', text: 'DESTROY THE BUNKER GENERATORS', targets: [['core', 12, -60, 442, 'GENERATOR'], ['core', 28, -60, 442, 'GENERATOR']] },
+          { kind: 'destroy', text: 'DESTROY THE MESA GUNS', targets: [['sentry', 150, 67.4, 600], ['sentry', 175, 67.4, 650]] },
+          { kind: 'exit', text: 'REACH THE GATE AT THE RIFT\'S END' },
+        ],
+        zones: [
+          { name: 'GENERATOR BUNKER', area: [4, 428, 36, 452], drones: 1, health: 1 },
+          { name: 'SOUTH PLATEAU', area: [-256, -48, 256, 160], drones: 4, skimmers: 2, health: 1 },
+          { name: 'THE RIFT', area: [-80, 160, 80, 700], drones: 4, hunters: 2, lancers: 2, skimmers: 2, missile: 1, health: 1 },
+          { name: 'WEST CANYON', area: [-256, 300, -80, 540], drones: 2, skimmers: 2, strikers: 1, missile: 1 },
+          { name: 'EAST CANYON', area: [80, 240, 256, 460], drones: 2, wardens: 1, health: 1 },
+          { name: 'EAST MESA', area: [120, 540, 256, 720], drones: 2, lancers: 1, weapon: 1 },
+          { name: 'NORTH PLATEAU', area: [-256, 540, 120, 752], drones: 3, skimmers: 2, escorts: 1, health: 1 },
         ],
       },
       {
@@ -1535,6 +1749,9 @@
       'HIVE WARRENS': [[-0.3, 0.6, 0.75], [0.5, 0.34, 0.1], [0.9, 0.72, 0.32], 0.18],
       'TETHER ANCHOR': [[0.3, 0.45, 0.85], [0.3, 0.45, 0.7], [0.82, 0.9, 1.0], 0.3],
       'ORBITAL GARDEN': [[0.2, 0.9, 0.3], [0.3, 0.45, 0.7], [0.82, 0.9, 1.0], 0.1],
+      'HIGH STATION': [[0.15, -0.55, 0.82], [0.34, 0.14, 0.4], [0.76, 0.46, 0.82], 0.55],
+      'RIFT LANDS': [[-0.4, 0.35, 0.85], [0.6, 0.5, 0.45], [0.95, 0.85, 0.75], 0.2],
+      'ORBITAL YARDS': [[0.2, 0.9, 0.3], [0.3, 0.45, 0.7], [0.82, 0.9, 1.0], 0.1],
       'REFINERY TERRACES': [[-0.5, 0.35, -0.8], [0.5, 0.3, 0.18], [0.85, 0.62, 0.4], 0.2],
       'SHEPHERD MOON': [[-0.35, 0.42, 0.84], [0.5, 0.3, 0.18], [0.85, 0.62, 0.4], 0.36],
       'CORE BREACH': [[0.4, 0.4, 0.82], [0.34, 0.14, 0.4], [0.76, 0.46, 0.82], 0.2],
@@ -1559,6 +1776,7 @@
       def.lasers = (def.lasers || []).map(row => row.map((v, k) => k < 6 ? v * WORLD_SCALE : v));
       def.exit = def.exit.map(v => typeof v === 'number' ? v * WORLD_SCALE : v);
       def.rooms = scale(def.rooms, [4, 7, 9]);
+      for (const zone of def.zones) if (zone.altitude) zone.altitude = zone.altitude.map(v => v * WORLD_SCALE);
       def.stairs = scale(def.stairs || [], [4]);
       def.blocks = scale(def.blocks, [4]);
       def.girders = scale(def.girders);
@@ -1572,6 +1790,8 @@
         t.ridges = (t.ridges || []).map(row => row.map(v => v * WORLD_SCALE));
         t.clear = (t.clear || []).map(row => row.map(v => v * WORLD_SCALE));
         t.lakes = (t.lakes || []).map(row => row.map(v => v * WORLD_SCALE));
+        t.canyons = (t.canyons || []).map(([depth, half, ...path]) => [depth * WORLD_SCALE, half * WORLD_SCALE, ...path.map(([x, z]) => [x * WORLD_SCALE, z * WORLD_SCALE])]);
+        if (t.terrace) t.terrace *= WORLD_SCALE;
         if (t.water !== undefined) t.water *= WORLD_SCALE;
       }
       for (const spinner of def.spinners || []) {
@@ -1590,7 +1810,9 @@
     const open = new Uint8Array(GRID_W * GRID_D), solidKind = new Uint8Array(GRID_W * GRID_D);
     const floorY = new Float32Array(GRID_W * GRID_D), ceilY = new Float32Array(GRID_W * GRID_D), sealed = new Uint8Array(GRID_W * GRID_D);
     // A roofed cell is covered up to its ceiling, solid from there to its roof, and open sky above the roof.
-    const roofY = new Float32Array(GRID_W * GRID_D), roofOf = new Array(GRID_W * GRID_D).fill(null);
+    const roofY = new Float32Array(GRID_W * GRID_D), roofOf = new Array(GRID_W * GRID_D).fill(null), underY = new Float32Array(GRID_W * GRID_D);
+    // The bottom of a space sector's open volume (the first room's floor); below a cell's underside is open down to it.
+    let spaceFloor = -Infinity;
     const sideOf = new Array(GRID_W * GRID_D).fill(null);
     let level = LEVELS[0], levelIndex = 0;
     const gates = [];
@@ -1599,9 +1821,10 @@
         for (let gx = (x0 - GRID_X0) / CELL; gx < (x1 - GRID_X0) / CELL; gx++) fill(gz * GRID_W + gx, GRID_X0 + gx * CELL, GRID_Z0 + gz * CELL);
     };
     function carve(def) {
-      open.fill(0); solidKind.fill(BULKHEAD); floorY.fill(FLOOR); ceilY.fill(WALL_TOP); sideOf.fill(null); roofY.fill(Infinity);
-      for (const [x0, z0, x1, z1, material, floor = FLOOR, ceil = WALL_TOP, side = null, roof = Infinity, roofMaterial = null] of def.rooms)
-        fillCells([x0, z0, x1, z1], i => { open[i] = 1 + material; floorY[i] = floor; ceilY[i] = ceil; sideOf[i] = side; roofY[i] = roof; roofOf[i] = roofMaterial; });
+      open.fill(0); solidKind.fill(BULKHEAD); floorY.fill(FLOOR); ceilY.fill(WALL_TOP); sideOf.fill(null); roofY.fill(Infinity); underY.fill(-Infinity);
+      spaceFloor = def.space ? def.rooms[0][5] : -Infinity;
+      for (const [x0, z0, x1, z1, material, floor = FLOOR, ceil = WALL_TOP, side = null, roof = Infinity, roofMaterial = null, under = -Infinity] of def.rooms)
+        fillCells([x0, z0, x1, z1], i => { open[i] = 1 + material; floorY[i] = floor; ceilY[i] = ceil; sideOf[i] = side; roofY[i] = roof; roofOf[i] = roofMaterial; underY[i] = under; });
       for (const [x0, z0, x1, z1, material, from, to, axis, headroom] of def.stairs || []) {
         const span = axis === 'x' ? x1 - x0 : z1 - z0;
         fillCells([x0, z0, x1, z1], (i, x, z) => {
@@ -1634,13 +1857,14 @@
     const hazardAt = (x, z) => { const i = cellIndex(x, z); return i >= 0 && (open[i] === 1 + SLUDGE || open[i] === 1 + LAVA) ? open[i] - 1 : 0; };
     const isOpen = (x, z) => cellIndex(x, z) >= 0;
     const ventAt = (x, z, y) => { const i = cellIndex(x, z); return i >= 0 && open[i] === 1 + VENT && y < floorY[i] + 45; };
-    const floorAt = (x, z, y = -Infinity) => { const i = cellIndex(x, z); return i < 0 ? WALL_TOP : y >= roofY[i] ? roofY[i] : floorY[i]; };
-    const coveredAt = (x, z, y = -Infinity) => { const i = cellIndex(x, z); return i >= 0 && ceilY[i] < WALL_TOP && y < roofY[i]; };
+    const floorAt = (x, z, y = -Infinity) => { const i = cellIndex(x, z); return i < 0 ? WALL_TOP : y >= roofY[i] ? roofY[i] : y < underY[i] ? spaceFloor : floorY[i]; };
+    const coveredAt = (x, z, y = -Infinity) => { const i = cellIndex(x, z); return i >= 0 && ceilY[i] < WALL_TOP && y < roofY[i] && y > underY[i]; };
     // Closed gates seal the room below a roof but not the sky above it.
     const freeAt = (x, y, z, pad = 0) => {
       const gx = wrapGX(Math.floor((x - GRID_X0) / CELL)), gz = Math.floor((z - GRID_Z0) / CELL), i = gz * GRID_W + gx;
       if (!cellAt(gx, gz)) return false;
       if (y >= roofY[i] + pad && y <= WALL_TOP - pad) return true;
+      if (y <= underY[i] - pad && y >= spaceFloor + pad) return true;
       return !sealed[i] && y >= floorY[i] + pad && y <= ceilY[i] - pad;
     };
     function walkable(x, z, margin = 0) {
@@ -1718,6 +1942,21 @@
           const across = Math.abs(offX(x, rx)) / (half * (0.85 + 0.3 * valueNoise(z / 30, rx, 9))), along = Math.max(r0 - z, z - r1, 0) / half;
           if (across < 1 && along < 1) h += peak * (1 - across * across) * (1 - along * along) * (0.8 + 0.35 * noiseAt(x, z, 12, 11));
         }
+        // Canyons follow their paths: the distance to the nearest leg sets the depth, flat along the floor and steep at the walls.
+        let cut = 0;
+        for (const [depth, halfWidth, ...path] of t.canyons || []) {
+          let gap = Infinity;
+          for (let k = 0; k + 1 < path.length; k++) {
+            const [ax, az] = path[k], [bx, bz] = path[k + 1], ex = bx - ax, ez = bz - az;
+            const along = clamp(((x - ax) * ex + (z - az) * ez) / (ex * ex + ez * ez), 0, 1);
+            gap = Math.min(gap, Math.hypot(x - ax - ex * along, z - az - ez * along));
+          }
+          const width = halfWidth * (0.8 + 0.4 * noiseAt(x, z, 40, 17));
+          cut = Math.min(cut, -depth * smoothstep(width * 1.25, width * 0.55, gap) * smoothstep(10, 70, edge(x, z)));
+        }
+        h += cut;
+        // Terraces cut the slopes into flat ledges and steep risers, like strata weathered back.
+        if (t.terrace) { const step = t.terrace, ledge = Math.floor(h / step) * step, rise = smoothstep(0.75, 1, h / step - Math.floor(h / step)); h = ledge + rise * step; }
         t.heights[iz * (GRID_W + 1) + ix] = h;
       }
     }
@@ -1730,7 +1969,7 @@
       const t = def.terrain, h = t.heights, row = GRID_W + 1, side = t.side || 'wallMoon';
       for (let gz = 0; gz < GRID_D; gz++) for (let gx = 0; gx < GRID_W; gx++) {
         const i = gz * GRID_W + gx;
-        if ((open[i] !== 1 + MOON && open[i] !== 1 + GRASS) || sideOf[i] !== side || ceilY[i] < WALL_TOP || roofY[i] < Infinity || sealed[i]) continue;
+        if ((open[i] !== 1 + MOON && open[i] !== 1 + GRASS && open[i] !== 1 + SAND) || sideOf[i] !== side || ceilY[i] < WALL_TOP || roofY[i] < Infinity || sealed[i]) continue;
         natural[i] = 1;
         const base = floorY[i];
         floorY[i] += (h[gz * row + gx] + h[gz * row + wrapGX(gx + 1)] + h[(gz + 1) * row + gx] + h[(gz + 1) * row + wrapGX(gx + 1)]) / 4;
@@ -1924,11 +2163,12 @@
           const margin = type === 'warden' || type === 'brood' ? 6 : 4;
           scatter(Math.round((zone[field] || 0) * DIFFICULTIES[save.difficulty].enemies), margin, (x, z) => {
             const i = cellIndex(x, z);
-            if (i < 0 || ceilY[i] - floorY[i] < 9) return false;
-            if (type === 'sentry' && (!flatAt(x, z, 3) || hazardAt(x, z))) return false;
+            if (i < 0 || (!zone.altitude && ceilY[i] - floorY[i] < 9)) return false;
+            if (type === 'sentry' && (zone.altitude || !flatAt(x, z, 3) || hazardAt(x, z))) return false;
             // Lancers perch high to snipe; everything else hovers at a mid height.
             const lift = type === 'lancer' ? range(12, zone.high ? 34 : 18) : range(6, zone.high ? 25 : 15);
-            const y = type === 'sentry' ? floorY[i] + 3.4 : clamp(floorY[i] + lift, floorY[i] + 3.5, ceilY[i] - 3.5);
+            const y = zone.altitude ? range(...zone.altitude) : type === 'sentry' ? floorY[i] + 3.4 : clamp(floorY[i] + lift, floorY[i] + 3.5, ceilY[i] - 3.5);
+            if (zone.altitude && !freeAt(x, y, z, margin)) return false;
             if (!walkable(x, z, margin) || insideGirder([x, y, z], margin + 1) || fromStart(x, z) < 60 ||
               enemies.some(e => Math.hypot(e.base[0] - x, e.base[2] - z) < 14)) return false;
             const enemy = addEnemy(type, x, y, z);
@@ -2800,6 +3040,30 @@
         for (let x = 0; x < 256; x += between(6, 16)) fillRect(p, x, 0, between(2, 5), 256, `rgba(${Math.round(between(20, 40))},${Math.round(between(14, 26))},10,0.8)`, between(0.3, 0.45));
         streaks(p, 30, '90,70,50', 0, 256, 0.3);
       }, { grime: 0.2, rust: 0, wear: 0, strength: 3 });
+      // Desert sand: rippled ochre dust with scattered pebbles.
+      make('floorSand', 512, 512, '#a8683c', p => {
+        for (let i = 0; i < 40; i++) stain(p, rnd() * 512, rnd() * 512, between(40, 160), between(30, 110), rnd() > 0.5 ? '205,140,90' : '120,64,34', between(0.15, 0.4));
+        for (let y = 0; y < 512; y += between(7, 14)) {
+          const points = []; for (let x = -10; x <= 522; x += 32) points.push([x, y + Math.sin(x / 40 + y) * 4 + between(-2, 2)]);
+          trace(p, points, [[p.c, 'rgba(90,46,22,0.25)', 2], [p.b, gray(0.42), 2]]);
+        }
+        for (let i = 0; i < 300; i++) fillRect(p, rnd() * 512, rnd() * 512, between(2, 5), between(2, 4), rnd() > 0.5 ? 'rgba(80,44,26,0.7)' : 'rgba(220,170,120,0.6)', between(0.55, 0.7));
+      }, { grime: 0.1, rust: 0, wear: 0, strength: 2 });
+      // Sandstone: red and buff strata of uneven thickness, cut by joints.
+      make('wallSandstone', 512, 512, '#8a4a2a', p => {
+        for (let y = 0; y < 512;) {
+          const h = between(12, 46), r = Math.round(between(130, 200)), buff = rnd() > 0.7;
+          plate(p, 0, y, 512, Math.min(h, 512 - y), buff ? `rgb(${r + 20},${Math.round(r * 0.78)},${Math.round(r * 0.55)})` : `rgb(${r},${Math.round(r * 0.5)},${Math.round(r * 0.32)})`, 0.46, 0.6, 4);
+          for (let x = between(0, 60); x < 512; x += between(30, 120)) groove(p, x, y + 1, x + between(-6, 6), y + h - 1, 2, 0.3);
+          y += h;
+        }
+        streaks(p, 30, '60,26,12', 0, 512, 0.35); scratches(p, 50, 0.15);
+      }, { grime: 0.3, rust: 0, wear: 0.15 });
+      // Solar panels: blue cells in a silver frame, with a faint sheen.
+      make('solarPanel', 256, 256, '#1a2a44', p => {
+        for (let y = 0; y < 256; y += 32) for (let x = 0; x < 256; x += 32) plate(p, x + 2, y + 2, 28, 28, rnd() > 0.1 ? '#1e3a6e' : '#2a4a80', 0.5, 0.56, 2);
+        for (let k = 0; k < 256; k += 32) { fillRect(p, k, 0, 2, 256, '#9aa6b4', 0.7); fillRect(p, 0, k, 256, 2, '#9aa6b4', 0.7); }
+      }, { grime: 0.05, rust: 0, wear: 0 });
       make('crackedWall', 512, 512, '#27333b', p => {
         bulkPanel(p, 10, 12, 492, 488);
         for (let i = 0; i < 4; i++) trace(p, wander(between(150, 360), between(120, 390), 9, between(20, 34), 1.1),
@@ -2943,7 +3207,7 @@
       }
       void main() {
         vec3 dir = normalize(uForward + uRight * vNdc.x * uSpread.x + uUp * vNdc.y * uSpread.y);
-        float h = dir.y;
+        float h = uAirless > 1.5 ? abs(dir.y) : dir.y;
         vec3 color = mix(uFogColor, uZenith, pow(clamp(h, 0.0, 1.0), 0.5));
         color = mix(color, uFogColor * 0.55, smoothstep(0.0, -0.3, h));
         float sun = max(dot(dir, uSunDir), 0.0);
@@ -3085,6 +3349,7 @@
       wallVoid: [0.9, 1, 2.6], crystal: [1.1, 1, 1.5], floorIce: [1.1, 0.8, 1.4], floorHive: [0.5, 1, 2], floorWater: [1.5, 0.5, 1.6],
       floorVent: [0.5, 1, 2.6], floorVoid: [0.9, 1, 2.4], floorMoon: [0.2, 1, 1], wallMoon: [0.25, 1, 1],
       floorGrass: [0.15, 1, 1], wallCliff: [0.2, 1, 1], treeLeaves: [0.25, 1, 1], treeBark: [0.15, 1, 1],
+      floorSand: [0.15, 1, 1], wallSandstone: [0.25, 1, 1], solarPanel: [1.4, 0.6, 1],
     };
     const materials = {};
     // Surfaces are painted the first time a sector needs them (painting every one up front took seconds on phones);
@@ -3105,14 +3370,14 @@
     // Surfaces inside tunnels go in their own groups so the sun and sky can be dimmed there.
     const LOWER_VARIANTS = [['wallLower', 0.6], ['wallVent', 0.14], ['wallDoor', 0.12], ['wallPipes', 0.14]];
     const UPPER_VARIANTS = [['wallUpper', 0.68], ['wallWindows', 0.22], ['wallSign', 0.1]];
-    const TEXTURE_HEIGHT = { wallMoon: 16, wallCliff: 12, wallRust: 8, wallIce: 10, wallHive: 10, wallBasalt: 14, wallContainer: 7, wallContainerB: 7, wallTech: 10, wallVoid: 10 };
+    const TEXTURE_HEIGHT = { wallMoon: 16, wallCliff: 12, wallSandstone: 14, wallRust: 8, wallIce: 10, wallHive: 10, wallBasalt: 14, wallContainer: 7, wallContainerB: 7, wallTech: 10, wallVoid: 10 };
     const pickVariant = (options, value) => { for (const [name, weight] of options) if ((value -= weight) < 0) return name; return options[0][0]; };
     const radarEdges = [], beacons = [];
     let levelMeshes = [];
     function buildLevel(def) {
       let groups = {};
       const quad = (name, covered, corners, normal, uvs, shades, normals) => {
-        const key = covered ? `${name}|covered` : name, list = groups[key] || (groups[key] = []);
+        const key = covered && !def.lit ? `${name}|covered` : name, list = groups[key] || (groups[key] = []);
         for (const i of [0, 1, 2, 0, 2, 3]) list.push(...corners[i], ...(normals ? normals[i] : normal), ...uvs[i], shades[i]);
       };
       // Natural ground: each cell corner is the average of the natural cells around it whose floors are within a cliff's
@@ -3147,7 +3412,7 @@
         for (const [normal, corners] of faces) quad(name, covered, corners, normal, corners.map(p => uvOf(p, normal)), [1, 1, 1, 1]);
       };
       const outsideGrid = (gx, gz) => (!wrapCells && (gx < 0 || gx >= GRID_W)) || gz < 0 || gz >= GRID_D;
-      const closed = (gx, gz) => cellAt(gx, gz) === 0 && !(def.moon && outsideGrid(gx, gz)) ? 1 : 0;
+      const openEdge = def.moon || def.canyon, closed = (gx, gz) => cellAt(gx, gz) === 0 && !(openEdge && outsideGrid(gx, gz)) ? 1 : 0;
       const ao = (ix, iz) => 1 - 0.16 * (closed(ix - 1, iz - 1) + closed(ix, iz - 1) + closed(ix - 1, iz) + closed(ix, iz));
       // Open moon ground merges flat, open 4x4-cell patches into one floor quad, to keep its vertex count down.
       const PATCH = 4, merged = new Uint8Array(GRID_W * GRID_D);
@@ -3163,7 +3428,57 @@
         if (!same) continue;
         for (let dz = 0; dz < PATCH; dz++) for (let dx = 0; dx < PATCH; dx++) merged[(pz + dz) * GRID_W + px + dx] = dz === 0 && dx === 0 ? 2 : 1;
       }
-      for (let gz = 0; gz < GRID_D; gz++) for (let gx = 0; gx < GRID_W; gx++) {
+      // In open space each cell is a stack of open and solid spans; a wall face is wherever one cell's open span meets
+      // its neighbor's solid one, and the space floor itself is never drawn.
+      const spansOf = (k) => {
+        const spans = [[floorY[k], Math.min(ceilY[k], WALL_TOP), ceilY[k] < WALL_TOP]];
+        if (roofY[k] < Infinity) spans.push([roofY[k], WALL_TOP, false]);
+        if (underY[k] > -Infinity) spans.push([spaceFloor, underY[k], false]);
+        return spans;
+      };
+      const solidsOf = (k) => {
+        const edges = spansOf(k).sort((p, q) => p[0] - q[0]), solid = [];
+        let y = spaceFloor;
+        for (const [lo, hi] of edges) { if (lo > y + 0.01) solid.push([y, lo]); y = Math.max(y, hi); }
+        if (y < WALL_TOP - 0.01) solid.push([y, WALL_TOP]);
+        return solid;
+      };
+      if (def.space) for (let gz = 0; gz < GRID_D; gz++) for (let gx = 0; gx < GRID_W; gx++) {
+        const material = cellAt(gx, gz);
+        if (!material) continue;
+        const i = gz * GRID_W + gx, x0 = GRID_X0 + gx * CELL, z0 = GRID_Z0 + gz * CELL, x1 = x0 + CELL, z1 = z0 + CELL, flat = [1, 1, 1, 1];
+        const uv = [[x0 / 8, z0 / 8], [x1 / 8, z0 / 8], [x1 / 8, z1 / 8], [x0 / 8, z1 / 8]], covered = ceilY[i] < WALL_TOP;
+        if (floorY[i] > spaceFloor + 0.01) quad(FLOOR_MATERIALS[material - 1], covered, [[x0, floorY[i], z0], [x1, floorY[i], z0], [x1, floorY[i], z1], [x0, floorY[i], z1]], [0, 1, 0], uv, flat);
+        if (covered) quad('ceiling', true, [[x0, ceilY[i], z1], [x1, ceilY[i], z1], [x1, ceilY[i], z0], [x0, ceilY[i], z0]], [0, -1, 0], [uv[3], uv[2], uv[1], uv[0]], flat);
+        if (roofY[i] < Infinity) quad(roofOf[i] || def.roof || 'floorPlate', false, [[x0, roofY[i], z0], [x1, roofY[i], z0], [x1, roofY[i], z1], [x0, roofY[i], z1]], [0, 1, 0], uv, flat);
+        if (underY[i] > -Infinity) quad(def.hull || 'floorPlate', false, [[x0, underY[i], z1], [x1, underY[i], z1], [x1, underY[i], z0], [x0, underY[i], z0]], [0, -1, 0], [uv[3], uv[2], uv[1], uv[0]], [0.7, 0.7, 0.7, 0.7]);
+        for (const [dx, dz] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+          const nx = gx + dx, nz = gz + dz;
+          if (outsideGrid(nx, nz)) continue;
+          const n = nz * GRID_W + nx, solid = cellAt(nx, nz) ? solidsOf(n) : [[spaceFloor, WALL_TOP]];
+          const normal = [-dx, 0, -dz], right = [dz, 0, -dx], half = CELL / 2, cx = x0 + half + dx * half, cz = z0 + half + dz * half;
+          const a = [cx - right[0] * half, cz - right[2] * half], b = [cx + right[0] * half, cz + right[2] * half];
+          const ua = (a[0] * right[0] + a[1] * right[2]) / 8, ub = ua + CELL / 8;
+          const name = sideOf[n] || pickVariant(def.walls?.lower || LOWER_VARIANTS, hashInt(Math.floor(ua), dx ? cx : cz, dx * 3 + dz + 7)), size = TEXTURE_HEIGHT[name] || 12;
+          for (const [lo, hi, inside] of spansOf(i)) for (const [s0, s1] of solid) {
+            const y0 = Math.max(lo, s0), y1 = Math.min(hi, s1);
+            if (y1 - y0 < 0.01) continue;
+            quad(name, inside, [[a[0], y0, a[1]], [b[0], y0, b[1]], [b[0], y1, b[1]], [a[0], y1, a[1]]], normal,
+              [[ua, (y1 - y0) / size], [ub, (y1 - y0) / size], [ub, 0], [ua, 0]], [0.75, 0.75, 1, 1]);
+            if (y1 - y0 > 3) radarEdges.push([a[0], a[1], b[0], b[1]]);
+          }
+        }
+      }
+      // Lights mark the edges of a space sector's operations area: its four corners top to bottom, and the rims at top and bottom.
+      if (def.space) {
+        const gx1 = GRID_X0 + GRID_W * CELL, gz1 = GRID_Z0 + GRID_D * CELL;
+        for (const y of [spaceFloor + 2, WALL_TOP - 2]) {
+          for (let x = GRID_X0 + 20; x < gx1; x += 40) for (const z of [GRID_Z0 + 1, gz1 - 1]) beacons.push({ position: [x, y, z], phase: x * 0.05 });
+          for (let z = GRID_Z0 + 20; z < gz1; z += 40) for (const x of [GRID_X0 + 1, gx1 - 1]) beacons.push({ position: [x, y, z], phase: z * 0.05 });
+        }
+        for (let y = spaceFloor + 40; y < WALL_TOP; y += 40) for (const x of [GRID_X0 + 1, gx1 - 1]) for (const z of [GRID_Z0 + 1, gz1 - 1]) beacons.push({ position: [x, y, z], phase: y * 0.05 });
+      }
+      if (!def.space) for (let gz = 0; gz < GRID_D; gz++) for (let gx = 0; gx < GRID_W; gx++) {
         const material = cellAt(gx, gz);
         if (!material) continue;
         // In a cylinder nothing rises past the axis, so walls stop there.
@@ -3195,7 +3510,7 @@
         for (const [dx, dz] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
           const nx = gx + dx, nz = gz + dz, solid = closed(nx, nz), n = nz * GRID_W + wrapGX(nx);
           // An open level has no wall at its edge: the ground runs on and the edge only stops the ship.
-          if (def.moon && outsideGrid(nx, nz)) continue;
+          if (openEdge && outsideGrid(nx, nz)) continue;
           const normal = [-dx, 0, -dz], right = [dz, 0, -dx];
           const half = CELL / 2, cx = x0 + half + dx * half, cz = z0 + half + dz * half;
           const a = [cx - right[0] * half, cz - right[2] * half], b = [cx + right[0] * half, cz + right[2] * half];
@@ -3276,14 +3591,14 @@
             [[u0, v0], [u1, v0], [u1, v1], [u0, v1]], [0.7, 0.7, 1, 1]);
         }
       };
-      if (def.moon) {
-        // The rest of the moon: plain ground out past the horizon, in tiles small enough to follow the curve (the reach is a
+      if (openEdge) {
+        // The rest of the moon (or plain): ground out past the horizon, in tiles small enough to follow the curve (the reach is a
         // whole number of tiles, so they line up with the map's edge), and amber marker lights along the edge of the operations area.
         const TILE = 40, reach = 1400, gx0 = GRID_X0, gz0 = GRID_Z0, gx1 = GRID_X0 + GRID_W * CELL, gz1 = GRID_Z0 + GRID_D * CELL;
         for (let z = gz0 - reach; z < gz1 + reach; z += TILE) for (let x = gx0 - reach; x < gx1 + reach; x += TILE) {
           if (x >= gx0 && x + TILE <= gx1 && z >= gz0 && z + TILE <= gz1) continue;
           const xa = x, za = z, xb = x + TILE, zb = z + TILE;
-          quad('floorMoon', false, [[xa, FLOOR, za], [xb, FLOOR, za], [xb, FLOOR, zb], [xa, FLOOR, zb]], [0, 1, 0],
+          quad(FLOOR_MATERIALS[def.rooms[0][4]], false, [[xa, def.rooms[0][5], za], [xb, def.rooms[0][5], za], [xb, def.rooms[0][5], zb], [xa, def.rooms[0][5], zb]], [0, 1, 0],
             [[xa / 30, za / 30], [xb / 30, za / 30], [xb / 30, zb / 30], [xa / 30, zb / 30]], [tone(xa, za), tone(xb, za), tone(xb, zb), tone(xa, zb)]);
         }
         for (let x = gx0 + 20; x < gx1; x += 40) for (const z of [gz0 + 1, gz1 - 1]) beacons.push({ position: [x, floorAt(x, z) + 1.5, z], phase: x * 0.05 });
@@ -3859,6 +4174,15 @@
       mesa: { bpm: 100, swing: 0.1, kit: 'halftime', lead: 'square', pad: 'warm', chords: [[40], [41], [38, 'm'], [40]],
         hook: ['E5.4 F5.2 G#5.2 B5.4 A5.4', 'G#5.4 F5.4 E5.8', 'F5.4 A5.2 C6.2 B5.4 A5.4', 'G#5.8 F5.8',
           'D5.4 F5.2 A5.2 D6.4 C6.4', 'B5.4 A5.4 F5.8', 'E5.4 G#5.2 B5.2 E6.4 D6.4', 'C6.4 B5.4 G#5.8'] },
+      station: { bpm: 120, kit: 'synthwave', lead: 'saw', pad: 'glass', arp: 'square', chords: [[42, 'm'], [38], [33], [40]],
+        hook: ['F#5.4 A5.2 C#6.2 F#6.4 E6.4', 'C#6.4 B5.4 A5.8', 'D5.4 F#5.2 A5.2 D6.4 C#6.4', 'B5.8 A5.8',
+          'A5.4 C#6.2 E6.2 A6.4 G#6.4', 'E6.4 C#6.4 A5.8', 'E5.4 G#5.2 B5.2 E6.4 D#6.4', 'C#6.4 B5.4 G#5.8'] },
+      rift: { bpm: 108, swing: 0.08, kit: 'halftime', lead: 'square', pad: 'warm', chords: [[38, 'm'], [36], [34], [33]],
+        hook: ['D5.4 F5.2 A5.2 D6.4 C6.4', 'A5.4 G5.4 F5.8', 'C5.4 E5.2 G5.2 C6.4 Bb5.4', 'G5.8 E5.8',
+          'Bb4.4 D5.2 F5.2 Bb5.4 A5.4', 'F5.4 D5.4 Bb4.8', 'A4.4 C#5.2 E5.2 A5.4 G5.4', 'E5.4 C#5.4 A4.8'] },
+      yards: { bpm: 126, kit: 'foundry', lead: 'square', pad: 'dark', chords: [[40, 'm'], [36], [38], [35]],
+        hook: ['E5.2 E5.2 G5.2 B5.2 A5.4 G5.4', 'F#5.4 E5.4 B4.8', 'C5.2 E5.2 G5.2 C6.2 B5.4 G5.4', 'A5.8 F#5.8',
+          'D5.2 F#5.2 A5.2 D6.2 C6.4 A5.4', 'B5.4 A5.4 F#5.8', 'B4.2 D#5.2 F#5.2 B5.2 A5.4 F#5.4', 'G5.4 F#5.4 D#5.8'] },
       garden: { bpm: 96, swing: 0.05, kit: 'synthwave', lead: 'bell', pad: 'warm', arp: 'triangle', chords: [[43], [38], [40, 'm'], [36]],
         hook: ['D5.4 G5.4 B5.4 A5.4', 'G5.4 D5.4 B4.8', 'D5.4 A5.4 D6.4 C6.4', 'B5.8 A5.8',
           'E5.4 G5.4 B5.4 D6.4', 'C6.4 B5.4 G5.8', 'C5.4 E5.4 G5.4 C6.4', 'B5.4 A5.4 D5.8'] },
@@ -4115,6 +4439,18 @@
       for (const [key, value] of Object.entries(save.sectors)) sectors[Number(key) >= 8 ? Number(key) + 1 : key] = value;
       save.sectors = sectors; if (save.last >= 8) save.last++; save.garden = 1;
     }
+    // Sectors 12 and 13, the high station and the rift lands, came next: records from sector 12 on move up by two.
+    if (!save.station) {
+      const sectors = {};
+      for (const [key, value] of Object.entries(save.sectors)) sectors[Number(key) >= 11 ? Number(key) + 2 : key] = value;
+      save.sectors = sectors; if (save.last >= 11) save.last += 2; save.station = 1;
+    }
+    // Sector 10, the orbital yards, came last: records from sector 10 on move up by one.
+    if (!save.yards) {
+      const sectors = {};
+      for (const [key, value] of Object.entries(save.sectors)) sectors[Number(key) >= 9 ? Number(key) + 1 : key] = value;
+      save.sectors = sectors; if (save.last >= 9) save.last++; save.yards = 1;
+    }
     if (!DIFFICULTIES[save.difficulty]) save.difficulty = 'normal';
     if (!(save.last >= 0 && save.last < LEVELS.length && save.sectors[save.last])) save.last = 0;
     const writeSave = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch { /* storage may be blocked */ } };
@@ -4208,9 +4544,12 @@
       'The docks are burning, and no swarm will load there again. Under Tau-3\'s surface are the hive warrens where the Choir grow their pilots, ruled by the Hive Queen. Burst her egg sacs, then kill her, and the next generation of Earth-burners is never born.',
       'The Hive Queen is dead and her nest is quiet. A tether anchored on Tau-3 lifts finished fighters up to the orbital yards. Cut it and the yards starve.',
       'The tether is down, but the orbital yards have one more larder: a garden cylinder turning over Tau-3, a world rolled up inside a spinning drum, with meadows, lakes and a town that curve up round you and meet overhead. Destroy its seed towers, fly up to the sun line down its axis, cross to the far shore to wreck the irrigation pumps, and leave by the end-cap gate.',
-      'The garden is burning and Tau-3\'s yards are cut off. Sigma-4\'s refinery terraces are the last supply line feeding the crown world. Burn them and Omega stands alone.',
+      'The garden is burning, and the yards it fed are next: a double drum turning over Tau-3, an industrial cylinder round a second inner one, where the swarm\'s hulls are pressed and fitted. Wreck the press controllers, break the yard bulkhead, climb through a gap into the inner cylinder, kill the spindle dynamos that turn it, and leave by the end-cap gate.',
+      'The yards are slag and Tau-3 is cut off. Sigma-4\'s refinery terraces are the last supply line feeding the crown world. Burn them and Omega stands alone.',
       'The terraces are burning, but their last fuel already went up the line to Sigma-4\'s shepherd moon, a grey rock barely a kilometre across that ships it on to Omega. Its depot sits on open ground under a black sky. Find the tanker that went down, silence the comms mesa, break into the dome and kill its power cores, then get out through the extraction gate.',
-      'The shepherd moon is dark and Omega is cut off. The crown world\'s core is guarded by the Omega Sentinel and its four shield pylons. Bring the Sentinel down; this should end the song.',
+      'The shepherd moon is dark, and the fuel it shipped is stranded at Omega\'s high station, a fortress of hull and truss hanging in open space over the crown world. Strip its hull turrets, force the docking port, kill the control cores in its hub, then dive under it and burn the stabilizers round its reactor.',
+      'The high station is falling out of orbit. Below it, the only way to the crown world\'s core runs through the rift lands: a plateau split by a rift a hundred units deep. Destroy the beacons on its rims, dive into the rift, wreck the generators in the bunker on its floor, silence the guns on the east mesa, and follow the rift to its end.',
+      'The rift is quiet and the way down is open. The crown world\'s core is guarded by the Omega Sentinel and its four shield pylons. Bring the Sentinel down; this should end the song.',
       'The Sentinel is dead, but the song did not stop: Omega was never the source. The signal comes from inside the Void, a shroud of dark dust around Nadir\'s inner worlds, and the Requiem is going in. Follow it down the Abyss Shaft, a world hollowed out to its core.',
       'You made it back up the shaft, deeper inside the Void than anyone has been. At the end of a crystal canyon a Void Carrier is docked, one of the ships that carried the swarm to Earth. Take it apart.',
       'The carrier that burned Earth is wreckage. Deeper in, a foundry is building something far bigger than fighters. Climb it and tear it down before it is finished.',
@@ -4229,7 +4568,7 @@
       omega: { name: 'OMEGA', orbit: 0.3, angle: 0.95, color: '#c08cff' },
       void: { name: 'THE VOID', orbit: 0.15, angle: 3.6, color: '#e070ff' },
     };
-    const SECTOR_PLACES = ['delta', 'delta', 'epsilon', 'epsilon', 'epsilon', 'tau', 'tau', 'tau', 'tau', 'sigma', 'sigma', 'omega', 'void', 'void', 'void', 'void', 'void', 'void', 'void'];
+    const SECTOR_PLACES = ['delta', 'delta', 'epsilon', 'epsilon', 'epsilon', 'tau', 'tau', 'tau', 'tau', 'tau', 'sigma', 'sigma', 'omega', 'omega', 'omega', 'void', 'void', 'void', 'void', 'void', 'void', 'void'];
     function drawSystemMap(now) {
       const ratio = window.devicePixelRatio || 1, w = systemMap.clientWidth, h = systemMap.clientHeight;
       if (!w || !h) return;
@@ -4434,7 +4773,7 @@
     }
     const IDENTITY = modelMatrix([0, 0, 0]), WHITE = [1, 1, 1];
     const PICKUP_COLORS = { health: [0.35, 1.0, 0.55], weapon: [1.0, 0.62, 0.18], missile: [1.0, 0.3, 0.5], launcher: [0.7, 0.45, 1.0] };
-    const exposureAt = (p) => coveredAt(p[0], p[2], p[1]) ? 0.3 : 1;
+    const exposureAt = (p) => !level.lit && coveredAt(p[0], p[2], p[1]) ? 0.3 : 1;
     const exitCenter = () => level.exit.slice(0, 3);
     let boundMaterial = null, boundPulse = 0;
     function useMaterial(material, pulse = 1) {
@@ -4488,7 +4827,7 @@
       };
       const seen = inView(camera), nearby = (position, limit) => { const d = gapBetween(position, camera.position); return dot(d, d) < limit * limit && seen(position, 14); };
       for (const beacon of beacons) {
-        if (!nearby(beacon.position, GRAPHICS[graphics].detail ? 240 : 120)) continue;
+        if (!nearby(beacon.position, level.space ? 500 : GRAPHICS[graphics].detail ? 240 : 120)) continue;
         const blink = 0.5 + 0.5 * Math.sin(time * 2.4 + beacon.phase);
         billboard(beacon.position, 0.7, [1.0, 0.65, 0.2], 0.4 + blink * 0.9);
         if (GRAPHICS[graphics].detail) billboard(beacon.position, 2.4, [1.0, 0.5, 0.15], 0.1 + blink * 0.16);
@@ -4698,7 +5037,7 @@
       gl.uniform3fv(s.uFogColor, sky.fog); gl.uniform3fv(s.uZenith, sky.zenith); gl.uniform1f(s.uTime, time);
       const planet = level.planet;
       gl.uniform3fv(s.uPlanetDir, planet.dir); gl.uniform3fv(s.uPlanetA, planet.a); gl.uniform3fv(s.uPlanetB, planet.b); gl.uniform1f(s.uPlanetSize, planet.size); gl.uniform1i(s.uQuality, GRAPHICS[graphics].detail);
-      gl.uniform1f(s.uAirless, level.moon ? 1 : 0);
+      gl.uniform1f(s.uAirless, level.space ? 2 : level.moon ? 1 : 0);
       gl.bindVertexArray(skyMesh); gl.drawArrays(gl.TRIANGLES, 0, 3);
 
       gl.enable(gl.DEPTH_TEST); gl.depthMask(true);
@@ -4712,7 +5051,9 @@
       gl.uniform4fv(u.uLights, lights.positions); gl.uniform3fv(u.uLightColors, lights.colors); gl.uniform1i(u.uLightCount, lights.count); gl.uniform1i(u.uQuality, GRAPHICS[graphics].detail);
       gl.uniform1f(u.uCurve, curve); gl.uniform1f(u.uDatum, FLOOR);
       if (level.moon) { gl.uniform3f(u.uFog, 220, 900, 0.75); gl.uniform1f(u.uHaze, 0); }
-      else if (level.cylinder) { gl.uniform3f(u.uFog, 160, 1000, 0.6); gl.uniform1f(u.uHaze, 0); } else { gl.uniform3f(u.uFog, 75, 540, 0.94); gl.uniform1f(u.uHaze, 0.35); }
+      else if (level.cylinder) { gl.uniform3f(u.uFog, 160, 1000, 0.6); gl.uniform1f(u.uHaze, 0); }
+      else if (level.space) { gl.uniform3f(u.uFog, 300, 1200, 0.5); gl.uniform1f(u.uHaze, 0); }
+      else if (level.canyon) { gl.uniform3f(u.uFog, 200, 1100, 0.7); gl.uniform1f(u.uHaze, 0.2); } else { gl.uniform3f(u.uFog, 75, 540, 0.94); gl.uniform1f(u.uHaze, 0.35); }
       const reactorPulse = 1 + 0.3 * Math.sin(time * 2.2), gatePulse = exitOpen() ? 1 + 0.35 * Math.sin(time * 5) : 0.15;
       boundMaterial = null;
       const seen = inView(camera);
@@ -5794,7 +6135,8 @@
       if (!fits(ship.position)) {
         // Slide along whatever was hit: keep the horizontal move, or else the vertical one.
         const [x, y, z] = ship.position, girder = insideGirder(ship.position, 0.8), covered = coveredAt(x, z, y);
-        const outside = level.moon && (x < GRID_X0 + 2 || z < GRID_Z0 + 2 || x > GRID_X0 + GRID_W * CELL - 2 || z > GRID_Z0 + GRID_D * CELL - 2);
+        const outside = (level.moon || level.space || level.canyon) && (x < GRID_X0 + 2 || z < GRID_Z0 + 2 || x > GRID_X0 + GRID_W * CELL - 2 || z > GRID_Z0 + GRID_D * CELL - 2 ||
+          (level.space && !covered && (y < spaceFloor + 2 || y > WALL_TOP - 2)));
         const label = girder ? 'GIRDER IMPACT' : outside ? 'OPERATIONS LIMIT' : !walkable(x, z, 0.7) ? 'WALL IMPACT' : y > WALL_TOP - 1.5 && !covered ? (level.interior ? 'CEILING IMPACT' : 'ALTITUDE LIMIT')
           : covered && y > floorAt(x, z) + 5 ? 'CEILING IMPACT' : 'HULL SCRAPE';
         const slideXZ = [x, previous[1], z], slideUp = [previous[0], y, previous[2]];
