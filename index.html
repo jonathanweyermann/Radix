@@ -3328,6 +3328,9 @@
     // The sentinel cannot be hurt while any of its shield pylons stand.
     const pylonsLeft = () => enemies.filter(e => e.type === 'pylon' && e.hp > 0).length;
     const barrels = [], enemies = [], pickups = [];
+    // The chance each type carries a shield, and how fast (radians a second) it can swing the shield round to face the ship.
+    const SHIELD_BEARERS = { warden: 0.6, sentry: 0.45, striker: 0.4, lancer: 0.4, drone: 0.2 };
+    const SHIELD_TURN = { warden: 0.7, sentry: 0.8, striker: 1, lancer: 0.8, drone: 1.2 };
     const addBarrel = (x, z) => barrels.push({ position: [x, floorAt(x, z) + 1.8, z], floor: floorAt(x, z), radius: 1.7, height: 3.6, hp: 2, exploded: false, spin: range(0, Math.PI * 2), flash: 0 });
     const addEnemy = (type, x, y, z) => {
       const hp = Math.round(ENEMY_TYPES[type].hp * toughness(type));
@@ -3445,6 +3448,12 @@
           return true;
         });
       }
+      // From sector 2 on, some wardens, sentries, strikers, lancers and drones carry a shield, more of them in later sectors.
+      // Objective targets and escorts never do.
+      const targets = new Set(objectives.flatMap(goal => goal.enemies)), ramp = clamp(levelIndex / 4, 0, 1);
+      for (const enemy of enemies)
+        if (SHIELD_BEARERS[enemy.type] && !targets.has(enemy) && !enemy.leader && random() < SHIELD_BEARERS[enemy.type] * ramp)
+          Object.assign(enemy, { guard: true, guardDir: [0, 0, 1], guardUp: 0, guardOn: false, guardTimer: range(0.3, 1.2), guardFlash: 0 });
       hostileTotal = enemies.length; pickupTotal = pickups.length;
     }
     // Gates seal their cells until opened. Chain gates carry two padlocks on the face the player meets,
@@ -4578,7 +4587,19 @@
       out vec4 outColor;
       void main() {
         float glow;
-        if (vUv.x > 1.5) {
+        if (vUv.x > 3.5) {
+          // A shield disc: a faint fill under a honeycomb of glowing lines, with a bright rim.
+          vec2 p = vec2((vUv.x - 4.5) * 2.0, vUv.y * 2.0 - 1.0);
+          float r = length(p);
+          const vec2 s = vec2(1.0, 1.7320508);
+          vec2 h = p * 4.5;
+          vec4 cells = floor(vec4(h, h - vec2(0.5, 1.0)) / s.xyxy) + 0.5;
+          vec4 local = vec4(h - cells.xy * s, h - (cells.zw + 0.5) * s);
+          vec2 g = abs(dot(local.xy, local.xy) < dot(local.zw, local.zw) ? local.xy : local.zw);
+          float edge = smoothstep(0.4, 0.5, max(dot(g, s * 0.5), g.x));
+          float rim = smoothstep(0.8, 0.96, r) * (1.0 - smoothstep(0.96, 1.0, r));
+          glow = (0.12 + 0.2 * r + edge * 0.45 + rim) * (1.0 - smoothstep(0.98, 1.0, r));
+        } else if (vUv.x > 1.5) {
           vec2 p = vec2((vUv.x - 2.5) * 2.0, vUv.y * 2.0 - 1.0);
           glow = exp(-p.y * p.y * 6.0) * (1.0 - smoothstep(0.6, 1.0, abs(p.x)));
         } else {
@@ -6563,6 +6584,16 @@
         streak(boltTail(shot, 0.06), shot.position, width, shot.tint || [0.35, 0.9, 1.0], 1.6);
         billboard(shot.position, width * 2, [0.8, 1.0, 1.0], 1.2);
       }
+      // Shield discs, brighter where they were just struck; one about to drop flickers.
+      for (const enemy of enemies) {
+        if (!enemy.guard || enemy.hp <= 0 || enemy.guardUp <= 0.02 || !nearby(enemy.position, 220)) continue;
+        const { center, radius } = guardDisc(enemy), n = enemy.guardDir;
+        const across = normalize(Math.abs(n[1]) > 0.95 ? cross(n, [1, 0, 0]) : cross(n, [0, 1, 0])), up = cross(across, n);
+        const a = mul(across, radius), b = mul(up, radius);
+        const flicker = enemy.guardOn && enemy.guardTimer < 0.8 ? 0.45 + 0.55 * (Math.sin(time * 38) > 0 ? 1 : 0) : 1;
+        quad([sub(sub(center, a), b), sub(add(center, a), b), add(add(center, a), b), add(sub(center, a), b)], [[4, 0], [5, 0], [5, 1], [4, 1]],
+          [0.35 + enemy.guardFlash * 0.5, 0.75 + enemy.guardFlash * 0.2, 1.0], (0.55 + enemy.guardFlash * 0.9) * enemy.guardUp * flicker);
+      }
       for (const rail of rails) {
         const k = rail.life / 0.22;
         for (let j = 1; j < rail.path.length; j++) {
@@ -7159,20 +7190,42 @@
       warden: 'WARDEN // HEAVY ARMOR, THREE-BOLT SPREADS', striker: 'STRIKER // SHOOT DOWN ITS HOMING MISSILES', sentry: 'SENTRY // TURRET ON A PYLON, FIRES BURSTS',
       lancer: 'LANCER // KEEP MOVING WHEN ITS RED BEAM FINDS YOU', aegis: 'AEGIS // KILL IT FIRST: IT SHIELDS ITS ALLIES', brood: 'BROOD // HATCHES MITES AND BURSTS INTO MORE',
       skimmer: 'SKIMMER // FAST, CIRCLES YOU AND FIRES PAIRS', miner: 'MINER // SHOOT ITS MINES BEFORE THEY REACH YOU', phantom: 'PHANTOM // CLOAKED UNTIL IT FIRES OR GETS CLOSE',
+      guard: 'SHIELD BEARER // ITS SHIELD STOPS YOUR FIRE FROM THE FRONT: FLANK IT OR WAIT FOR IT TO DROP',
     };
     function alert(enemy) {
       enemy.active = true;
       const seen = save.seen || (save.seen = []);
-      if (ENEMY_TIPS[enemy.type] && !seen.includes(enemy.type)) { seen.push(enemy.type); writeSave(); notice(ENEMY_TIPS[enemy.type], 3.5); }
+      const tip = ENEMY_TIPS[enemy.type] && !seen.includes(enemy.type) ? enemy.type : enemy.guard && !seen.includes('guard') ? 'guard' : null;
+      if (tip) { seen.push(tip); writeSave(); notice(ENEMY_TIPS[tip], 3.5); }
       for (const other of enemies)
         if (!other.active && other.hp > 0 && other.type !== 'hunter' && other.type !== 'mite' && Math.hypot(...sub(other.position, enemy.position)) < 35) other.active = true;
     }
     // How hard each type jinks when the ship lines it up and fires, or hits it: a kick across the ship's view, mostly away
     // from the reticle, that its steering then eases off.
     const EVASION = { drone: 20, phantom: 20, skimmer: 26, striker: 16, hunter: 12, warden: 9 };
+    function updateGuard(enemy, toPlayer, distance, visible, dt) {
+      enemy.guardFlash = Math.max(0, enemy.guardFlash - dt * 4);
+      const engaged = enemy.active && visible && distance < 110;
+      if (!engaged) { enemy.guardOn = false; enemy.guardTimer = Math.min(enemy.guardTimer, 0.6); }
+      else if ((enemy.guardTimer -= dt) <= 0) {
+        enemy.guardOn = !enemy.guardOn;
+        enemy.guardTimer = enemy.guardOn ? range(6, 9) : range(2.5, 4);
+      }
+      enemy.guardUp = clamp(enemy.guardUp + (enemy.guardOn && engaged ? 3 : -3) * dt, 0, 1);
+      const want = mul(toPlayer, 1 / distance);
+      if (enemy.guardUp === 0) { enemy.guardDir = want; return; }
+      // Swing toward the ship about the axis between them (any level axis when the ship is straight behind).
+      const g = enemy.guardDir, angle = Math.acos(clamp(dot(g, want), -1, 1)), turn = SHIELD_TURN[enemy.type] * dt;
+      if (angle <= turn) { enemy.guardDir = want; return; }
+      let axis = cross(g, want);
+      if (Math.hypot(...axis) < 1e-4) { const flat = Math.abs(g[1]) > 0.9 ? [1, 0, 0] : [0, 1, 0]; axis = cross(g, cross(flat, g)); }
+      const toward = cross(normalize(axis), g);
+      enemy.guardDir = normalize(add(mul(g, Math.cos(turn)), mul(toward, Math.sin(turn))));
+    }
     function evade(enemy, distance, sight, dt) {
       enemy.jinkReady = (enemy.jinkReady ?? range(0.3, 1)) - dt;
-      if (enemy.jinkReady > 0 || distance > 140) return;
+      // A bearer behind its shield trusts the shield instead of jinking.
+      if (enemy.jinkReady > 0 || distance > 140 || enemy.guardUp > 0.5) return;
       const seen = sub(curve ? bend(enemy.position, ship.position) : enemy.position, ship.position);
       const along = dot(seen, sight.forward), across = sub(seen, mul(sight.forward, along));
       const lined = along > 0 && Math.hypot(...across) < ENEMY_TYPES[enemy.type].radius + 3 && time - lastFired < 0.6;
@@ -7347,6 +7400,7 @@
         const visible = distance < kind.sight && lineOfSight(enemy.position);
         if (visible && !enemy.active) alert(enemy);
         moveByType(enemy, toPlayer, distance, visible, dt, sight);
+        if (enemy.guard) updateGuard(enemy, sub(ship.position, enemy.position), Math.hypot(...sub(ship.position, enemy.position)) || 0.01, visible, dt);
         toPlayer = sub(ship.position, enemy.position); distance = Math.hypot(...toPlayer) || 0.01;
         enemy.age += dt;
         const facing = Math.atan2(toPlayer[0], toPlayer[2]) - enemy.yaw;
@@ -7521,7 +7575,7 @@
         else registerHit('WALL CRACKING');
       }
     }
-    function detonateMissile(position, direct) {
+    function detonateMissile(position, direct, spare) {
       crackWalls(position, 3, 7);
       explosions.push({ position: position.slice(), life: 0.65, scale: 0.7 });
       sparks(position, 18, [1.0, 0.6, 0.25], 18);
@@ -7529,10 +7583,39 @@
       for (const enemy of enemies) {
         if (enemy.hp <= 0) continue;
         const gap = Math.hypot(...sub(enemy.position, position));
+        if (enemy === spare) continue;
         if (enemy === direct) hurtEnemy(enemy, 5);
         else if (gap < 7) hurtEnemy(enemy, 2);
       }
       for (const barrel of barrels) if (!barrel.exploded && Math.hypot(...sub(barrel.position, position)) < 5) explodeBarrel(barrel);
+    }
+    // A shield bearer's barrier is a one-way disc held in front of it, facing `guardDir`. Anything of the ship's crossing it
+    // from the front stops there; the bearer's own bolts, fired from behind it, pass straight out. Returns the bearer and the
+    // point where a segment from `a` to `b` would strike a barrier, or null.
+    const guardDisc = (enemy) => {
+      const r = ENEMY_TYPES[enemy.type].radius;
+      return { center: add(enemy.position, mul(enemy.guardDir, r + 1.6)), radius: (r * 1.5 + 2.2) * enemy.guardUp };
+    };
+    function shieldStop(a, b) {
+      for (const enemy of enemies) {
+        if (!enemy.guard || enemy.hp <= 0 || enemy.guardUp < 0.3) continue;
+        const { center, radius } = guardDisc(enemy), n = enemy.guardDir;
+        const da = dot(sub(a, center), n), db = dot(sub(b, center), n);
+        if (da <= 0 || db > 0) continue;
+        const point = add(a, mul(sub(b, a), da / (da - db)));
+        if (Math.hypot(...sub(point, center)) < radius) return { enemy, point };
+      }
+      return null;
+    }
+    let shieldPingAt = -1;
+    function shieldBlocked({ enemy, point }) {
+      enemy.guardFlash = 1;
+      sparks(point, 6, [0.5, 0.85, 1.0], 10);
+      registerHit('SHIELDED // FLANK IT');
+      if (audioContext && audioContext.state === 'running' && time - shieldPingAt > 0.06) {
+        shieldPingAt = time;
+        synth(1500, 950, 0.09, 0.022, 'sine', audioContext.currentTime); synth(3100, 2200, 0.05, 0.008, 'triangle', audioContext.currentTime);
+      }
     }
     // Plasma bursts on impact, hurting everything close by apart from what it hit directly.
     function plasmaSplash(position, skip) {
@@ -7547,7 +7630,13 @@
       const along = (reach) => { const p = add(ship.position, mul(view.forward, reach)); return curve ? unbend(p, ship.position) : p; };
       const from = along(1.5);
       let reach = 1.5;
-      while (reach < 260) { const p = along(reach); if (!freeAt(...p) || insideGirder(p)) break; reach += 0.8; }
+      let guarded = null;
+      while (reach < 260) {
+        const p = along(reach);
+        if (!freeAt(...p) || insideGirder(p) || (guarded = shieldStop(along(reach - 0.8), p))) break;
+        reach += 0.8;
+      }
+      if (guarded) shieldBlocked(guarded);
       const to = along(reach), path = [from];
       if (curve) for (let r = 9.5; r < reach; r += 8) path.push(along(r));
       path.push(to);
@@ -7611,6 +7700,8 @@
         missile.velocity = mul(direction, Math.min(80, Math.hypot(...missile.velocity) + 60 * dt));
         missile.position = add(missile.position, mul(missile.velocity, dt));
         if (Math.random() < 0.7) particles.push({ position: previous.slice(), velocity: [Math.random() - 0.5, Math.random() + 0.5, Math.random() - 0.5], life: 0.35, maxLife: 0.35, color: [1.0, 0.5, 0.2] });
+        const guarded = shieldStop(previous, missile.position);
+        if (guarded) { shieldBlocked(guarded); detonateMissile(guarded.point, null, guarded.enemy); missiles.splice(i, 1); continue; }
         const struck = enemies.find(enemy => enemy.hp > 0 && segmentHitsSphere(previous, missile.position, enemy.position, ENEMY_TYPES[enemy.type].radius + 0.6));
         const barrel = barrels.find(b => !b.exploded && segmentHitsSphere(previous, missile.position, b.position, 2.3));
         const blocked = !freeAt(...missile.position) || insideGirder(missile.position);
@@ -7678,6 +7769,12 @@
       for (let i = shots.length - 1; i >= 0; i--) {
         const shot = shots[i], previous = advanceBolt(shot, dt);
         shot.life -= dt;
+        const guarded = shieldStop(previous, shot.position);
+        if (guarded) {
+          shieldBlocked(guarded);
+          if (shot.kind === 'plasma') plasmaSplash(guarded.point, guarded.enemy);
+          shots.splice(i, 1); continue;
+        }
         let hit = false;
         for (const enemy of enemies) {
           if (enemy.hp > 0 && !shot.struck?.includes(enemy) && segmentHitsSphere(previous, shot.position, enemy.position, ENEMY_TYPES[enemy.type].radius)) {
