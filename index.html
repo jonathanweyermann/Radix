@@ -297,18 +297,23 @@
     //     through the exit gate, which stays locked until every goal before it is done)
     //   moon: { radius } wraps the sector around a small moon with no walls at its edge, airless sky and open ground beyond
     //   interior: the sector is sealed inside a hull, with a ceiling at the top over every open space
+    //   cylinder: the sector lines the inside of a spinning cylinder. The map's width is its circumference, wrapping round
+    //     at its east and west edges; the ground curves up on both sides to meet overhead, and climbing past the axis
+    //     carries the ship over to the far side. Its z ends are the end caps.
     //   spinners: parts that turn in place { kind, at, axis, radius, inner, length, speed, materials: [outer, inner, cap] }:
     //     'ring' is a hollow band you can fly through, 'core' a solid column, 'cube' a box tumbling about its axis. Rings
     //     and columns block exactly the space they sweep; a cube blocks a sphere a little inside its corners.
-    //   terrain: natural ground for rooms of MOON floor with 'wallMoon' sides: { hills (height of the rolling ground),
+    //   terrain: natural ground for rooms of MOON or GRASS floor with the terrain's `side` texture (default 'wallMoon'):
+    //     { lakes: [x, z, radius, depth] basins, water (the lakes' surface height above the room floor), trees (how many),
+    //     hills (height of the rolling ground),
     //     craters: [x, z, radius, depth], ridges: [x, z0, z1, half width, height], small and boulders (how many small craters
     //     and loose rocks to scatter), clear: areas [x0, z0, x1, z1] kept flat for buildings }. Its floors follow a smooth
     //     heightfield instead of flat steps.
     //   walls: optional weighted wall-texture variants for the lower and upper bands
     //   vents: floor material whose updraft lifts the ship; lasers: timed beam grids [x0, z0, x1, z1, bottom, top, period, offset]
     //   music: the sector's track
-    const FLOOR_MATERIALS = ['floorPlate', 'floorGrate', 'floorPad', 'floorFoundry', 'floorSludge', 'floorLava', 'floorIce', 'floorHive', 'floorWater', 'floorVent', 'floorVoid', 'floorMoon'];
-    const PLATE = 0, GRATE = 1, PAD = 2, SLAG = 3, SLUDGE = 4, LAVA = 5, ICE = 6, HIVE = 7, WATER = 8, VENT = 9, VOID = 10, MOON = 11;
+    const FLOOR_MATERIALS = ['floorPlate', 'floorGrate', 'floorPad', 'floorFoundry', 'floorSludge', 'floorLava', 'floorIce', 'floorHive', 'floorWater', 'floorVent', 'floorVoid', 'floorMoon', 'floorGrass'];
+    const PLATE = 0, GRATE = 1, PAD = 2, SLAG = 3, SLUDGE = 4, LAVA = 5, ICE = 6, HIVE = 7, WATER = 8, VENT = 9, VOID = 10, MOON = 11, GRASS = 12;
     const BULKHEAD = 1, COLUMN = 2, REACTOR = 3, CRYSTAL = 4, SKY = undefined;
     const LEVELS = [
       {
@@ -848,6 +853,63 @@
           { name: 'CABLE LINK', area: [96, 504, 200, 520], drones: 1 },
           { name: 'STATION DOCK', area: [-20, 712, 20, 744], barrels: 2, wardens: 1 },
           { name: 'ORBITAL LIFT', area: [-56, 660, 56, 744], drones: 3, strikers: 2, lancers: 1, health: 1, high: true },
+        ],
+      },
+      {
+        // A garden cylinder in orbit over Tau-3: the sector lines the inside of a spinning drum, so meadows, lakes and a small
+        // town curve up on both sides and meet overhead, lit by a sun line down the axis. Fly up past the axis to come
+        // down on the far side.
+        name: 'TAU-3', title: 'ORBITAL GARDEN', music: 'garden', top: 77, start: [0, -3, -24], yaw: 0, exit: [0, 0, 730, true],
+        cylinder: true,
+        sky: { zenith: [0.5, 0.62, 0.78], fog: [0.56, 0.66, 0.78], sun: [1.0, 0.95, 0.82], sunDir: [0.25, 1, 0.2] },
+        walls: { lower: [['wallTech', 0.5], ['wallWindows', 0.5]], upper: [['wallWindows', 0.6], ['wallTech', 0.4]] },
+        rooms: [
+          [-256, -48, 256, 752, GRASS, BASE, SKY, 'wallCliff'],
+          // The landing pad.
+          [-16, -40, 16, -8, PAD, BASE + 1, SKY, 'wallTech'],
+          // The town: streets first, then blocks of every height on them, and a roofed arcade you can fly through.
+          [-64, 276, 64, 288, PAD, BASE], [-64, 320, 64, 332, PAD, BASE], [-64, 368, 64, 380, PAD, BASE], [-64, 416, 64, 428, PAD, BASE], [-8, 276, 8, 428, PAD, BASE],
+          [-56, 292, -36, 312, PLATE, BASE + 18, SKY, 'wallWindows'], [-28, 292, -12, 308, PLATE, BASE + 30, SKY, 'wallWindows'],
+          [12, 292, 28, 316, PLATE, BASE + 24, SKY, 'wallWindows'], [36, 296, 56, 312, PLATE, BASE + 14, SKY, 'wallWindows'],
+          [-56, 340, -40, 360, PLATE, BASE + 40, SKY, 'wallWindows'], [-32, 336, -12, 352, PLATE, BASE + 12, SKY, 'wallWindows'],
+          [12, 340, 32, 364, PLATE, BASE + 34, SKY, 'wallWindows'], [40, 336, 60, 356, PLATE, BASE + 20, SKY, 'wallWindows'],
+          [-56, 388, -36, 408, PLATE, BASE + 16, SKY, 'wallWindows'], [-28, 384, -12, 404, PLATE, BASE + 26, SKY, 'wallWindows'],
+          [16, 392, 36, 412, PLATE, BASE + 44, SKY, 'wallWindows'], [44, 384, 60, 404, PLATE, BASE + 18, SKY, 'wallWindows'],
+          [-60, 432, 60, 446, PLATE, BASE, BASE + 10, 'wallTech', BASE + 14],
+          // Three seed towers spaced round the drum.
+          [-6, 174, 6, 186, PLATE, BASE + 40, SKY, 'wallTech'], [-3, 177, 3, 183, PAD, BASE + 42, SKY, 'wallTech'], [164, 464, 176, 476, PLATE, BASE + 40, SKY, 'wallTech'], [167, 467, 173, 473, PAD, BASE + 42, SKY, 'wallTech'], [-176, 554, -164, 566, PLATE, BASE + 40, SKY, 'wallTech'], [-173, 557, -167, 563, PAD, BASE + 42, SKY, 'wallTech'],
+          // Pump platforms standing in the far-shore lake, across the seam where the map wraps round.
+          [214, 254, 226, 266, PLATE, BASE + 4, SKY, 'wallTech'], [-242, 324, -230, 336, PLATE, BASE + 4, SKY, 'wallTech'],
+          // The end-cap dock and its gate.
+          [-24, 712, 24, 748, PAD, BASE + 2, SKY, 'wallTech'],
+        ],
+        terrain: {
+          side: 'wallCliff', hills: 10, trees: 320, boulders: 40, water: -8,
+          craters: [],
+          lakes: [[-110, 120, 55, 16], [120, 600, 65, 17], [250, 300, 60, 17], [60, 40, 22, 13]],
+          ridges: [[-110, 170, 560, 16, -14], [-200, 380, 520, 30, 18], [200, 80, 220, 26, 14]],
+          clear: [[-24, -48, 24, 8], [-70, 270, 70, 452], [-14, 166, 14, 194], [156, 456, 184, 484], [-184, 546, -156, 574], [-30, 704, 30, 752]],
+        },
+        stairs: [],
+        blocks: [],
+        girders: [[-64, 22, 350, -40, 24, 354]],
+        gates: [],
+        extras: { barrels: [[-10, 300], [6, 360], [-20, 422], [30, 420]] },
+        objectives: [
+          { kind: 'destroy', text: 'DESTROY THE SEED TOWERS', targets: [['core', 0, BASE + 49, 180, 'SEED TOWER'], ['core', 170, BASE + 49, 470, 'SEED TOWER'], ['core', -170, BASE + 49, 560, 'SEED TOWER']] },
+          { kind: 'reach', text: 'FLY UP TO THE SUN LINE', at: [0, BASE + 74, 520], radius: 18 },
+          { kind: 'destroy', text: 'DESTROY THE IRRIGATION PUMPS', targets: [['core', 220, BASE + 10, 260, 'PUMP'], ['core', -236, BASE + 10, 330, 'PUMP']] },
+          { kind: 'exit', text: 'REACH THE END-CAP GATE' },
+        ],
+        zones: [
+          { name: 'LANDING MEADOW', area: [-48, -48, 48, 60], barrels: 2 },
+          { name: 'WEST LAKE', area: [-170, 60, -50, 180], drones: 2, skimmers: 1, health: 1 },
+          { name: 'THE TOWN', area: [-70, 270, 70, 452], drones: 3, hunters: 2, strikers: 1, health: 1, weapon: 1, high: true },
+          { name: 'FAR SHORE', area: [180, 220, 256, 380], drones: 2, skimmers: 2, lancers: 1, missile: 1 },
+          { name: 'FAR SHORE WEST', area: [-256, 220, -190, 380], drones: 2, wardens: 1, health: 1 },
+          { name: 'EAST LAKE', area: [50, 530, 190, 670], skimmers: 2, drones: 2, missile: 1 },
+          { name: 'END-CAP DOCK', area: [-40, 700, 40, 752], escorts: 1 },
+          { name: 'MEADOWS', area: [-256, -48, 256, 752], drones: 6, skimmers: 3, lancers: 2, strikers: 1, health: 2, missile: 1, high: true },
         ],
       },
       {
@@ -1472,6 +1534,7 @@
       'DROWNED DOCKS': [[0.45, 0.28, 0.85], [0.18, 0.33, 0.36], [0.5, 0.7, 0.7], 0.2],
       'HIVE WARRENS': [[-0.3, 0.6, 0.75], [0.5, 0.34, 0.1], [0.9, 0.72, 0.32], 0.18],
       'TETHER ANCHOR': [[0.3, 0.45, 0.85], [0.3, 0.45, 0.7], [0.82, 0.9, 1.0], 0.3],
+      'ORBITAL GARDEN': [[0.2, 0.9, 0.3], [0.3, 0.45, 0.7], [0.82, 0.9, 1.0], 0.1],
       'REFINERY TERRACES': [[-0.5, 0.35, -0.8], [0.5, 0.3, 0.18], [0.85, 0.62, 0.4], 0.2],
       'SHEPHERD MOON': [[-0.35, 0.42, 0.84], [0.5, 0.3, 0.18], [0.85, 0.62, 0.4], 0.36],
       'CORE BREACH': [[0.4, 0.4, 0.82], [0.34, 0.14, 0.4], [0.76, 0.46, 0.82], 0.2],
@@ -1508,6 +1571,8 @@
         t.craters = (t.craters || []).map(row => row.map(v => v * WORLD_SCALE));
         t.ridges = (t.ridges || []).map(row => row.map(v => v * WORLD_SCALE));
         t.clear = (t.clear || []).map(row => row.map(v => v * WORLD_SCALE));
+        t.lakes = (t.lakes || []).map(row => row.map(v => v * WORLD_SCALE));
+        if (t.water !== undefined) t.water *= WORLD_SCALE;
       }
       for (const spinner of def.spinners || []) {
         spinner.at = spinner.at.map(v => v * WORLD_SCALE);
@@ -1550,9 +1615,19 @@
       applyTerrain(def);
     }
     // cellAt sees the carved shape for building geometry; cellIndex also treats closed gates as solid.
-    const cellAt = (gx, gz) => gx >= 0 && gz >= 0 && gx < GRID_W && gz < GRID_D ? open[gz * GRID_W + gx] : 0;
+    // In a cylinder the grid's east and west edges join, so columns wrap round.
+    let wrapCells = false;
+    const wrapGX = (gx) => wrapCells ? ((gx % GRID_W) + GRID_W) % GRID_W : gx;
+    const AROUND = GRID_W * CELL, AXIS = AROUND / (Math.PI * 2);
+    const cellAt = (gx, gz) => { gx = wrapGX(gx); return gx >= 0 && gz >= 0 && gx < GRID_W && gz < GRID_D ? open[gz * GRID_W + gx] : 0; };
+    // The gap from b to a, taking the short way round a cylinder.
+    const gapBetween = (a, b) => {
+      const d = [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+      if (wrapCells) d[0] -= AROUND * Math.round(d[0] / AROUND);
+      return d;
+    };
     const cellIndex = (x, z) => {
-      const gx = Math.floor((x - GRID_X0) / CELL), gz = Math.floor((z - GRID_Z0) / CELL), i = gz * GRID_W + gx;
+      const gx = wrapGX(Math.floor((x - GRID_X0) / CELL)), gz = Math.floor((z - GRID_Z0) / CELL), i = gz * GRID_W + gx;
       return cellAt(gx, gz) && !sealed[i] ? i : -1;
     };
     // Sludge and lava hurt the ship when it flies low over them; returns the hazard's floor material or 0.
@@ -1563,7 +1638,7 @@
     const coveredAt = (x, z, y = -Infinity) => { const i = cellIndex(x, z); return i >= 0 && ceilY[i] < WALL_TOP && y < roofY[i]; };
     // Closed gates seal the room below a roof but not the sky above it.
     const freeAt = (x, y, z, pad = 0) => {
-      const gx = Math.floor((x - GRID_X0) / CELL), gz = Math.floor((z - GRID_Z0) / CELL), i = gz * GRID_W + gx;
+      const gx = wrapGX(Math.floor((x - GRID_X0) / CELL)), gz = Math.floor((z - GRID_Z0) / CELL), i = gz * GRID_W + gx;
       if (!cellAt(gx, gz)) return false;
       if (y >= roofY[i] + pad && y <= WALL_TOP - pad) return true;
       return !sealed[i] && y >= floorY[i] + pad && y <= ceilY[i] - pad;
@@ -1580,11 +1655,19 @@
     // Natural ground: a heightfield sampled at every cell corner from rolling hills, round craters with raised rims and
     // long ridges. Cells take the average of their corners as their floor, so collisions follow it in 5-unit steps while
     // the ground itself is drawn smooth. Hills and small craters fade out near buildings and the map's edge.
-    const natural = new Uint8Array(GRID_W * GRID_D), cornerHeight = new Float32Array((GRID_W + 1) * (GRID_D + 1));
-    const valueNoise = (x, z, salt) => {
+    const natural = new Uint8Array(GRID_W * GRID_D), wet = new Uint8Array(GRID_W * GRID_D);
+    // Value noise; with `period` set it repeats every `period` cells along x, so a cylinder's ground meets at its seam.
+    const valueNoise = (x, z, salt, period = 0) => {
       const xi = Math.floor(x), zi = Math.floor(z), tx = x - xi, tz = z - zi, sx = tx * tx * (3 - 2 * tx), sz = tz * tz * (3 - 2 * tz);
-      const a = hashInt(xi, zi, salt), b = hashInt(xi + 1, zi, salt), c = hashInt(xi, zi + 1, salt), d = hashInt(xi + 1, zi + 1, salt);
+      const wx = (v) => period ? ((v % period) + period) % period : v;
+      const a = hashInt(wx(xi), zi, salt), b = hashInt(wx(xi + 1), zi, salt), c = hashInt(wx(xi), zi + 1, salt), d = hashInt(wx(xi + 1), zi + 1, salt);
       return a + (b - a) * sx + (c - a) * sz + (a - b - c + d) * sx * sz;
+    };
+    // Noise of roughly the given wavelength; round a cylinder it fits a whole number of waves into the circumference.
+    const noiseAt = (x, z, wavelength, salt) => {
+      if (!wrapCells) return valueNoise(x / wavelength, z / wavelength, salt);
+      const waves = Math.max(1, Math.round(AROUND / wavelength));
+      return valueNoise((x - GRID_X0) / AROUND * waves, z / wavelength, salt, waves);
     };
     const craterShape = (gap, radius, depth) => {
       const r = gap / radius, rim = depth * 0.28 * Math.exp(-(((r - 1) / 0.28) ** 2));
@@ -1592,55 +1675,75 @@
     };
     function prepareTerrain(def) {
       const t = def.terrain;
-      if (t.small_list) return;
-      const x1 = GRID_X0 + GRID_W * CELL, z1 = GRID_Z0 + GRID_D * CELL;
-      const away = (x, z, margin) => x > GRID_X0 + margin && x < x1 - margin && z > GRID_Z0 + margin && z < z1 - margin &&
-        t.clear.every(([a, b, c, d]) => x < a - margin || x > c + margin || z < b - margin || z > d + margin);
+      if (t.heights) return;
+      const x1 = GRID_X0 + GRID_W * CELL, z1 = GRID_Z0 + GRID_D * CELL, ring = !!def.cylinder;
+      const offX = (x, cx) => { const d = x - cx; return ring ? d - AROUND * Math.round(d / AROUND) : d; };
+      const edge = (x, z) => Math.min(ring ? Infinity : Math.min(x - GRID_X0, x1 - x), z - GRID_Z0, z1 - z);
+      const outside = (x, z, [a, b, c, d]) => Math.max(Math.abs(offX(x, (a + c) / 2)) - (c - a) / 2, b - z, z - d);
+      const away = (x, z, margin) => edge(x, z) > margin && t.clear.every(rect => outside(x, z, rect) > margin);
+      const spot = (k, salt) => [GRID_X0 + hashInt(k, 2, salt) * GRID_W * CELL, GRID_Z0 + hashInt(k, 3, salt) * GRID_D * CELL];
       t.small_list = [];
       for (let k = 0; t.small_list.length < (t.small || 0) && k < 4000; k++) {
-        const radius = 6 + hashInt(k, 1, 77) ** 2 * 22, x = GRID_X0 + hashInt(k, 2, 77) * GRID_W * CELL, z = GRID_Z0 + hashInt(k, 3, 77) * GRID_D * CELL;
+        const radius = 6 + hashInt(k, 1, 77) ** 2 * 22, [x, z] = spot(k, 77);
         if (away(x, z, radius * 1.4 + 8)) t.small_list.push([x, z, radius, radius * (0.25 + hashInt(k, 4, 77) * 0.15)]);
       }
       t.boulder_list = [];
       for (let k = 0; t.boulder_list.length < (t.boulders || 0) && k < 6000; k++) {
-        const x = GRID_X0 + hashInt(k, 5, 91) * GRID_W * CELL, z = GRID_Z0 + hashInt(k, 6, 91) * GRID_D * CELL, size = 0.8 + hashInt(k, 7, 91) ** 3 * 4.5;
+        const [x, z] = spot(k, 91), size = 0.8 + hashInt(k, 7, 91) ** 3 * 4.5;
         if (away(x, z, size + 10)) t.boulder_list.push({ x, z, size, yaw: hashInt(k, 8, 91) * Math.PI * 2, squash: 0.55 + hashInt(k, 9, 91) * 0.35, variant: k % 4 });
+      }
+      // Trees gather in groves: each one is likelier where a broad noise field is high.
+      t.tree_list = [];
+      for (let k = 0; t.tree_list.length < (t.trees || 0) && k < 20000; k++) {
+        const [x, z] = spot(k, 53);
+        if (hashInt(k, 4, 53) > noiseAt(x, z, 90, 54) * 1.6 - 0.25 || !away(x, z, 8)) continue;
+        t.tree_list.push({ x, z, size: 0.8 + hashInt(k, 5, 53) * 0.7, yaw: hashInt(k, 6, 53) * Math.PI * 2, conifer: hashInt(k, 7, 53) < 0.35, variant: k % 4 });
       }
       t.heights = new Float32Array((GRID_W + 1) * (GRID_D + 1));
       for (let iz = 0; iz <= GRID_D; iz++) for (let ix = 0; ix <= GRID_W; ix++) {
         const x = GRID_X0 + ix * CELL, z = GRID_Z0 + iz * CELL;
-        let fade = smoothstep(0, 50, Math.min(x - GRID_X0, x1 - x, z - GRID_Z0, z1 - z));
-        for (const [a, b, c, d] of t.clear) fade = Math.min(fade, smoothstep(0, 30, Math.max(a - x, x - c, b - z, z - d)));
-        let h = (valueNoise(x / 70, z / 70, 3) - 0.5 + (valueNoise(x / 23, z / 23, 4) - 0.5) * 0.35) * t.hills * fade;
-        for (const [cx, cz, radius, depth] of t.craters) if (Math.abs(x - cx) < radius * 1.8 && Math.abs(z - cz) < radius * 1.8) h += craterShape(Math.hypot(x - cx, z - cz), radius, depth);
-        for (const [cx, cz, radius, depth] of t.small_list) if (Math.abs(x - cx) < radius * 1.8 && Math.abs(z - cz) < radius * 1.8) h += craterShape(Math.hypot(x - cx, z - cz), radius, depth) * fade;
+        let fade = smoothstep(0, 50, edge(x, z));
+        for (const rect of t.clear) fade = Math.min(fade, smoothstep(0, 30, outside(x, z, rect)));
+        let h = (noiseAt(x, z, 70, 3) - 0.5 + (noiseAt(x, z, 23, 4) - 0.5) * 0.35) * t.hills * fade;
+        const near = (cx, cz, reach) => Math.abs(offX(x, cx)) < reach && Math.abs(z - cz) < reach;
+        for (const [cx, cz, radius, depth] of t.craters) if (near(cx, cz, radius * 1.8)) h += craterShape(Math.hypot(offX(x, cx), z - cz), radius, depth);
+        for (const [cx, cz, radius, depth] of t.small_list) if (near(cx, cz, radius * 1.8)) h += craterShape(Math.hypot(offX(x, cx), z - cz), radius, depth) * fade;
+        // Lake basins: smooth bowls with no rim, wobbled at the edge so their shores aren't perfect circles.
+        for (const [cx, cz, radius, depth] of t.lakes) {
+          if (!near(cx, cz, radius * 1.3)) continue;
+          const r = Math.hypot(offX(x, cx), z - cz) / (radius * (0.85 + 0.3 * noiseAt(x, z, 30, 13)));
+          if (r < 1) h -= depth * (1 - r * r) ** 2;
+        }
         for (const [rx, r0, r1, half, peak] of t.ridges) {
-          const across = Math.abs(x - rx) / (half * (0.85 + 0.3 * valueNoise(z / 30, rx, 9))), along = Math.max(r0 - z, z - r1, 0) / half;
-          if (across < 1 && along < 1) h += peak * (1 - across * across) * (1 - along * along) * (0.8 + 0.35 * valueNoise(x / 12, z / 12, 11));
+          const across = Math.abs(offX(x, rx)) / (half * (0.85 + 0.3 * valueNoise(z / 30, rx, 9))), along = Math.max(r0 - z, z - r1, 0) / half;
+          if (across < 1 && along < 1) h += peak * (1 - across * across) * (1 - along * along) * (0.8 + 0.35 * noiseAt(x, z, 12, 11));
         }
         t.heights[iz * (GRID_W + 1) + ix] = h;
       }
     }
-    // After carving, natural cells take the heightfield as an offset from their room's floor.
+    // After carving, natural cells take the heightfield as an offset from their room's floor; any that would sit below the
+    // terrain's water level fill with water instead, flat at that level.
     function applyTerrain(def) {
-      natural.fill(0);
+      natural.fill(0); wet.fill(0);
       if (!def.terrain) return;
       prepareTerrain(def);
-      const h = def.terrain.heights, row = GRID_W + 1;
+      const t = def.terrain, h = t.heights, row = GRID_W + 1, side = t.side || 'wallMoon';
       for (let gz = 0; gz < GRID_D; gz++) for (let gx = 0; gx < GRID_W; gx++) {
         const i = gz * GRID_W + gx;
-        if (open[i] !== 1 + MOON || sideOf[i] !== 'wallMoon' || ceilY[i] < WALL_TOP || roofY[i] < Infinity || sealed[i]) continue;
+        if ((open[i] !== 1 + MOON && open[i] !== 1 + GRASS) || sideOf[i] !== side || ceilY[i] < WALL_TOP || roofY[i] < Infinity || sealed[i]) continue;
         natural[i] = 1;
-        floorY[i] += (h[gz * row + gx] + h[gz * row + gx + 1] + h[(gz + 1) * row + gx] + h[(gz + 1) * row + gx + 1]) / 4;
+        const base = floorY[i];
+        floorY[i] += (h[gz * row + gx] + h[gz * row + wrapGX(gx + 1)] + h[(gz + 1) * row + gx] + h[(gz + 1) * row + wrapGX(gx + 1)]) / 4;
+        if (t.water !== undefined && floorY[i] < base + t.water) { floorY[i] = base + t.water; wet[i] = 1; }
       }
     }
     // Loose boulders are baked into the level mesh; each also blocks the ship and shots as a sphere.
     let rocks = [];
     const rockCells = new Array(GRID_W * GRID_D).fill(null);
     const insideRock = (p, pad) => {
-      const gx = Math.floor((p[0] - GRID_X0) / CELL), gz = Math.floor((p[2] - GRID_Z0) / CELL);
+      const gx = wrapGX(Math.floor((p[0] - GRID_X0) / CELL)), gz = Math.floor((p[2] - GRID_Z0) / CELL);
       const list = gx >= 0 && gz >= 0 && gx < GRID_W && gz < GRID_D ? rockCells[gz * GRID_W + gx] : null;
-      return !!list && list.some(rock => (p[0] - rock.center[0]) ** 2 + (p[1] - rock.center[1]) ** 2 + (p[2] - rock.center[2]) ** 2 < (rock.radius + pad) ** 2);
+      return !!list && list.some(rock => { const d = gapBetween(p, rock.center); return d[0] ** 2 + d[1] ** 2 + d[2] ** 2 < (rock.radius + pad) ** 2; });
     };
     // Spinners turn about their own axis, so a ring or column always fills the same space: collisions test that swept
     // shape. Each spinner is up to three meshes (outer face, inner face, end caps) so each can wear its own material.
@@ -1769,7 +1872,7 @@
       let best = null, bestGap = Infinity;
       for (const enemy of goal.enemies) {
         if (enemy.hp <= 0) continue;
-        const gap = Math.hypot(...sub(enemy.position, ship.position));
+        const gap = Math.hypot(...gapBetween(enemy.position, ship.position));
         if (gap < bestGap) { best = enemy.position; bestGap = gap; }
       }
       return best;
@@ -1779,12 +1882,12 @@
       if (!goal) return '';
       const left = goal.enemies.filter(e => e.hp > 0).length, spot = objectiveSpot();
       return `OBJECTIVE ${objectiveIndex + 1}/${objectives.length} // ${goal.text}${goal.kind === 'destroy' && goal.enemies.length > 1 ? ` (${left} LEFT)` : ''}` +
-        (spot ? ` // ${Math.round(Math.hypot(...sub(spot, ship.position)))} M` : '');
+        (spot ? ` // ${Math.round(Math.hypot(...gapBetween(spot, ship.position)))} M` : '');
     }
     function updateObjectives() {
       const goal = objectives[objectiveIndex];
       if (!goal) return;
-      const done = goal.kind === 'reach' ? Math.hypot(...sub(goal.at, ship.position)) < goal.radius
+      const done = goal.kind === 'reach' ? Math.hypot(...gapBetween(goal.at, ship.position)) < goal.radius
         : goal.kind === 'destroy' ? goal.enemies.every(e => e.hp <= 0)
         : goal.kind === 'gate' ? gates[goal.gate].opening : false;
       if (!done) return;
@@ -2662,6 +2765,41 @@
         for (let i = 0; i < 6; i++) trace(p, wander(rnd() * 512, rnd() * 512, 12, between(12, 26), 0.9), [[p.c, 'rgba(20,20,22,0.6)', 2.5], [p.b, gray(0.25), 3]]);
         streaks(p, 26, '20,20,22', 0, 512, 0.3); scratches(p, 60, 0.15);
       }, { grime: 0.3, rust: 0, wear: 0.1 });
+      // Meadow grass: green blades over patches of earth and clover.
+      make('floorGrass', 512, 512, '#3d5a26', p => {
+        for (let i = 0; i < 36; i++) stain(p, rnd() * 512, rnd() * 512, between(40, 150), between(30, 120), rnd() > 0.55 ? '120,150,60' : '40,62,24', between(0.2, 0.45));
+        for (let i = 0; i < 10; i++) stain(p, rnd() * 512, rnd() * 512, between(14, 40), between(10, 30), '110,86,52', between(0.25, 0.5));
+        for (let i = 0; i < 2600; i++) {
+          const x = rnd() * 512, y = rnd() * 512, len = between(3, 9), lean = between(-2.5, 2.5), g = Math.round(between(70, 150));
+          for (const [brush, style, width] of [[p.c, `rgba(${Math.round(g * 0.55)},${g},${Math.round(g * 0.35)},0.7)`, 1.2], [p.b, gray(between(0.55, 0.75)), 1.5]]) {
+            brush.strokeStyle = style; brush.lineWidth = width; brush.beginPath(); brush.moveTo(x, y); brush.lineTo(x + lean, y - len); brush.stroke();
+          }
+        }
+        for (let i = 0; i < 60; i++) fillRect(p, rnd() * 512, rnd() * 512, 2, 2, rnd() > 0.5 ? 'rgba(240,230,120,0.8)' : 'rgba(235,235,250,0.8)', 0.6);
+      }, { grime: 0.05, rust: 0, wear: 0, strength: 2 });
+      // Earth banks: layered brown soil and stone.
+      make('wallCliff', 512, 512, '#4a3a2a', p => {
+        for (let y = 0; y < 512;) {
+          const h = between(18, 54), r = Math.round(between(70, 120));
+          plate(p, 0, y, 512, Math.min(h, 512 - y), `rgb(${r},${Math.round(r * 0.78)},${Math.round(r * 0.58)})`, 0.48, 0.6, 4);
+          for (let x = between(0, 70); x < 512; x += between(40, 140)) groove(p, x, y + 2, x + between(-12, 12), y + h - 2, 2, 0.3);
+          y += h;
+        }
+        for (let i = 0; i < 20; i++) stain(p, rnd() * 512, between(0, 90), between(20, 60), between(8, 20), '60,90,36', between(0.3, 0.6));
+        streaks(p, 20, '30,22,14', 0, 512, 0.3);
+      }, { grime: 0.3, rust: 0, wear: 0.1 });
+      make('treeLeaves', 256, 256, '#24461c', p => {
+        for (let i = 0; i < 700; i++) {
+          const x = rnd() * 256, y = rnd() * 256, r = between(3, 9), g = Math.round(between(60, 130));
+          for (const [brush, style] of [[p.c, `rgb(${Math.round(g * 0.45)},${g},${Math.round(g * 0.3)})`], [p.b, gray(between(0.45, 0.85))]]) {
+            brush.fillStyle = style; brush.beginPath(); brush.ellipse(x, y, r, r * 0.6, rnd() * 3, 0, Math.PI * 2); brush.fill();
+          }
+        }
+      }, { grime: 0.1, rust: 0, wear: 0, strength: 3 });
+      make('treeBark', 256, 256, '#3a2a1c', p => {
+        for (let x = 0; x < 256; x += between(6, 16)) fillRect(p, x, 0, between(2, 5), 256, `rgba(${Math.round(between(20, 40))},${Math.round(between(14, 26))},10,0.8)`, between(0.3, 0.45));
+        streaks(p, 30, '90,70,50', 0, 256, 0.3);
+      }, { grime: 0.2, rust: 0, wear: 0, strength: 3 });
       make('crackedWall', 512, 512, '#27333b', p => {
         bulkPanel(p, 10, 12, 492, 488);
         for (let i = 0; i < 4; i++) trace(p, wander(between(150, 360), between(120, 390), 9, between(20, 34), 1.1),
@@ -2690,7 +2828,14 @@
       vec3 bend(vec3 p) {
         vec2 d = p.xz - uCamera.xz;
         float dist = length(d);
-        if (uCurve <= 0.0 || dist < 0.001) return p;
+        if (uCurve < 0.0) {
+          // Inside a cylinder the ground wraps the other way, up round the axis overhead.
+          float radius = -1.0 / uCurve, around = 6.2831853 * radius, dx = p.x - uCamera.x;
+          dx -= around * floor(dx / around + 0.5);
+          float a = dx / radius, r = radius - (p.y - uDatum);
+          return vec3(uCamera.x + r * sin(a), uDatum + radius - r * cos(a), p.z);
+        }
+        if (uCurve == 0.0 || dist < 0.001) return p;
         float radius = 1.0 / uCurve, r = radius + p.y - uDatum, a = min(dist * uCurve, 3.1);
         vec2 along = d / dist * r * sin(a);
         return vec3(uCamera.x + along.x, uDatum - radius + r * cos(a), uCamera.z + along.y);
@@ -2845,7 +2990,14 @@
       vec3 bend(vec3 p) {
         vec2 d = p.xz - uCamera.xz;
         float dist = length(d);
-        if (uCurve <= 0.0 || dist < 0.001) return p;
+        if (uCurve < 0.0) {
+          // Inside a cylinder the ground wraps the other way, up round the axis overhead.
+          float radius = -1.0 / uCurve, around = 6.2831853 * radius, dx = p.x - uCamera.x;
+          dx -= around * floor(dx / around + 0.5);
+          float a = dx / radius, r = radius - (p.y - uDatum);
+          return vec3(uCamera.x + r * sin(a), uDatum + radius - r * cos(a), p.z);
+        }
+        if (uCurve == 0.0 || dist < 0.001) return p;
         float radius = 1.0 / uCurve, r = radius + p.y - uDatum, a = min(dist * uCurve, 3.1);
         vec2 along = d / dist * r * sin(a);
         return vec3(uCamera.x + along.x, uDatum - radius + r * cos(a), uCamera.z + along.y);
@@ -2932,6 +3084,7 @@
       wallIce: [0.8, 1, 1.6], wallHive: [0.5, 1, 2.2], wallBasalt: [0.35, 1, 2.6], wallContainer: [0.45, 1, 1.2], wallContainerB: [0.45, 1, 1.2], wallTech: [0.6, 1, 2.2],
       wallVoid: [0.9, 1, 2.6], crystal: [1.1, 1, 1.5], floorIce: [1.1, 0.8, 1.4], floorHive: [0.5, 1, 2], floorWater: [1.5, 0.5, 1.6],
       floorVent: [0.5, 1, 2.6], floorVoid: [0.9, 1, 2.4], floorMoon: [0.2, 1, 1], wallMoon: [0.25, 1, 1],
+      floorGrass: [0.15, 1, 1], wallCliff: [0.2, 1, 1], treeLeaves: [0.25, 1, 1], treeBark: [0.15, 1, 1],
     };
     const materials = {};
     // Surfaces are painted the first time a sector needs them (painting every one up front took seconds on phones);
@@ -2952,7 +3105,7 @@
     // Surfaces inside tunnels go in their own groups so the sun and sky can be dimmed there.
     const LOWER_VARIANTS = [['wallLower', 0.6], ['wallVent', 0.14], ['wallDoor', 0.12], ['wallPipes', 0.14]];
     const UPPER_VARIANTS = [['wallUpper', 0.68], ['wallWindows', 0.22], ['wallSign', 0.1]];
-    const TEXTURE_HEIGHT = { wallMoon: 16, wallRust: 8, wallIce: 10, wallHive: 10, wallBasalt: 14, wallContainer: 7, wallContainerB: 7, wallTech: 10, wallVoid: 10 };
+    const TEXTURE_HEIGHT = { wallMoon: 16, wallCliff: 12, wallRust: 8, wallIce: 10, wallHive: 10, wallBasalt: 14, wallContainer: 7, wallContainerB: 7, wallTech: 10, wallVoid: 10 };
     const pickVariant = (options, value) => { for (const [name, weight] of options) if ((value -= weight) < 0) return name; return options[0][0]; };
     const radarEdges = [], beacons = [];
     let levelMeshes = [];
@@ -2969,19 +3122,19 @@
         let sum = 0, count = 0;
         for (const [cx, cz] of [[ix - 1, iz - 1], [ix, iz - 1], [ix - 1, iz], [ix, iz]]) {
           if (outsideGrid(cx, cz)) { if (Math.abs(FLOOR - floorY[i]) < CLIFF) { sum += FLOOR; count++; } continue; }
-          const k = cz * GRID_W + cx;
+          const k = cz * GRID_W + wrapGX(cx);
           if (!natural[k]) return floorY[i];
           if (Math.abs(floorY[k] - floorY[i]) < CLIFF) { sum += floorY[k]; count++; }
         }
         return sum / count;
       };
       const slope = (ix, iz) => {
-        const at = (x, z) => terrain[clamp(z, 0, GRID_D) * row + clamp(x, 0, GRID_W)];
+        const at = (x, z) => terrain[clamp(z, 0, GRID_D) * row + (wrapCells ? ((x % GRID_W) + GRID_W) % GRID_W : clamp(x, 0, GRID_W))];
         const n = [(at(ix - 1, iz) - at(ix + 1, iz)) / (2 * CELL), 1, (at(ix, iz - 1) - at(ix, iz + 1)) / (2 * CELL)], l = Math.hypot(...n);
         return [n[0] / l, n[1] / l, n[2] / l];
       };
       // Broad light and dark patches across the dust, like a moon's seas and highlands.
-      const tone = (x, z) => 0.74 + 0.36 * valueNoise(x / 110, z / 110, 21) + 0.12 * (valueNoise(x / 17, z / 17, 22) - 0.5);
+      const tone = (x, z) => 0.74 + 0.36 * noiseAt(x, z, 110, 21) + 0.12 * (noiseAt(x, z, 17, 22) - 0.5);
       const box = (name, covered, [x0, y0, z0], [x1, y1, z1], uvOf) => {
         const faces = [
           [[1, 0, 0], [[x1, y0, z0], [x1, y0, z1], [x1, y1, z1], [x1, y1, z0]]],
@@ -2993,7 +3146,7 @@
         ];
         for (const [normal, corners] of faces) quad(name, covered, corners, normal, corners.map(p => uvOf(p, normal)), [1, 1, 1, 1]);
       };
-      const outsideGrid = (gx, gz) => gx < 0 || gz < 0 || gx >= GRID_W || gz >= GRID_D;
+      const outsideGrid = (gx, gz) => (!wrapCells && (gx < 0 || gx >= GRID_W)) || gz < 0 || gz >= GRID_D;
       const closed = (gx, gz) => cellAt(gx, gz) === 0 && !(def.moon && outsideGrid(gx, gz)) ? 1 : 0;
       const ao = (ix, iz) => 1 - 0.16 * (closed(ix - 1, iz - 1) + closed(ix, iz - 1) + closed(ix - 1, iz) + closed(ix, iz));
       // Open moon ground merges flat, open 4x4-cell patches into one floor quad, to keep its vertex count down.
@@ -3013,14 +3166,19 @@
       for (let gz = 0; gz < GRID_D; gz++) for (let gx = 0; gx < GRID_W; gx++) {
         const material = cellAt(gx, gz);
         if (!material) continue;
-        const i = gz * GRID_W + gx, floor = floorY[i], ceil = ceilY[i], covered = ceil < WALL_TOP;
+        // In a cylinder nothing rises past the axis, so walls stop there.
+        const i = gz * GRID_W + gx, floor = floorY[i], covered = ceilY[i] < WALL_TOP, ceil = def.cylinder ? Math.min(ceilY[i], FLOOR + AXIS) : ceilY[i];
         const x0 = GRID_X0 + gx * CELL, z0 = GRID_Z0 + gz * CELL, x1 = x0 + CELL, z1 = z0 + CELL;
         const corners = [ao(gx, gz), ao(gx + 1, gz), ao(gx + 1, gz + 1), ao(gx, gz + 1)];
         if (natural[i]) {
-          const ids = [[gx, gz], [gx + 1, gz], [gx + 1, gz + 1], [gx, gz + 1]];
-          quad('floorMoon', false, ids.map(([ix, iz]) => [GRID_X0 + ix * CELL, cornerOf(i, ix, iz), GRID_Z0 + iz * CELL]), [0, 1, 0],
-            ids.map(([ix, iz]) => [(GRID_X0 + ix * CELL) / 30, (GRID_Z0 + iz * CELL) / 30]),
-            ids.map(([ix, iz]) => tone(GRID_X0 + ix * CELL, GRID_Z0 + iz * CELL)), ids.map(([ix, iz]) => slope(ix, iz)));
+          const ids = [[gx, gz], [gx + 1, gz], [gx + 1, gz + 1], [gx, gz + 1]], heights = ids.map(([ix, iz]) => cornerOf(i, ix, iz));
+          // A cell wholly under the lake shows only the water; along the shore the ground pokes up through it.
+          if (wet[i]) quad('floorWater', false, ids.map(([ix, iz]) => [GRID_X0 + ix * CELL, floor + 0.3, GRID_Z0 + iz * CELL]), [0, 1, 0],
+            ids.map(([ix, iz]) => [(GRID_X0 + ix * CELL) / 16, (GRID_Z0 + iz * CELL) / 16]), [1, 1, 1, 1]);
+          if (!wet[i] || heights.some(y => y > floor + 0.05))
+            quad(FLOOR_MATERIALS[material - 1], false, ids.map(([ix, iz], k) => [GRID_X0 + ix * CELL, heights[k], GRID_Z0 + iz * CELL]), [0, 1, 0],
+              ids.map(([ix, iz]) => [(GRID_X0 + ix * CELL) / 30, (GRID_Z0 + iz * CELL) / 30]),
+              ids.map(([ix, iz]) => tone(GRID_X0 + ix * CELL, GRID_Z0 + iz * CELL)), ids.map(([ix, iz]) => slope(ix, iz)));
         } else if (merged[i] === 2) {
           const mx = x0 + CELL * PATCH, mz = z0 + CELL * PATCH;
           quad(FLOOR_MATERIALS[material - 1], false, [[x0, floor, z0], [mx, floor, z0], [mx, floor, mz], [x0, floor, mz]], [0, 1, 0],
@@ -3035,7 +3193,7 @@
         if (roof < WALL_TOP) quad(roofOf[i] || def.roof || 'floorPad', false, [[x0, roof, z0], [x1, roof, z0], [x1, roof, z1], [x0, roof, z1]], [0, 1, 0],
           [[x0 / 8, z0 / 8], [x1 / 8, z0 / 8], [x1 / 8, z1 / 8], [x0 / 8, z1 / 8]], [1, 1, 1, 1]);
         for (const [dx, dz] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
-          const nx = gx + dx, nz = gz + dz, solid = closed(nx, nz), n = nz * GRID_W + nx;
+          const nx = gx + dx, nz = gz + dz, solid = closed(nx, nz), n = nz * GRID_W + wrapGX(nx);
           // An open level has no wall at its edge: the ground runs on and the edge only stops the ship.
           if (def.moon && outsideGrid(nx, nz)) continue;
           const normal = [-dx, 0, -dz], right = [dz, 0, -dx];
@@ -3047,7 +3205,7 @@
             const ia = [Math.round((a[0] - GRID_X0) / CELL), Math.round((a[1] - GRID_Z0) / CELL)], ib = [Math.round((b[0] - GRID_X0) / CELL), Math.round((b[1] - GRID_Z0) / CELL)];
             const lowA = cornerOf(i, ...ia), lowB = cornerOf(i, ...ib), highA = cornerOf(n, ...ia), highB = cornerOf(n, ...ib);
             if (highA + highB > lowA + lowB + 0.02)
-              quad(sideOf[n] || 'wallMoon', false, [[a[0], lowA, a[1]], [b[0], lowB, b[1]], [b[0], highB, b[1]], [a[0], highA, a[1]]], normal,
+              quad(sideOf[n] || def.terrain.side || 'wallMoon', false, [[a[0], lowA, a[1]], [b[0], lowB, b[1]], [b[0], highB, b[1]], [a[0], highA, a[1]]], normal,
                 [[ua * 0.5, -lowA / 16], [ub * 0.5, -lowB / 16], [ub * 0.5, -highB / 16], [ua * 0.5, -highA / 16]], [0.72, 0.72, 0.95, 0.95]);
             continue;
           }
@@ -3133,20 +3291,51 @@
       }
       // Boulders: lumpy rocks, partly sunk into the dust, sharing the cliff texture.
       rocks = []; rockCells.fill(null);
+      const addBlocker = (center, radius) => {
+        const rock = { center, radius }, reach = radius + 3;
+        rocks.push(rock);
+        for (let rz = Math.floor((center[2] - reach - GRID_Z0) / CELL); rz <= Math.floor((center[2] + reach - GRID_Z0) / CELL); rz++)
+          for (let rx = Math.floor((center[0] - reach - GRID_X0) / CELL); rx <= Math.floor((center[0] + reach - GRID_X0) / CELL); rx++)
+            if (!outsideGrid(rx, rz)) (rockCells[rz * GRID_W + wrapGX(rx)] ||= []).push(rock);
+      };
+      const bake = (name, data, base, shade) => {
+        const list = groups[name] || (groups[name] = []);
+        for (let k = 0; k < data.length; k += 9) list.push(data[k] + base[0], data[k + 1] + base[1], data[k + 2] + base[2], data[k + 3], data[k + 4], data[k + 5], data[k + 6], data[k + 7], shade);
+      };
+      // Trees: a six-sided trunk under a lumpy crown, or a stack of cones for a conifer. Each blocks as a trunk and a crown.
+      for (const tree of def.terrain?.tree_list || []) {
+        const i = cellIndex(tree.x, tree.z);
+        if (i < 0 || !natural[i] || wet[i]) continue;
+        const size = tree.size * WORLD_SCALE, base = [tree.x, floorY[i] - 0.3, tree.z], c = Math.cos(tree.yaw), sn = Math.sin(tree.yaw);
+        const trunk = [], tall = (tree.conifer ? 5 : 3.6) * size, r = 0.35 * size;
+        for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2; trunk.push([Math.cos(a) * r, 0, Math.sin(a) * r], [Math.cos(a) * r * 0.7, tall, Math.sin(a) * r * 0.7]); }
+        const sides = []; for (let k = 0; k < 6; k++) { const a = k * 2, b = ((k + 1) % 6) * 2; sides.push([a, b, b + 1], [a, b + 1, a + 1]); }
+        // facetedData flips normals outward from the origin, so the trunk is built centred and lifted afterwards.
+        bake('treeBark', facetedData(trunk.map(([x, y, z]) => [x, y - tall / 2, z]), sides, 2), add(base, [0, tall / 2, 0]), 0.8);
+        if (tree.conifer) {
+          for (const [lift, width, height] of [[0.35, 2.2, 2.6], [0.6, 1.7, 2.3], [0.82, 1.1, 1.9]]) {
+            const cone = [[0, height * size * 0.6, 0]], tris = [];
+            for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2 + tree.yaw; cone.push([Math.cos(a) * width * size, -height * size * 0.4, Math.sin(a) * width * size]); }
+            for (let k = 0; k < 8; k++) tris.push([0, 1 + k, 1 + (k + 1) % 8], [1 + (k + 1) % 8, 1 + k, 9]);
+            cone.push([0, -height * size * 0.4, 0]);
+            bake('treeLeaves', facetedData(cone, tris, 3), add(base, [0, tall * lift + height * size * 0.4, 0]), 0.9);
+          }
+          addBlocker(add(base, [0, tall * 0.55, 0]), 2 * size);
+        } else {
+          const crown = ROCK_SHAPES[tree.variant].map(([x, y, z]) => [(x * c + z * sn) * 2.4 * size, y * 2 * size, (z * c - x * sn) * 2.4 * size]);
+          bake('treeLeaves', facetedData(crown, ROCK_TRIS, 3), add(base, [0, tall + 1.2 * size, 0]), 0.95);
+          addBlocker(add(base, [0, tall + 1.2 * size, 0]), 2.3 * size);
+        }
+        addBlocker(add(base, [0, tall * 0.3, 0]), 0.7 * size);
+      }
       for (const boulder of def.terrain?.boulder_list || []) {
         const i = cellIndex(boulder.x, boulder.z);
-        if (i < 0 || !natural[i]) continue;
+        if (i < 0 || !natural[i] || wet[i]) continue;
         const shape = ROCK_SHAPES[boulder.variant], c = Math.cos(boulder.yaw), s = Math.sin(boulder.yaw), size = boulder.size;
         const points = shape.map(([x, y, z]) => [(x * c + z * s) * size, y * size * boulder.squash, (z * c - x * s) * size]);
-        const data = facetedData(points, ROCK_TRIS, 3), base = [boulder.x, floorY[i] - size * boulder.squash * 0.3, boulder.z];
-        const list = groups.wallMoon || (groups.wallMoon = []);
-        for (let k = 0; k < data.length; k += 9) list.push(data[k] + base[0], data[k + 1] + base[1], data[k + 2] + base[2], data[k + 3], data[k + 4], data[k + 5], data[k + 6], data[k + 7], 0.85);
-        const rock = { center: [base[0], base[1] + size * boulder.squash * 0.2, base[2]], radius: size * 0.85 };
-        rocks.push(rock);
-        const reach = rock.radius + 3;
-        for (let rz = Math.floor((base[2] - reach - GRID_Z0) / CELL); rz <= Math.floor((base[2] + reach - GRID_Z0) / CELL); rz++)
-          for (let rx = Math.floor((base[0] - reach - GRID_X0) / CELL); rx <= Math.floor((base[0] + reach - GRID_X0) / CELL); rx++)
-            if (!outsideGrid(rx, rz)) (rockCells[rz * GRID_W + rx] ||= []).push(rock);
+        const base = [boulder.x, floorY[i] - size * boulder.squash * 0.3, boulder.z];
+        bake(def.terrain.side || 'wallMoon', facetedData(points, ROCK_TRIS, 3), base, 0.85);
+        addBlocker([base[0], base[1] + size * boulder.squash * 0.2, base[2]], size * 0.85);
       }
       for (let iz = 1; iz < GRID_D; iz++) for (let ix = 1; ix < GRID_W; ix++) {
         const cells = [[ix - 1, iz - 1], [ix, iz - 1], [ix - 1, iz], [ix, iz]];
@@ -3670,6 +3859,9 @@
       mesa: { bpm: 100, swing: 0.1, kit: 'halftime', lead: 'square', pad: 'warm', chords: [[40], [41], [38, 'm'], [40]],
         hook: ['E5.4 F5.2 G#5.2 B5.4 A5.4', 'G#5.4 F5.4 E5.8', 'F5.4 A5.2 C6.2 B5.4 A5.4', 'G#5.8 F5.8',
           'D5.4 F5.2 A5.2 D6.4 C6.4', 'B5.4 A5.4 F5.8', 'E5.4 G#5.2 B5.2 E6.4 D6.4', 'C6.4 B5.4 G#5.8'] },
+      garden: { bpm: 96, swing: 0.05, kit: 'synthwave', lead: 'bell', pad: 'warm', arp: 'triangle', chords: [[43], [38], [40, 'm'], [36]],
+        hook: ['D5.4 G5.4 B5.4 A5.4', 'G5.4 D5.4 B4.8', 'D5.4 A5.4 D6.4 C6.4', 'B5.8 A5.8',
+          'E5.4 G5.4 B5.4 D6.4', 'C6.4 B5.4 G5.8', 'C5.4 E5.4 G5.4 C6.4', 'B5.4 A5.4 D5.8'] },
       ark: { bpm: 104, kit: 'halftime', lead: 'saw', pad: 'dark', arp: 'sine', chords: [[37, 'm'], [33], [40], [35]],
         hook: ['C#5.4 E5.2 G#5.2 C#6.4 B5.4', 'A5.4 G#5.4 E5.8', 'C#5.4 E5.2 A5.2 C#6.4 E6.4', 'D#6.8 C#6.8',
           'E5.4 G#5.2 B5.2 E6.4 D#6.4', 'C#6.4 B5.4 G#5.8', 'F#5.4 A5.2 C#6.2 F#6.4 E6.4', 'D#6.4 B5.4 G#5.8'] },
@@ -3869,13 +4061,13 @@
     }
 
     function loadLevel(index, startHealth) {
-      levelIndex = index; level = LEVELS[index]; WALL_TOP = level.top;
+      levelIndex = index; level = LEVELS[index]; WALL_TOP = level.top; wrapCells = !!level.cylinder;
       for (const { mesh } of [...levelMeshes, ...gates, ...gates.flatMap(gate => gate.locks.filter(lock => lock.chain).map(lock => ({ mesh: lock.chain })))]) {
         gl.deleteBuffer(mesh.buffer); gl.deleteVertexArray(mesh.vao);
       }
       carve(level); setupGates(level); setupHazards(level); spawnLevel(level);
       radarEdges.length = 0; beacons.length = 0;
-      curve = level.moon ? 1 / level.moon.radius : 0;
+      curve = level.moon ? 1 / level.moon.radius : level.cylinder ? -1 / AXIS : 0;
       levelMeshes = buildLevel(level);
       ensureMaterials(levelMeshes.map(mesh => mesh.name));
       for (const spinner of spinners) for (const mesh of spinner.meshes) if (mesh) { gl.deleteBuffer(mesh.buffer); gl.deleteVertexArray(mesh.vao); }
@@ -3916,6 +4108,12 @@
       const sectors = {};
       for (const [key, value] of Object.entries(save.sectors)) sectors[Number(key) >= 14 ? Number(key) + 1 : key] = value;
       save.sectors = sectors; if (save.last >= 14) save.last++; save.ark = 1;
+    }
+    // Sector 9, the orbital garden, came after that: shift records from sector 9 on up by one more.
+    if (!save.garden) {
+      const sectors = {};
+      for (const [key, value] of Object.entries(save.sectors)) sectors[Number(key) >= 8 ? Number(key) + 1 : key] = value;
+      save.sectors = sectors; if (save.last >= 8) save.last++; save.garden = 1;
     }
     if (!DIFFICULTIES[save.difficulty]) save.difficulty = 'normal';
     if (!(save.last >= 0 && save.last < LEVELS.length && save.sectors[save.last])) save.last = 0;
@@ -4009,7 +4207,8 @@
       'Epsilon-5 is silent and its forges are cold. Tau-3 is an ocean moon whose docks load the swarm for the crossing between stars. Sink the docks, and watch for gold-marked enemies: they were at Earth.',
       'The docks are burning, and no swarm will load there again. Under Tau-3\'s surface are the hive warrens where the Choir grow their pilots, ruled by the Hive Queen. Burst her egg sacs, then kill her, and the next generation of Earth-burners is never born.',
       'The Hive Queen is dead and her nest is quiet. A tether anchored on Tau-3 lifts finished fighters up to the orbital yards. Cut it and the yards starve.',
-      'The tether is down and Tau-3\'s yards are cut off. Sigma-4\'s refinery terraces are the last supply line feeding the crown world. Burn them and Omega stands alone.',
+      'The tether is down, but the orbital yards have one more larder: a garden cylinder turning over Tau-3, a world rolled up inside a spinning drum, with meadows, lakes and a town that curve up round you and meet overhead. Destroy its seed towers, fly up to the sun line down its axis, cross to the far shore to wreck the irrigation pumps, and leave by the end-cap gate.',
+      'The garden is burning and Tau-3\'s yards are cut off. Sigma-4\'s refinery terraces are the last supply line feeding the crown world. Burn them and Omega stands alone.',
       'The terraces are burning, but their last fuel already went up the line to Sigma-4\'s shepherd moon, a grey rock barely a kilometre across that ships it on to Omega. Its depot sits on open ground under a black sky. Find the tanker that went down, silence the comms mesa, break into the dome and kill its power cores, then get out through the extraction gate.',
       'The shepherd moon is dark and Omega is cut off. The crown world\'s core is guarded by the Omega Sentinel and its four shield pylons. Bring the Sentinel down; this should end the song.',
       'The Sentinel is dead, but the song did not stop: Omega was never the source. The signal comes from inside the Void, a shroud of dark dust around Nadir\'s inner worlds, and the Requiem is going in. Follow it down the Abyss Shaft, a world hollowed out to its core.',
@@ -4030,7 +4229,7 @@
       omega: { name: 'OMEGA', orbit: 0.3, angle: 0.95, color: '#c08cff' },
       void: { name: 'THE VOID', orbit: 0.15, angle: 3.6, color: '#e070ff' },
     };
-    const SECTOR_PLACES = ['delta', 'delta', 'epsilon', 'epsilon', 'epsilon', 'tau', 'tau', 'tau', 'sigma', 'sigma', 'omega', 'void', 'void', 'void', 'void', 'void', 'void', 'void'];
+    const SECTOR_PLACES = ['delta', 'delta', 'epsilon', 'epsilon', 'epsilon', 'tau', 'tau', 'tau', 'tau', 'sigma', 'sigma', 'omega', 'void', 'void', 'void', 'void', 'void', 'void', 'void'];
     function drawSystemMap(now) {
       const ratio = window.devicePixelRatio || 1, w = systemMap.clientWidth, h = systemMap.clientHeight;
       if (!w || !h) return;
@@ -4266,7 +4465,7 @@
       if (exitOpen()) list.push([exitCenter(), 45, [0.3, 1.2, 0.7]]);
       for (const spinner of spinners) if (spinner.kind === 'core') list.push([spinner.at, spinner.radius * 7, [0.45, 0.8, 1.5]]);
       for (const laser of lasers) if (laserState(laser) === 'on') { const [a, b] = laser.beams[0]; list.push([mul(add(a, b), 0.5), 26, [1.2, 0.2, 0.15]]); }
-      const near = list.map(light => [light, dot(sub(light[0], camera.position), sub(light[0], camera.position))])
+      const near = list.map(light => [light, dot(gapBetween(light[0], camera.position), gapBetween(light[0], camera.position))])
         .filter(([light, d]) => d < (light[1] + 160) ** 2).sort((a, b) => a[1] - b[1]).slice(0, GRAPHICS[graphics].lights).map(([light]) => light);
       const positions = new Float32Array(64), colors = new Float32Array(48);
       near.forEach(([position, radius, color], i) => { positions.set([...position, radius], i * 4); colors.set(color, i * 3); });
@@ -4287,7 +4486,7 @@
         const offset = mul(side, w / sideLength), start = sub(a, mul(along, w)), end = add(b, mul(along, w));
         quad([sub(start, offset), sub(end, offset), add(end, offset), add(start, offset)], [[2, 0], [3, 0], [3, 1], [2, 1]], color, alpha);
       };
-      const seen = inView(camera), nearby = (position, limit) => dot(sub(position, camera.position), sub(position, camera.position)) < limit * limit && seen(position, 14);
+      const seen = inView(camera), nearby = (position, limit) => { const d = gapBetween(position, camera.position); return dot(d, d) < limit * limit && seen(position, 14); };
       for (const beacon of beacons) {
         if (!nearby(beacon.position, GRAPHICS[graphics].detail ? 240 : 120)) continue;
         const blink = 0.5 + 0.5 * Math.sin(time * 2.4 + beacon.phase);
@@ -4437,6 +4636,14 @@
         billboard(add(explosion.position, [0, k * 4, 0]), (3 + k * 9) * explosion.scale, [0.9, 0.3, 0.08], (1 - k) * 0.8);
       }
       for (const spark of particles) streak(sub(spark.position, mul(spark.velocity, 0.035)), spark.position, 0.12, spark.color, spark.life / spark.maxLife * 2);
+      // A cylinder's sun is a line of light down its axis: drawn at axis height it bends onto the axis from anywhere.
+      if (level.cylinder) {
+        const [cx] = camera.position, top = FLOOR + AXIS, z1 = GRID_Z0 + GRID_D * CELL;
+        for (let z = GRID_Z0; z < z1; z += 50) {
+          streak([cx, top, z], [cx, top, Math.min(z + 50, z1)], 2.4, [1.0, 0.92, 0.7], 2.2);
+          streak([cx, top, z], [cx, top, Math.min(z + 50, z1)], 9, [1.0, 0.8, 0.5], 0.35);
+        }
+      }
       // Reactor columns crackle: short arcs jump off the surface, changing a dozen times a second.
       for (const spinner of spinners) {
         if (spinner.kind !== 'core' || !nearby(spinner.at, 400)) continue;
@@ -4458,6 +4665,10 @@
     // Where a point appears once a moon's curve is applied (the shaders' bend), seen from `eye`.
     let curve = 0;
     function bend(p, eye) {
+      if (curve < 0) {
+        const radius = -1 / curve, dx = p[0] - eye[0] - AROUND * Math.round((p[0] - eye[0]) / AROUND), a = dx / radius, r = radius - (p[1] - FLOOR);
+        return [eye[0] + r * Math.sin(a), FLOOR + radius - r * Math.cos(a), p[2]];
+      }
       const dx = p[0] - eye[0], dz = p[2] - eye[2], dist = Math.hypot(dx, dz);
       if (!curve || dist < 0.001) return p;
       const radius = 1 / curve, r = radius + p[1] - FLOOR, a = Math.min(dist * curve, 3.1), along = r * Math.sin(a) / dist;
@@ -4500,7 +4711,8 @@
       gl.uniform3fv(u.uFogColor, sky.fog); gl.uniform3fv(u.uHeadPos, camera.position); gl.uniform3fv(u.uHeadDir, camera.view.forward);
       gl.uniform4fv(u.uLights, lights.positions); gl.uniform3fv(u.uLightColors, lights.colors); gl.uniform1i(u.uLightCount, lights.count); gl.uniform1i(u.uQuality, GRAPHICS[graphics].detail);
       gl.uniform1f(u.uCurve, curve); gl.uniform1f(u.uDatum, FLOOR);
-      if (level.moon) { gl.uniform3f(u.uFog, 220, 900, 0.75); gl.uniform1f(u.uHaze, 0); } else { gl.uniform3f(u.uFog, 75, 540, 0.94); gl.uniform1f(u.uHaze, 0.35); }
+      if (level.moon) { gl.uniform3f(u.uFog, 220, 900, 0.75); gl.uniform1f(u.uHaze, 0); }
+      else if (level.cylinder) { gl.uniform3f(u.uFog, 160, 1000, 0.6); gl.uniform1f(u.uHaze, 0); } else { gl.uniform3f(u.uFog, 75, 540, 0.94); gl.uniform1f(u.uHaze, 0.35); }
       const reactorPulse = 1 + 0.3 * Math.sin(time * 2.2), gatePulse = exitOpen() ? 1 + 0.35 * Math.sin(time * 5) : 0.15;
       boundMaterial = null;
       const seen = inView(camera);
@@ -4533,7 +4745,7 @@
         useMaterial(materials.lock, 1 + 0.4 * Math.sin(time * 6));
         for (const lock of gate.locks) if (lock.hp > 0) drawMesh(lockMesh, modelMatrix(lock.position, gate.yaw), lock.flash, WHITE, gate.exposure);
       }
-      const near = (p, limit) => dot(sub(p, camera.position), sub(p, camera.position)) < limit * limit;
+      const near = (p, limit) => { const d = gapBetween(p, camera.position); return dot(d, d) < limit * limit; };
       const liveBarrels = barrels.filter(barrel => !barrel.exploded && near(barrel.position, 300) && seen(barrel.position, 2.5))
         .map(barrel => [modelMatrix([barrel.position[0], barrel.floor, barrel.position[2]], barrel.spin),
           barrel.flash + (barrel.hp < 2 ? 0.08 + 0.06 * Math.sin(time * 10) : 0), exposureAt(barrel.position)]);
@@ -5517,7 +5729,7 @@
         else { health = Math.min(100, health + 15); notice('CANNON AT MAXIMUM // HULL +15', 1.6); }
         noteArsenal();
       }
-      const atExit = Math.hypot(...sub(exitCenter(), ship.position)) < 7;
+      const atExit = Math.hypot(...gapBetween(exitCenter(), ship.position)) < 7;
       if (atExit && !exitOpen() && time > lockedHint) { notice(`EXIT LOCKED // ${objectives[objectiveIndex].text}`, 2.5); lockedHint = time + 3; }
       if (atExit && exitOpen()) {
         // A results line while the warp pulls the ship in: hostiles, secrets found and the sector time, kept as a best time.
@@ -5592,6 +5804,17 @@
         else if (wallCooldown === 0) { damage(10, label); wallCooldown = 0.9; }
       }
       shipVelocity = mul(sub(ship.position, previous), 1 / Math.max(dt, 0.001));
+      if (level.cylinder) {
+        // Past the axis the ship is over the far side: half a turn round, as high above that ground as it is short of the
+        // axis, and turned over with it. The roll then levels it to the new ground.
+        if (ship.position[1] - FLOOR > AXIS) {
+          ship.position = [ship.position[0] + AROUND / 2, FLOOR + 2 * AXIS - (ship.position[1] - FLOOR), ship.position[2]];
+          ship.yaw = -ship.yaw; ship.pitch = -ship.pitch; ship.roll = ship.roll + Math.PI;
+          ship.roll -= Math.PI * 2 * Math.round(ship.roll / (Math.PI * 2));
+          shipVelocity = [-shipVelocity[0], -shipVelocity[1], shipVelocity[2]];
+        }
+        ship.position[0] = GRID_X0 + ((ship.position[0] - GRID_X0) % AROUND + AROUND) % AROUND;
+      }
       sludgeCooldown = Math.max(0, sludgeCooldown - dt);
       const hazard = hazardAt(ship.position[0], ship.position[2]);
       if (hazard && ship.position[1] < floorAt(ship.position[0], ship.position[2], ship.position[1]) + 4.5 && sludgeCooldown === 0) {
