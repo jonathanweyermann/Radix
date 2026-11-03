@@ -296,6 +296,10 @@
     //     'destroy' (kill every enemy in `targets`, given as [type, x, y, z]), 'gate' (open gates[`gate`]) or 'exit' (fly
     //     through the exit gate, which stays locked until every goal before it is done)
     //   moon: { radius } wraps the sector around a small moon with no walls at its edge, airless sky and open ground beyond
+    //   interior: the sector is sealed inside a hull, with a ceiling at the top over every open space
+    //   spinners: parts that turn in place { kind, at, axis, radius, inner, length, speed, materials: [outer, inner, cap] }:
+    //     'ring' is a hollow band you can fly through, 'core' a solid column, 'cube' a box tumbling about its axis. Rings
+    //     and columns block exactly the space they sweep; a cube blocks a sphere a little inside its corners.
     //   terrain: natural ground for rooms of MOON floor with 'wallMoon' sides: { hills (height of the rolling ground),
     //     craters: [x, z, radius, depth], ridges: [x, z0, z1, half width, height], small and boulders (how many small craters
     //     and loose rocks to scatter), clear: areas [x0, z0, x1, z1] kept flat for buildings }. Its floors follow a smooth
@@ -1205,6 +1209,85 @@
         ],
       },
       {
+        // Inside the ark: a sealed hull of corridors opening into chambers far taller than any room so far. Floating blocks
+        // hang in the cargo void, a habitat drum turns for gravity in the spin section, and the reactor hall is built
+        // around a crackling column caged by turning rings.
+        name: 'THE ARK', title: 'REACTOR SPINE', music: 'ark', top: 100, start: [0, -2, -24], yaw: 0, exit: [0, 12, 736, true],
+        interior: true, roof: 'floorPlate', tint: [0.86, 0.9, 1.0],
+        sky: { zenith: [0.01, 0.015, 0.03], fog: [0.03, 0.045, 0.07], sun: [0.3, 0.34, 0.42], sunDir: [0.2, 1, 0.15] },
+        walls: { lower: [['wallTech', 0.35], ['wallComputer', 0.25], ['wallPipes', 0.25], ['wallVent', 0.15]], upper: [['wallUpper', 0.5], ['wallTech', 0.3], ['wallWindows', 0.2]] },
+        rooms: [
+          // Docking bay, with cargo stacked along its sides.
+          [-48, -40, 48, 48, PAD, BASE, BASE + 34],
+          [-44, -32, -28, -8, PLATE, BASE + 6, BASE + 34, 'wallContainer'], [28, 8, 44, 32, PLATE, BASE + 8, BASE + 34, 'wallContainerB'], [-44, 20, -32, 36, PLATE, BASE + 4, BASE + 34, 'wallContainerB'],
+          // The spine corridor north, behind the docking clamps.
+          [-8, 48, 8, 140, GRATE, BASE, BASE + 12],
+          // The cargo void: a drop of seventy units under a ceiling a hundred above, with blocks hanging in the air.
+          [-120, 140, 120, 300, PLATE, BASE - 70],
+          [-16, 196, 16, 244, VENT, BASE - 70],
+          [-84, 166, -36, 214, PLATE, BASE - 70, BASE - 10, 'wallTech', BASE + 30], [-72, 178, -48, 202, PLATE, BASE - 70, BASE - 24, 'wallTech', BASE + 42],
+          [40, 228, 88, 276, PLATE, BASE - 70, BASE, 'wallTech', BASE + 44], [52, 240, 76, 264, PLATE, BASE - 70, BASE - 14, 'wallTech', BASE + 58],
+          [-24, 252, 12, 284, PLATE, BASE - 70, BASE + 44, 'wallTech', BASE + 66], [-112, 252, -84, 288, PLATE, BASE - 70, BASE - 52, 'wallTech', BASE - 26],
+          [60, 160, 96, 188, PLATE, BASE - 70, BASE + 52, 'wallTech', BASE + 74], [-56, 268, -36, 292, PLATE, BASE - 70, BASE + 10, 'wallTech', BASE + 20],
+          [-120, 216, 120, 224, GRATE, BASE - 70, BASE + 12, 'wallTech', BASE + 16],
+          // The main corridor on to the spin section, high in the void's north wall.
+          [-8, 300, 8, 330, GRATE, BASE + 10, BASE + 24],
+          // The spin section: the habitat drum turns across the middle, with the gravity governors on platforms around it.
+          [-112, 330, 112, 480, PLATE, BASE - 50],
+          [-92, 388, -68, 412, PLATE, BASE - 50, BASE - 6, 'wallTech', BASE - 2], [68, 388, 92, 412, PLATE, BASE - 50, BASE - 6, 'wallTech', BASE - 2],
+          [-12, 458, 12, 476, PLATE, BASE - 50, BASE - 36, 'wallTech', BASE - 32],
+          [-8, 480, 8, 500, GRATE, BASE + 10, BASE + 22],
+          // The reactor hall: a deep, round-walled well around the core column, with regulator platforms at its edge.
+          [-120, 500, 120, 680, GRATE, BASE - 80],
+          [-12, 648, 12, 672, PLATE, BASE - 80, BASE + 2, 'wallTech', BASE + 6], [-72, 544, -48, 568, PLATE, BASE - 80, BASE + 2, 'wallTech', BASE + 6], [48, 544, 72, 568, PLATE, BASE - 80, BASE + 2, 'wallTech', BASE + 6],
+          [-120, 584, -96, 600, GRATE, BASE - 80, BASE - 4, 'wallTech', BASE], [96, 584, 120, 600, GRATE, BASE - 80, BASE - 4, 'wallTech', BASE],
+          // The bridge.
+          [-8, 680, 8, 712, GRATE, BASE + 14, BASE + 26],
+          [-40, 712, 40, 752, PAD, BASE + 14, BASE + 44],
+          // West service ducts: a long crawlway from the docking bay to the spin section, with two side rooms.
+          [-136, 0, -48, 12, PLATE, BASE, BASE + 10], [-136, 12, -124, 372, PLATE, BASE, BASE + 10], [-124, 360, -112, 372, PLATE, BASE, BASE + 10],
+          [-200, 100, -136, 160, PLATE, BASE, BASE + 18], [-200, 220, -140, 280, PLATE, BASE, BASE + 18], [-140, 240, -136, 256, PLATE, BASE, BASE + 10],
+          // East conduit trench: low under the cargo void, along the hull and into the bottom of the reactor hall.
+          [120, 150, 200, 166, PLATE, BASE - 70, BASE - 56], [184, 166, 200, 600, PLATE, BASE - 70, BASE - 52], [120, 584, 184, 600, PLATE, BASE - 70, BASE - 56],
+        ],
+        stairs: [],
+        blocks: [],
+        girders: [[-120, 36, 176, 120, 39, 180], [100, -40, 140, 104, -36, 300], [-120, -10, 520, 120, -7, 524], [-120, 40, 650, 120, 43, 654]],
+        gates: [[-8, 48, 8, 52, 'south', 'chain'], [-140, 240, -136, 256, 'east', 'secret']],
+        lasers: [[-8, 92, 8, 92, -10, 0, 3, 0], [-8, 120, 8, 120, -10, 0, 3, 1.5], [184, 300, 200, 300, -80, -64, 3, 0], [184, 420, 200, 420, -80, -64, 3, 1.5]],
+        spinners: [
+          { kind: 'ring', at: [0, BASE + 30, 405], axis: [0, 0, 1], radius: 46, inner: 38, length: 70, speed: 0.22, materials: ['wallTech', 'wallWindows', 'crown'] },
+          { kind: 'ring', at: [0, BASE + 30, 362], axis: [0, 0, 1], radius: 54, inner: 49, length: 5, speed: -0.6, materials: ['wallPipes', 'wallTech', 'crown'] },
+          { kind: 'ring', at: [0, BASE + 30, 448], axis: [0, 0, 1], radius: 54, inner: 49, length: 5, speed: 0.55, materials: ['wallPipes', 'wallTech', 'crown'] },
+          { kind: 'core', at: [0, BASE + 10, 590], axis: [0, 1, 0], radius: 16, inner: 0, length: 200, speed: 0.15, materials: ['reactor', null, 'reactor'] },
+          { kind: 'ring', at: [0, BASE - 40, 590], axis: [0, 1, 0], radius: 30, inner: 25, length: 6, speed: 0.5, materials: ['wallTech', 'crown', 'crown'] },
+          { kind: 'ring', at: [0, BASE + 10, 590], axis: [0, 1, 0], radius: 30, inner: 25, length: 6, speed: -0.7, materials: ['wallTech', 'crown', 'crown'] },
+          { kind: 'ring', at: [0, BASE + 60, 590], axis: [0, 1, 0], radius: 30, inner: 25, length: 6, speed: 0.9, materials: ['wallTech', 'crown', 'crown'] },
+          { kind: 'ring', at: [0, BASE + 10, 590], axis: [1, 0, 0], radius: 42, inner: 38, length: 3, speed: 0.3, materials: ['crown', 'wallTech', 'crown'] },
+          { kind: 'ring', at: [0, BASE + 10, 590], axis: [0.5, 0, 0.87], radius: 48, inner: 44, length: 3, speed: -0.25, materials: ['crown', 'wallTech', 'crown'] },
+          { kind: 'cube', at: [0, BASE - 20, 220], axis: [0.3, 1, 0.2], radius: 9, length: 0, speed: 0.4, materials: ['wallComputer', null, 'wallTech'] },
+        ],
+        extras: { barrels: [[-20, 0], [24, -20], [-12, 30], [20, 36]] },
+        objectives: [
+          { kind: 'gate', text: 'SHOOT THE DOCKING CLAMP LOCKS', gate: 0 },
+          { kind: 'destroy', text: 'DESTROY THE GRAVITY GOVERNORS', targets: [['core', -80, BASE + 6, 400, 'GOVERNOR'], ['core', 80, BASE + 6, 400, 'GOVERNOR'], ['core', 0, BASE - 26, 467, 'GOVERNOR']] },
+          { kind: 'destroy', text: 'DESTROY THE REACTOR REGULATORS', targets: [['core', 0, BASE + 14, 660, 'REGULATOR'], ['core', -60, BASE + 14, 556, 'REGULATOR'], ['core', 60, BASE + 14, 556, 'REGULATOR']] },
+          { kind: 'exit', text: 'REACH THE BRIDGE GATE' },
+        ],
+        zones: [
+          { name: 'DOCKING BAY', area: [-48, -40, 48, 48], barrels: 4 },
+          { name: 'SPINE CORRIDOR', area: [-8, 48, 8, 140], hunters: 1 },
+          { name: 'CARGO VOID', area: [-120, 140, 120, 300], drones: 4, skimmers: 2, lancers: 1, health: 1, missile: 1, high: true },
+          { name: 'WEST DUCTS', area: [-136, 0, -112, 372], hunters: 2 },
+          { name: 'DUCT STORES', area: [-200, 100, -136, 160], health: 1, missile: 1, drones: 1 },
+          { name: 'SEALED ARMORY', area: [-200, 220, -140, 280], weapon: 1, launcher: 1, health: 1 },
+          { name: 'SPIN SECTION', area: [-112, 330, 112, 480], drones: 3, aegis: 1, skimmers: 2, strikers: 1, health: 1, high: true },
+          { name: 'CONDUIT TRENCH', area: [120, 150, 200, 600], hunters: 2, drones: 1, missile: 1 },
+          { name: 'REACTOR HALL', area: [-120, 500, 120, 680], drones: 4, wardens: 1, lancers: 1, skimmers: 2, health: 2, missile: 1, high: true },
+          { name: 'THE BRIDGE', area: [-40, 680, 40, 752], escorts: 1, barrels: 2 },
+        ],
+      },
+      {
         name: 'VOID-4', title: 'MIRROR ARCHIVE', music: 'archive', top: 57, start: [0, -4, 0], yaw: 0, exit: [0, 40, 684, true], tint: [0.95, 1.0, 1.06],
         sky: { zenith: [0.03, 0.05, 0.1], fog: [0.14, 0.18, 0.24], sun: [0.7, 0.85, 1.0], sunDir: [0.3, 0.7, 0.5] },
         walls: { lower: [['wallComputer', 0.4], ['wallTech', 0.4], ['wallVoid', 0.2]], upper: [['wallTech', 0.5], ['wallWindows', 0.3], ['wallVoid', 0.2]] },
@@ -1395,6 +1478,7 @@
       'ABYSS SHAFT': [[0.1, 0.92, 0.38], [0.24, 0.12, 0.36], [0.6, 0.4, 0.85], 0.1],
       'CRYSTAL CANYON': [[-0.5, 0.4, 0.77], [0.4, 0.55, 0.7], [0.85, 0.95, 1.0], 0.28],
       'DRIFT FOUNDRY': [[0.55, 0.3, 0.78], [0.5, 0.12, 0.06], [1.0, 0.5, 0.22], 0.32],
+      'REACTOR SPINE': [[0.2, 0.8, 0.5], [0.2, 0.2, 0.3], [0.4, 0.4, 0.6], 0.1],
       'MIRROR ARCHIVE': [[-0.45, 0.6, 0.66], [0.18, 0.4, 0.45], [0.55, 0.9, 0.9], 0.14],
       'ASH MESAS': [[-0.3, 0.3, 0.9], [0.5, 0.2, 0.08], [0.95, 0.6, 0.3], 0.26],
       'HEART OF THE VOID': [[0.0, 0.32, 0.95], [0.4, 0.08, 0.36], [0.95, 0.4, 0.85], 0.38],
@@ -1424,6 +1508,11 @@
         t.craters = (t.craters || []).map(row => row.map(v => v * WORLD_SCALE));
         t.ridges = (t.ridges || []).map(row => row.map(v => v * WORLD_SCALE));
         t.clear = (t.clear || []).map(row => row.map(v => v * WORLD_SCALE));
+      }
+      for (const spinner of def.spinners || []) {
+        spinner.at = spinner.at.map(v => v * WORLD_SCALE);
+        for (const key of ['radius', 'inner', 'length']) spinner[key] = (spinner[key] || 0) * WORLD_SCALE;
+        spinner.axis = normalize(spinner.axis);
       }
       for (const goal of def.objectives || []) {
         if (goal.at) goal.at = goal.at.map(v => v * WORLD_SCALE);
@@ -1553,7 +1642,59 @@
       const list = gx >= 0 && gz >= 0 && gx < GRID_W && gz < GRID_D ? rockCells[gz * GRID_W + gx] : null;
       return !!list && list.some(rock => (p[0] - rock.center[0]) ** 2 + (p[1] - rock.center[1]) ** 2 + (p[2] - rock.center[2]) ** 2 < (rock.radius + pad) ** 2);
     };
-    const insideGirder = (p, pad = 0) => (rocks.length > 0 && insideRock(p, pad)) || level.girders.some(([x0, y0, z0, x1, y1, z1]) =>
+    // Spinners turn about their own axis, so a ring or column always fills the same space: collisions test that swept
+    // shape. Each spinner is up to three meshes (outer face, inner face, end caps) so each can wear its own material.
+    let spinners = [];
+    function spinnerBasis(axis) {
+      const side = Math.abs(axis[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0], u = normalize(cross(side, axis)), w = cross(axis, u);
+      return [u, w];
+    }
+    function buildSpinner(def) {
+      const { kind, radius, inner, length } = def, SEG = kind === 'cube' ? 4 : 40, half = length / 2, parts = [[], [], []];
+      const push = (list, p, n, uv) => list.push(...p, ...n, ...uv, 1);
+      const face = (list, a, b, c, d, n, uvs) => { for (const k of [0, 1, 2, 0, 2, 3]) push(list, [a, b, c, d][k], Array.isArray(n[0]) ? n[k] : n, uvs[k]); };
+      if (kind === 'cube') {
+        const h = radius;
+        const box = [[[1, 0, 0], [[h, -h, -h], [h, -h, h], [h, h, h], [h, h, -h]]], [[-1, 0, 0], [[-h, -h, h], [-h, -h, -h], [-h, h, -h], [-h, h, h]]],
+          [[0, 0, 1], [[h, -h, h], [-h, -h, h], [-h, h, h], [h, h, h]]], [[0, 0, -1], [[-h, -h, -h], [h, -h, -h], [h, h, -h], [-h, h, -h]]],
+          [[0, 1, 0], [[-h, h, -h], [h, h, -h], [h, h, h], [-h, h, h]]], [[0, -1, 0], [[-h, -h, h], [h, -h, h], [h, -h, -h], [-h, -h, -h]]]];
+        const tile = h / 6;
+        box.forEach(([n, q], k) => face(parts[k < 4 ? 0 : 2], ...q, n, [[0, tile], [tile, tile], [tile, 0], [0, 0]]));
+      } else for (let k = 0; k < SEG; k++) {
+        const a0 = k / SEG * Math.PI * 2, a1 = (k + 1) / SEG * Math.PI * 2, c0 = Math.cos(a0), s0 = Math.sin(a0), c1 = Math.cos(a1), s1 = Math.sin(a1);
+        const around = radius * Math.PI * 2 / 8, u0 = k / SEG * around, u1 = (k + 1) / SEG * around, v = length / 8;
+        face(parts[0], [c0 * radius, -half, s0 * radius], [c1 * radius, -half, s1 * radius], [c1 * radius, half, s1 * radius], [c0 * radius, half, s0 * radius],
+          [[c0, 0, s0], [c1, 0, s1], [c1, 0, s1], [c0, 0, s0]], [[u0, v], [u1, v], [u1, 0], [u0, 0]]);
+        if (inner > 0) face(parts[1], [c1 * inner, -half, s1 * inner], [c0 * inner, -half, s0 * inner], [c0 * inner, half, s0 * inner], [c1 * inner, half, s1 * inner],
+          [[-c1, 0, -s1], [-c0, 0, -s0], [-c0, 0, -s0], [-c1, 0, -s1]], [[u1 * inner / radius, v], [u0 * inner / radius, v], [u0 * inner / radius, 0], [u1 * inner / radius, 0]]);
+        const depth = (radius - inner) / 8;
+        for (const [y, n] of [[half, [0, 1, 0]], [-half, [0, -1, 0]]]) {
+          const ring = [[c0 * inner, y, s0 * inner], [c1 * inner, y, s1 * inner], [c1 * radius, y, s1 * radius], [c0 * radius, y, s0 * radius]];
+          face(parts[2], ...(y > 0 ? ring : [ring[1], ring[0], ring[3], ring[2]]), n, [[u0, 0], [u1, 0], [u1, depth], [u0, depth]]);
+        }
+      }
+      const [u, w] = spinnerBasis(def.axis);
+      return { ...def, u, w, meshes: parts.map(data => data.length ? createMesh(data) : null), bound: Math.hypot(radius, half) * (kind === 'cube' ? 1.8 : 1) };
+    }
+    // Model matrix for a spinner turned `angle` about its axis: local y runs along the axis, x and z around it.
+    function spinnerMatrix(spinner, angle) {
+      const { u, w, axis, at } = spinner, c = Math.cos(angle), s = Math.sin(angle);
+      const x = [u[0] * c - w[0] * s, u[1] * c - w[1] * s, u[2] * c - w[2] * s], z = [u[0] * s + w[0] * c, u[1] * s + w[1] * c, u[2] * s + w[2] * c];
+      if (spinner.kind === 'cube') {
+        // A cube tumbles: it turns about its axis and slowly rolls over as well.
+        const t = angle * 0.37, ct = Math.cos(t), st = Math.sin(t), y2 = [axis[0] * ct + x[0] * st, axis[1] * ct + x[1] * st, axis[2] * ct + x[2] * st], x2 = [x[0] * ct - axis[0] * st, x[1] * ct - axis[1] * st, x[2] * ct - axis[2] * st];
+        return new Float32Array([...x2, 0, ...y2, 0, ...z, 0, ...at, 1]);
+      }
+      return new Float32Array([...x, 0, ...axis, 0, ...z, 0, ...at, 1]);
+    }
+    const insideSpinner = (p, pad) => spinners.some(spinner => {
+      const d = sub(p, spinner.at);
+      if (dot(d, d) > (spinner.bound + pad) ** 2) return false;
+      if (spinner.kind === 'cube') return Math.hypot(...d) < spinner.radius * 1.4 + pad;
+      const along = dot(d, spinner.axis), radial = Math.hypot(...sub(d, mul(spinner.axis, along)));
+      return Math.abs(along) < spinner.length / 2 + pad && radial < spinner.radius + pad && (spinner.inner <= 0 || radial > spinner.inner - pad);
+    });
+    const insideGirder = (p, pad = 0) => (rocks.length > 0 && insideRock(p, pad)) || (spinners.length > 0 && insideSpinner(p, pad)) || level.girders.some(([x0, y0, z0, x1, y1, z1]) =>
       p[0] > x0 - pad && p[0] < x1 + pad && p[1] > y0 - pad && p[1] < y1 + pad && p[2] > z0 - pad && p[2] < z1 + pad);
     function lineOfSight(point, from = ship.position) {
       const delta = sub(point, from), steps = Math.ceil(Math.hypot(...delta) / 1.5);
@@ -1658,7 +1799,7 @@
       for (const [x, z] of def.extras?.barrels || []) addBarrel(x, z);
       for (const [type, x, y, z] of def.extras?.enemies || []) addEnemy(type, x, y, z);
       objectiveIndex = 0;
-      objectives = (def.objectives || []).map(goal => ({ ...goal, enemies: (goal.targets || []).map(([type, x, y, z]) => addEnemy(type, x, y, z)) }));
+      objectives = (def.objectives || []).map(goal => ({ ...goal, enemies: (goal.targets || []).map(([type, x, y, z, title]) => Object.assign(addEnemy(type, x, y, z), { title })) }));
       const fromStart = (x, z) => Math.hypot(x - def.start[0], z - def.start[2]);
       for (const zone of def.zones) {
         const [x0, z0, x1, z1] = zone.area;
@@ -2889,6 +3030,8 @@
         if (covered) quad('ceiling', true, [[x0, ceil, z1], [x1, ceil, z1], [x1, ceil, z0], [x0, ceil, z0]], [0, -1, 0],
           [[x0 / 8, z1 / 8], [x1 / 8, z1 / 8], [x1 / 8, z0 / 8], [x0 / 8, z0 / 8]], [corners[3], corners[2], corners[1], corners[0]]);
         const roof = roofY[i];
+        if (def.interior && (ceil >= WALL_TOP || roof < WALL_TOP)) quad('ceiling', false, [[x0, WALL_TOP, z1], [x1, WALL_TOP, z1], [x1, WALL_TOP, z0], [x0, WALL_TOP, z0]], [0, -1, 0],
+          [[x0 / 8, z1 / 8], [x1 / 8, z1 / 8], [x1 / 8, z0 / 8], [x0 / 8, z0 / 8]], [0.9, 0.9, 0.9, 0.9]);
         if (roof < WALL_TOP) quad(roofOf[i] || def.roof || 'floorPad', false, [[x0, roof, z0], [x1, roof, z0], [x1, roof, z1], [x0, roof, z1]], [0, 1, 0],
           [[x0 / 8, z0 / 8], [x1 / 8, z0 / 8], [x1 / 8, z1 / 8], [x0 / 8, z1 / 8]], [1, 1, 1, 1]);
         for (const [dx, dz] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
@@ -2942,6 +3085,11 @@
           }
           const neighborFloor = floorY[n], neighborCeil = ceilY[n];
           if (roofY[i] < Infinity && neighborFloor > roofY[i] + 0.01) band(sideOf[n] || lower, roofY[i], neighborFloor, neighborFloor, TEXTURE_HEIGHT[sideOf[n]] || lowerSize);
+          // Above a roof, a neighboring block that rises higher shows its side down to this roof (or its own underside).
+          if (roofY[i] < Infinity && roofY[n] < Infinity && roofY[n] > roofY[i] + 0.01) {
+            const bottom = Math.max(roofY[i], neighborCeil);
+            if (roofY[n] > bottom) band(sideOf[n] || 'crown', bottom, roofY[n], roofY[n], TEXTURE_HEIGHT[sideOf[n]] || 4);
+          }
           if (neighborFloor > floor + 0.01) {
             const top = Math.min(neighborFloor, ceil), side = sideOf[n];
             if (side) band(side, floor, top, top, TEXTURE_HEIGHT[side] || 10);
@@ -3522,6 +3670,9 @@
       mesa: { bpm: 100, swing: 0.1, kit: 'halftime', lead: 'square', pad: 'warm', chords: [[40], [41], [38, 'm'], [40]],
         hook: ['E5.4 F5.2 G#5.2 B5.4 A5.4', 'G#5.4 F5.4 E5.8', 'F5.4 A5.2 C6.2 B5.4 A5.4', 'G#5.8 F5.8',
           'D5.4 F5.2 A5.2 D6.4 C6.4', 'B5.4 A5.4 F5.8', 'E5.4 G#5.2 B5.2 E6.4 D6.4', 'C6.4 B5.4 G#5.8'] },
+      ark: { bpm: 104, kit: 'halftime', lead: 'saw', pad: 'dark', arp: 'sine', chords: [[37, 'm'], [33], [40], [35]],
+        hook: ['C#5.4 E5.2 G#5.2 C#6.4 B5.4', 'A5.4 G#5.4 E5.8', 'C#5.4 E5.2 A5.2 C#6.4 E6.4', 'D#6.8 C#6.8',
+          'E5.4 G#5.2 B5.2 E6.4 D#6.4', 'C#6.4 B5.4 G#5.8', 'F#5.4 A5.2 C#6.2 F#6.4 E6.4', 'D#6.4 B5.4 G#5.8'] },
       menu: { bpm: 76, kit: 'ambient', lead: 'bell', pad: 'glass', arp: 'sine', arrangement: ['intro', 'drive', 'breakdown', 'drive'], chords: [[38, 'm'], [34], [41], [36]],
         hook: ['A5.4 F5.4 D5.4 E5.4', 'F5.12 r.4', 'D6.4 Bb5.4 F5.4 Bb5.4', 'A5.12 r.4', 'C6.4 A5.4 F5.4 A5.4', 'G5.8 F5.8', 'E5.4 G5.4 C6.4 E6.4', 'D6.16'] },
       boss: { bpm: 150, kit: 'foundry', lead: 'saw', pad: 'dark', arrangement: ['drive', 'assault', 'assault', 'breakdown', 'drive', 'assault'], chords: [[38, 'm'], [34], [36], [33]],
@@ -3727,6 +3878,9 @@
       curve = level.moon ? 1 / level.moon.radius : 0;
       levelMeshes = buildLevel(level);
       ensureMaterials(levelMeshes.map(mesh => mesh.name));
+      for (const spinner of spinners) for (const mesh of spinner.meshes) if (mesh) { gl.deleteBuffer(mesh.buffer); gl.deleteVertexArray(mesh.vao); }
+      spinners = (level.spinners || []).map(buildSpinner);
+      ensureMaterials(spinners.flatMap(spinner => spinner.materials));
       ship.position = level.start.slice(); ship.yaw = level.yaw; ship.pitch = 0; ship.roll = 0; ship.speed = 8; ship.strafe = [0, 0];
       health = startHealth; levelWeapon = weaponLevel; levelMissiles = missileAmmo; levelLauncher = launcherLevel; rails.length = 0; railCount = 0; shield = SHIELD_MAX; shieldDelay = 0;
       missiles.length = 0; enemyMissiles.length = 0; lockTarget = null; lockTimer = 0;
@@ -3756,6 +3910,12 @@
       const sectors = {};
       for (const [key, value] of Object.entries(save.sectors)) sectors[Number(key) >= 9 ? Number(key) + 1 : key] = value;
       save.sectors = sectors; if (save.last >= 9) save.last++; save.moon = 1;
+    }
+    // Sector 15, the ark, came later still: shift records from sector 15 on up by one again.
+    if (!save.ark) {
+      const sectors = {};
+      for (const [key, value] of Object.entries(save.sectors)) sectors[Number(key) >= 14 ? Number(key) + 1 : key] = value;
+      save.sectors = sectors; if (save.last >= 14) save.last++; save.ark = 1;
     }
     if (!DIFFICULTIES[save.difficulty]) save.difficulty = 'normal';
     if (!(save.last >= 0 && save.last < LEVELS.length && save.sectors[save.last])) save.last = 0;
@@ -3855,7 +4015,8 @@
       'The Sentinel is dead, but the song did not stop: Omega was never the source. The signal comes from inside the Void, a shroud of dark dust around Nadir\'s inner worlds, and the Requiem is going in. Follow it down the Abyss Shaft, a world hollowed out to its core.',
       'You made it back up the shaft, deeper inside the Void than anyone has been. At the end of a crystal canyon a Void Carrier is docked, one of the ships that carried the swarm to Earth. Take it apart.',
       'The carrier that burned Earth is wreckage. Deeper in, a foundry is building something far bigger than fighters. Climb it and tear it down before it is finished.',
-      'The foundry is down, and whatever it was building will never fly. The Mirror Archive holds the Choir\'s records behind three data cores. Destroy the cores and find out what the song is for.',
+      'The foundry is down, but the ship it was building had already slipped its dock: the Choir\'s ark, a hull kilometres long, drifting deeper into the Void on its own reactor. Board it through the docking bay, kill the governors that spin its habitat drum, then the regulators that hold its reactor steady, and get off at the bridge before it tears itself apart.',
+      'The ark is dead and drifting, and whatever it was built to carry will never arrive. The Mirror Archive holds the Choir\'s records behind three data cores. Destroy the cores and find out what the song is for.',
       'The archive listed 312 silenced worlds, and Earth was the latest; every one was found when the Herald heard its first radio voices. The ash plain ahead is world 311, and the Herald\'s listening array stands on it, aimed by three data cores. Destroy them and the Herald goes deaf to everything but you.',
       'The array is blind: the Herald can only hear you now. It waits at the heart of the Void, shielded by three orbiting nodes. Silence it, and the swarm loses its voice everywhere.',
     ];
@@ -3869,7 +4030,7 @@
       omega: { name: 'OMEGA', orbit: 0.3, angle: 0.95, color: '#c08cff' },
       void: { name: 'THE VOID', orbit: 0.15, angle: 3.6, color: '#e070ff' },
     };
-    const SECTOR_PLACES = ['delta', 'delta', 'epsilon', 'epsilon', 'epsilon', 'tau', 'tau', 'tau', 'sigma', 'sigma', 'omega', 'void', 'void', 'void', 'void', 'void', 'void'];
+    const SECTOR_PLACES = ['delta', 'delta', 'epsilon', 'epsilon', 'epsilon', 'tau', 'tau', 'tau', 'sigma', 'sigma', 'omega', 'void', 'void', 'void', 'void', 'void', 'void', 'void'];
     function drawSystemMap(now) {
       const ratio = window.devicePixelRatio || 1, w = systemMap.clientWidth, h = systemMap.clientHeight;
       if (!w || !h) return;
@@ -4103,6 +4264,7 @@
       for (const pickup of pickups) if (!pickup.taken) list.push([pickup.position, 13, PICKUP_COLORS[pickup.type]]);
       for (const gate of gates) for (const lock of gate.locks) if (lock.hp > 0) list.push([lock.position, 9, [1.0, 0.35, 0.15]]);
       if (exitOpen()) list.push([exitCenter(), 45, [0.3, 1.2, 0.7]]);
+      for (const spinner of spinners) if (spinner.kind === 'core') list.push([spinner.at, spinner.radius * 7, [0.45, 0.8, 1.5]]);
       for (const laser of lasers) if (laserState(laser) === 'on') { const [a, b] = laser.beams[0]; list.push([mul(add(a, b), 0.5), 26, [1.2, 0.2, 0.15]]); }
       const near = list.map(light => [light, dot(sub(light[0], camera.position), sub(light[0], camera.position))])
         .filter(([light, d]) => d < (light[1] + 160) ** 2).sort((a, b) => a[1] - b[1]).slice(0, GRAPHICS[graphics].lights).map(([light]) => light);
@@ -4275,6 +4437,22 @@
         billboard(add(explosion.position, [0, k * 4, 0]), (3 + k * 9) * explosion.scale, [0.9, 0.3, 0.08], (1 - k) * 0.8);
       }
       for (const spark of particles) streak(sub(spark.position, mul(spark.velocity, 0.035)), spark.position, 0.12, spark.color, spark.life / spark.maxLife * 2);
+      // Reactor columns crackle: short arcs jump off the surface, changing a dozen times a second.
+      for (const spinner of spinners) {
+        if (spinner.kind !== 'core' || !nearby(spinner.at, 400)) continue;
+        const flick = Math.floor(time * 12), [u, w] = [spinner.u, spinner.w];
+        for (let k = 0; k < 6; k++) {
+          if (hashInt(flick, k, 3) < 0.35) continue;
+          const angle = hashInt(flick, k, 4) * Math.PI * 2, up = (hashInt(flick, k, 5) - 0.5) * spinner.length * 0.8;
+          const out = add(mul(u, Math.cos(angle)), mul(w, Math.sin(angle))), start = add(add(spinner.at, mul(spinner.axis, up)), mul(out, spinner.radius));
+          let point = start;
+          for (let j = 0; j < 3; j++) {
+            const next = add(add(point, mul(out, 3 + hashInt(flick, k * 7 + j, 6) * 4)), mul(spinner.axis, (hashInt(flick, k * 7 + j, 7) - 0.5) * 8));
+            streak(point, next, 0.25, [0.5, 0.85, 1.0], 1.6); point = next;
+          }
+          billboard(start, 3, [0.6, 0.9, 1.0], 0.9);
+        }
+      }
       return data;
     }
     // Where a point appears once a moon's curve is applied (the shaders' bend), seen from `eye`.
@@ -4325,6 +4503,7 @@
       if (level.moon) { gl.uniform3f(u.uFog, 220, 900, 0.75); gl.uniform1f(u.uHaze, 0); } else { gl.uniform3f(u.uFog, 75, 540, 0.94); gl.uniform1f(u.uHaze, 0.35); }
       const reactorPulse = 1 + 0.3 * Math.sin(time * 2.2), gatePulse = exitOpen() ? 1 + 0.35 * Math.sin(time * 5) : 0.15;
       boundMaterial = null;
+      const seen = inView(camera);
       for (const { name, exposure, mesh } of levelMeshes) {
         useMaterial(materials[name], name === 'reactor' ? reactorPulse : name === 'exitFrame' ? gatePulse : 1);
         if (name === 'floorSludge') gl.uniform2f(u.uScroll, time * 0.012, time * 0.02);
@@ -4333,8 +4512,17 @@
         drawMesh(mesh, IDENTITY, 0, level.tint || WHITE, exposure);
         gl.uniform2f(u.uScroll, 0, 0);
       }
+      // Spinners: reactor columns pulse, rings and cubes turn.
+      for (const spinner of spinners) {
+        if (!seen(spinner.at, spinner.bound)) continue;
+        const model = spinnerMatrix(spinner, time * spinner.speed + (spinner.phase || 0));
+        spinner.meshes.forEach((mesh, k) => {
+          if (!mesh) return;
+          useMaterial(materials[spinner.materials[k]], spinner.kind === 'core' ? reactorPulse * 1.4 : 1);
+          drawMesh(mesh, model, 0, level.tint || WHITE, 0.85);
+        });
+      }
       // Gate doors sink into the floor as they open; their padlocks and chains hang on the near face.
-      const seen = inView(camera);
       for (const gate of gates) {
         if (gate.open >= 1 || !seen([(gate.x0 + gate.x1) / 2, (gate.door.y0 + gate.door.y1) / 2, (gate.z0 + gate.z1) / 2], Math.hypot(gate.x1 - gate.x0, gate.door.y1 - gate.door.y0, gate.z1 - gate.z0) / 2 + 2)) continue;
         const height = gate.door.y1 - gate.door.y0, eased = gate.open * gate.open * (3 - 2 * gate.open);
@@ -4614,7 +4802,7 @@
         const left = enemies.filter(e => e.type === 'core' && e.hp > 0).length;
         explosions.push({ position: enemy.position.slice(), life: 0.65, scale: 1.2 });
         sparks(enemy.position, 30, [0.4, 1.0, 0.9], 20); playExplosionSound();
-        if (left) registerHit(`DATA CORE DESTROYED // ${left} LEFT`);
+        if (left) registerHit(`${enemy.title || 'DATA CORE'} DESTROYED // ${left} LEFT`);
         else for (const gate of gates) if (gate.kind === 'core') openGate(gate, 'ALL DATA CORES DOWN // WAY OPEN');
         return;
       }
@@ -5395,7 +5583,7 @@
         // Slide along whatever was hit: keep the horizontal move, or else the vertical one.
         const [x, y, z] = ship.position, girder = insideGirder(ship.position, 0.8), covered = coveredAt(x, z, y);
         const outside = level.moon && (x < GRID_X0 + 2 || z < GRID_Z0 + 2 || x > GRID_X0 + GRID_W * CELL - 2 || z > GRID_Z0 + GRID_D * CELL - 2);
-        const label = girder ? 'GIRDER IMPACT' : outside ? 'OPERATIONS LIMIT' : !walkable(x, z, 0.7) ? 'WALL IMPACT' : y > WALL_TOP - 1.5 && !covered ? 'ALTITUDE LIMIT'
+        const label = girder ? 'GIRDER IMPACT' : outside ? 'OPERATIONS LIMIT' : !walkable(x, z, 0.7) ? 'WALL IMPACT' : y > WALL_TOP - 1.5 && !covered ? (level.interior ? 'CEILING IMPACT' : 'ALTITUDE LIMIT')
           : covered && y > floorAt(x, z) + 5 ? 'CEILING IMPACT' : 'HULL SCRAPE';
         const slideXZ = [x, previous[1], z], slideUp = [previous[0], y, previous[2]];
         ship.position = fits(slideXZ) ? slideXZ : fits(slideUp) ? slideUp : previous.slice();
@@ -5468,7 +5656,7 @@
       { style: 'position:fixed;left:8px;bottom:8px;z-index:99;font:12px monospace;color:#9fe;background:#000a;padding:4px 6px;white-space:pre;pointer-events:none' });
     // ?debug exposes the game state on window.radix, for testing sectors from the browser console.
     if (new URLSearchParams(location.search).has('debug'))
-      window.radix = { ship, enemies, gates, openGate, hurtEnemy, resetGame, set health(v) { health = v; }, get firing() { return mouseFiring; }, get boosting() { return boostFrom !== null; }, get objective() { return objectiveIndex; }, get mapOpen() { return mapOpen; }, set mapOpen(v) { mapOpen = v; } };
+      window.radix = { ship, enemies, gates, openGate, hurtEnemy, resetGame, insideGirder, startSector, set health(v) { health = v; }, get firing() { return mouseFiring; }, get boosting() { return boostFrom !== null; }, get objective() { return objectiveIndex; }, get mapOpen() { return mapOpen; }, set mapOpen(v) { mapOpen = v; } };
     let perfSums = [0, 0, 0, 0], perfFrames = 0, perfStart = 0;
     const perfParts = { combat: 0, reveal: 0, music: 0 }, slowFactor = Number(new URLSearchParams(location.search).get('slow')) || 1;
     function perfReport(parts) {
