@@ -41,6 +41,18 @@
     .shield-flash { position: absolute; inset: 0; background: radial-gradient(transparent 50%,#4fa8ff77); opacity: 0; }
     .warning { position: absolute; top: 22%; left: 50%; transform: translateX(-50%); color: #ff6a5a; font-size: 13px; letter-spacing: .3em; opacity: 0; }
     .damage-flash { position: absolute; inset: 0; background: radial-gradient(#ff301e30, #ff301e44 45%, #e8301ebb); opacity: 0; }
+    .aegis-flash { position: absolute; inset: 0; background: radial-gradient(transparent 55%, #ffd76a99); opacity: 0; }
+    .time-flash { position: absolute; inset: 0; background: radial-gradient(transparent 60%, #5dfff066); opacity: 0; }
+    .powers { position: absolute; left: 50%; bottom: 214px; transform: translateX(-50%); display: flex; gap: 6px; max-width: 94vw; }
+    .chip { padding: 3px 7px; border: 1px solid #3f7f90; background: #08131c99; color: #d7f9ff; font-size: 10px; letter-spacing: .08em; white-space: nowrap; }
+    .chip b { font-weight: normal; color: #f0a65c; margin-left: 5px; }
+    .chip.live { border-color: #ffd76a; background: #4a3a10aa; }
+    .chip.wait { border-color: #22404c; color: #5d7480; }
+    .chip.wait b { color: #5d7480; }
+    body.touch .powers { bottom: 100px; gap: 3px; }
+    body.touch .chip { font-size: 8px; padding: 2px 4px; }
+    .touch-ui > .power-buttons { left: 50%; top: 40px; transform: translateX(-50%); display: flex; gap: 6px; pointer-events: none; }
+    .power-buttons .tbutton { position: static; pointer-events: auto; touch-action: none; width: 46px; }
     .warp { position: absolute; inset: 0; background: radial-gradient(#f2fff8, #8dffc8 45%, #1a6a52); opacity: 0; }
     .controls { position: absolute; left: 28px; right: 28px; bottom: 9px; color: #8a9ca6; font-size: 10px; line-height: 1.4; letter-spacing: .05em; text-align: center; white-space: nowrap; overflow: hidden; }
     .controls b { color: #e1faff; font-weight: normal; }
@@ -119,9 +131,33 @@
     .menu .story, .menu .brief { margin: 22px auto 0; max-width: 580px; color: #c9dce4; font-size: 13px; line-height: 1.85; letter-spacing: .04em; text-align: left; }
     .menu .brief { margin-top: 14px; font-size: 12px; line-height: 1.75; }
     .menu .hint { color: #f0a65c; text-align: center; }
+    .menu-box.wide { width: min(860px, 100%); }
+    .upgrade-tree { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 12px; text-align: left; }
+    .menu .upgrade-tree h2 { margin: 0 0 6px; text-align: center; }
+    .menu button.power { display: block; width: 100%; text-align: left; padding: 7px 9px; }
+    .menu button.power b { display: block; font-weight: normal; letter-spacing: .1em; }
+    .menu button.power small { display: block; margin-top: 3px; color: #8a9ca6; font-size: 10px; letter-spacing: .06em; }
+    .menu button.power i { display: block; margin-top: 4px; color: #f0a65c; font-style: normal; letter-spacing: .24em; }
+    .menu button.power.locked { color: #4d6470; border-color: #22404c; border-style: dashed; }
+    .menu button.power.locked small, .menu button.power.locked i { color: #4d6470; }
+    .menu button.power.owned { background: #14394a; border-color: #75edff; color: #fff; }
+    .menu button.power.picked { outline: 1px solid #f0a65c; outline-offset: 2px; }
+    .upgrade-link { margin: 4px 0; color: #4d6470; font-size: 10px; letter-spacing: .08em; text-align: center; }
+    .upgrade-capstone { margin-top: 4px; text-align: left; }
+    .menu .upgrade-points { margin: 12px 0 0; color: #f0a65c; font-size: 12px; letter-spacing: .14em; }
+    .menu .upgrade-note { margin: 6px 0 0; font-size: 10px; }
+    .upgrade-detail { margin-top: 14px; padding-top: 10px; border-top: 1px solid #22404c; text-align: left; }
+    .upgrade-detail h3 { margin: 0; color: #fff; font-size: 12px; font-weight: normal; letter-spacing: .14em; }
+    .menu .upgrade-detail p { margin: 4px 0 0; font-size: 10px; }
+    .upgrade-ranks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+    .rank { border: 1px solid #22404c; background: #08131c; padding: 6px 8px; color: #8a9ca6; font-size: 10px; line-height: 1.5; letter-spacing: .05em; }
+    .rank b { display: block; color: #d7f9ff; font-weight: normal; letter-spacing: .14em; }
+    .rank.owned { border-color: #75edff; background: #14394a; color: #d7f9ff; }
+    .rank .up { color: #f0a65c; }
+    .rank .new { color: #7dff9a; }
     .menu h2.briefing-head { margin: 0 0 6px; }
     .menu h1.briefing-title { font-size: 15px; letter-spacing: .24em; }
-    #intro, #briefing { background: radial-gradient(#06121cf0, #02060bfb); }
+    #intro, #briefing, #upgrades { background: radial-gradient(#06121cf0, #02060bfb); }
     #systemMap { display: block; width: 100%; height: min(44vh, 330px); margin-top: 14px; border: 1px solid #22404c; background: #02070c; }
     body.touch .menu .story, body.touch .menu .brief { font-size: 11px; line-height: 1.6; }
     .menu p { margin: 18px 0 0; color: #8a9ca6; font-size: 10px; line-height: 1.6; letter-spacing: .08em; }
@@ -137,6 +173,8 @@
     <div class="top"><div class="brand">RADIX <small>BEYOND THE VOID / FLIGHT TEST</small></div><div class="mission"><span id="levelText">THETA-2</span> // <span id="zoneText">LAUNCH BAY</span><div class="objective" id="objectiveText"></div></div></div>
     <div class="damage-flash" id="damageFlash"></div>
     <div class="shield-flash" id="shieldFlash"></div>
+    <div class="aegis-flash" id="aegisFlash"></div>
+    <div class="time-flash" id="timeFlash"></div>
     <div class="warning" id="warningText">MISSILE WARNING</div>
     <div class="boss" id="bossBar"><span id="bossName">OMEGA SENTINEL</span><div class="meter"><span id="bossMeter"></span></div><small id="bossState">SHIELDED</small></div>
     <div class="warp" id="warpFlash"></div>
@@ -144,6 +182,7 @@
     <div class="impact" id="impactText">HULL IMPACT</div>
     <div class="status" id="statusText">TARGET HIT</div>
     <div class="gameover" id="gameOverText">SHIP DESTROYED<small>PRESS R TO RESTART</small></div>
+    <div class="powers" id="powerBar"></div>
     <div class="cockpit">
       <div class="panel"><div class="panel-title">NEUTRON CANNON</div><div class="panel-row"><span>SECTOR</span><strong id="sectorText">1 / 4</strong></div><div class="panel-row"><span>CANNON</span><strong id="cannonText">MK I</strong></div><div class="panel-row"><span>MISSILES</span><strong id="missileText">0</strong></div><div class="panel-row"><span>BARRELS</span><strong id="barrelText">0 / 0</strong></div><div class="panel-row"><span>HOSTILES</span><strong id="killText">0 / 0</strong></div><div class="panel-row"><span>MUSIC</span><strong id="musicText">ON</strong></div></div>
       <div class="radar-wrap"><canvas id="radar" width="118" height="118"></canvas><div class="readouts">SPEED<strong id="speedText">8.0</strong>HEADING<strong id="headingText">000</strong>ALT<strong id="altitudeText">-4</strong></div></div>
@@ -160,6 +199,7 @@
     <button class="tbutton" id="brakeButton">BRAKE</button>
     <button class="tbutton small" id="mapButton">MAP</button>
     <button class="tbutton small" id="menuButton">MENU</button>
+    <div class="power-buttons" id="powerButtons"></div>
   </div>
   <div class="rotate-hint">TURN YOUR PHONE SIDEWAYS<br>TO FLY</div>
   <div class="menu" id="menu" role="dialog" aria-label="Game menu">
@@ -174,6 +214,8 @@
       <div class="sectors" id="sectorList"></div>
       <h2>ARSENAL // TIER LIST</h2>
       <div class="arsenal" id="arsenalList"></div>
+      <h2 id="upgradeHead">UPGRADES</h2>
+      <div class="arsenal" id="upgradeList"></div>
       <p id="menuNote">Sectors unlock as you reach them, and start with the cannon, launcher and missiles you last entered them with; the time shown is your best run. Press Esc during flight to open this menu.</p>
       <p id="touchNote" hidden>Touch: drag the left stick to steer; push up to climb (PITCH flips this), and the nose levels out when you let go. Hold THRUST or BRAKE to change speed; it stays where you leave it. Hold FIRE to shoot, tap MSL for a missile.</p>
     </div>
@@ -184,6 +226,18 @@
       <p class="story">Thirty-eight light-years away, a red star sang a chord, and nine days later its swarm burned the Earth in forty hours. Forty thousand of us survived on frozen outposts, and from the wreck of one of their fighters we built the Radix, a human ship that wears their signature. The stealth cruiser Requiem carried it fourteen months across the dark to Nadir, the system the swarm came from. Now the Radix drops onto their worlds to burn the refineries, foundries, hives and gates that built the swarm. Somewhere beyond the Void, at the heart of their system, is the voice that called them to Earth, and the time for talking is over.</p>
       <div class="row" style="margin-top: 24px"><button class="primary" id="introButton" disabled>LOADING</button></div>
       <p class="hint" id="soundHint">TAP ANYWHERE OR PRESS A KEY FOR MUSIC</p>
+    </div>
+  </div>
+  <div class="menu" id="upgrades" role="dialog" aria-label="Ship upgrades">
+    <div class="menu-box wide">
+      <h2 class="briefing-head" id="upgradeKicker">UPGRADE BAY</h2>
+      <h1 class="briefing-title" id="upgradeTitle">SECTOR CLEAR</h1>
+      <p class="upgrade-points" id="upgradePoints"></p>
+      <p class="upgrade-note" id="upgradeNote"></p>
+      <div class="upgrade-tree" id="upgradeTree"></div>
+      <div class="upgrade-capstone" id="upgradeCapstone"></div>
+      <div class="upgrade-detail" id="upgradeDetail"></div>
+      <div class="row" style="margin-top: 16px"><button id="upgradeClear">CLEAR</button><button class="primary" id="upgradeDone">CONTINUE</button></div>
     </div>
   </div>
   <div class="menu" id="briefing" role="dialog" aria-label="Mission briefing">
@@ -3383,7 +3437,7 @@
       for (const [x, z] of def.extras?.barrels || []) addBarrel(x, z);
       for (const [type, x, y, z] of def.extras?.enemies || []) addEnemy(type, x, y, z);
       objectiveIndex = 0;
-      objectives = (def.objectives || []).map(goal => ({ ...goal, enemies: (goal.targets || []).map(([type, x, y, z, title]) => Object.assign(addEnemy(type, x, y, z), { title })) }));
+      objectives = (def.objectives || []).map(goal => ({ ...goal, enemies: (goal.targets || []).map(([type, x, y, z, title]) => Object.assign(addEnemy(type, x, y, z), { title, target: true })) }));
       const fromStart = (x, z) => Math.hypot(x - def.start[0], z - def.start[2]);
       // Open worlds (moons, cylinders, canyons, open space and the sunless sea) give the ship room to outfly anything, so
       // their open-air zones hold three times the hostiles, spaced apart in three dimensions. Rooms and buildings inside
@@ -5417,11 +5471,12 @@
     window.addEventListener('resize', resize);
     resize();
 
-    const controlKeys = new Set(['tab', 'w', 'a', 's', 'd', 'c', 'z', 'q', 'e', 'x', 'p', 'm', 'r', 'f', 'j', ' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright']);
+    const controlKeys = new Set(['tab', 'w', 'a', 's', 'd', 'c', 'z', 'q', 'e', 'x', 'p', 'm', 'r', 'f', 'j', ' ', '1', '2', '3', '4', '5', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright']);
     window.addEventListener('keydown', (event) => {
       const key = event.key.toLowerCase();
       if (screenOpen) {
         ensureAudio();
+        if (screenOpen === 'upgrades') return;
         if ((key === 'enter' || key === ' ') && !event.repeat) { event.preventDefault(); if (screenOpen === 'intro') leaveIntro(); else launch(); }
         return;
       }
@@ -5435,6 +5490,10 @@
         if (musicBus) musicBus.gain.setValueAtTime(musicOn ? 1 : 0, audioContext.currentTime);
       }
       if (key === 'r' && (destroyed || finished) && !event.repeat) resetGame(event.shiftKey);
+      if (!event.repeat) {
+        if (ACTIVE_POWERS[Number(key) - 1]) usePower(ACTIVE_POWERS[Number(key) - 1]);
+        noteTap(key);
+      }
       if (key !== 'p' && key !== 'r') ensureAudio();
       keys.add(key);
     });
@@ -5551,8 +5610,8 @@
       });
       for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) button.addEventListener(type, (event) => { if (usePointer(event)) change(false); });
     }
-    function bindTap(id, action) {
-      const button = document.getElementById(id);
+    function bindTap(target, action) {
+      const button = typeof target === 'string' ? document.getElementById(target) : target;
       button.addEventListener('touchstart', (event) => { event.preventDefault(); ensureAudio(); action(); }, { passive: false });
       button.addEventListener('pointerdown', (event) => { if (!usePointer(event)) return; event.preventDefault(); ensureAudio(); action(); });
     }
@@ -6034,6 +6093,7 @@
       Object.assign(save.sectors[LEVELS[index].title] ||= {}, { weapon: weaponLevel, missiles: missileAmmo, launcher: launcherLevel }); save.last = index; save.lastTitle = LEVELS[index].title; noteArsenal();
       checkpoint = null;
       sectorTime = 0; briefTimer = level.brief ? 3.2 : 0;
+      resetPowers();
       notice(`SECTOR ${index + 1} // ${level.name} ${level.title}`, 3);
     }
     // Difficulty scales how many enemies each zone spawns, how much damage reaches the ship and how far ahead enemies aim.
@@ -6088,6 +6148,41 @@
     save.last = Math.max(0, LEVELS.findIndex(def => def.title === save.lastTitle));
     if (!recordOf(save.last)) save.last = 0;
     const writeSave = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch { /* storage may be blocked */ } };
+    // The upgrade tree. A pilot earns one point for each sector cleared, so sector N is flown with N - 1 points, spent one rank
+    // at a time at the end of a sector or kept for later. A power opens once the one above it in its branch is at rank 2, and
+    // the singularity charge once any two tier 3 powers are. There are more ranks than a campaign earns points, on purpose.
+    // Each stat is [label, a value per rank, an optional format]; the game reads the same numbers through stat().
+    const pct = (v) => `${Math.round(v * 100)}%`, secs = (v) => `${v} S`;
+    const BRANCHES = ['FLIGHT', 'DEFENSE', 'SUPPORT'];
+    const UPGRADES = [
+      { id: 'reverse', branch: 0, tier: 1, name: 'REVERSE THRUSTERS', use: 'HOLD BRAKE', info: 'Fly backwards, still firing.',
+        stats: { speed: ['REVERSE SPEED', [0.4, 0.7, 1], pct] }, adds: [null, 'DOUBLE-TAP BRAKE: 180 FLIP', 'FIRE 25% FASTER IN REVERSE'] },
+      { id: 'dash', branch: 0, tier: 2, needs: 'reverse', name: 'BLINK DASH', chip: 'DASH', use: 'DOUBLE-TAP W/A/S/D', info: 'A burst in any strafe direction, untouchable mid-dash.',
+        stats: { distance: ['DISTANCE', [12, 12, 18]], charges: ['CHARGES', [1, 2, 2]], recharge: ['RECHARGE', [8, 6, 6], secs] }, adds: [null, null, 'SHAKES OFF HOMING MISSILES'] },
+      { id: 'overdrive', branch: 0, tier: 3, needs: 'dash', name: 'OVERDRIVE', chip: 'OVERDRIVE', key: 3, use: 'KEY 3', info: 'Slows time around the ship.',
+        stats: { time: ['DURATION', [3, 4, 5], secs], rate: ['TIME SPEED', [0.5, 0.4, 0.35], pct], cooldown: ['COOLDOWN', [40, 35, 35], secs] }, adds: [null, null, 'EACH KILL ADDS 0.5 S'] },
+      { id: 'aegis', branch: 1, tier: 1, name: 'AEGIS PULSE', chip: 'AEGIS', key: 1, use: 'KEY 1', info: 'Blocks all damage.',
+        stats: { time: ['DURATION', [2, 3, 4], secs], cooldown: ['COOLDOWN', [45, 40, 40], secs] }, adds: [null, null, 'RAMMING DESTROYS ENEMIES'] },
+      { id: 'deflector', branch: 1, tier: 2, needs: 'aegis', name: 'DEFLECTOR PLATING', use: 'PASSIVE', info: 'Enemy bolts glance off the hull.',
+        stats: { chance: ['GLANCE CHANCE', [0.15, 0.25, 0.35], pct] }, adds: [null, null, 'GLANCING BOLTS FLY BACK AT THE SHOOTER'] },
+      { id: 'phoenix', branch: 1, tier: 3, needs: 'deflector', name: 'PHOENIX PROTOCOL', chip: 'PHOENIX', use: 'PASSIVE', info: 'Survive a killing blow, immune for 3 s.',
+        stats: { recharge: ['RECHARGES', ['PER SECTOR', 'PER SECTOR', 'PER CHECKPOINT']], hull: ['HULL LEFT', [1, 1, 40], (v) => `${v}%`] }, adds: [null, 'REFILLS SHIELD, BLASTS WITHIN 15 UNITS', null] },
+      { id: 'wingman', branch: 2, tier: 1, name: 'DECOY WINGMAN', chip: 'WINGMAN', use: 'PASSIVE', info: 'A holo-drone that flies beside you and draws fire.',
+        stats: { drawn: ['FIRE DRAWN', [1 / 3, 0.5, 0.5], pct], hits: ['HITS IT TAKES', [3, 5, 5]], rebuild: ['REBUILD', [20, 15, 15], secs] }, adds: [null, null, 'SHOOTS BACK; SHOWS CLOAKED PHANTOMS ON RADAR'] },
+      { id: 'emp', branch: 2, tier: 2, needs: 'wingman', name: 'EMP BURST', chip: 'EMP', key: 2, use: 'KEY 2', info: 'Drops enemy shields and stuns everything close by.',
+        stats: { radius: ['RADIUS', [30, 45, 60]], stun: ['STUN', [1.5, 2.5, 2.5], secs], cooldown: ['COOLDOWN', [35, 35, 35], secs] }, adds: [null, 'SETS OFF MINES AND ENEMY MISSILES', 'SHIELDS STAY DOWN 60 S; STUNNED TAKE +50% DAMAGE'] },
+      { id: 'turncoat', branch: 2, tier: 3, needs: 'emp', name: 'TURNCOAT HACK', chip: 'TURNCOAT', key: 4, use: 'KEY 4', info: 'A hacked enemy fights for you.',
+        stats: { targets: ['TARGETS', ['DRONES, HUNTERS', 'ANY NON-BOSS', 'ANY NON-BOSS']], time: ['DURATION', [10, 15, 20], secs], count: ['AT ONCE', [1, 1, 2]], cooldown: ['COOLDOWN', [60, 60, 60], secs] }, adds: [null, null, 'HACKED ENEMIES BLOW UP AT THE END'] },
+      { id: 'singularity', branch: 3, tier: 4, name: 'SINGULARITY CHARGE', chip: 'SINGULARITY', key: 5, use: 'KEY 5', info: 'Pulls enemies in for 3 s, then implodes.',
+        stats: { radius: ['RADIUS', [30, 40, 50]], damage: ['DAMAGE', [6, 10, 10]], cooldown: ['COOLDOWN', [60, 60, 45], secs] }, adds: [null, null, 'SWALLOWS ENEMY BOLTS AND MISSILES'] },
+    ];
+    const upgradeOf = Object.fromEntries(UPGRADES.map(upgrade => [upgrade.id, upgrade]));
+    const ranks = Object.fromEntries(UPGRADES.map(upgrade => [upgrade.id, 0]));
+    const stat = (id, name) => upgradeOf[id].stats[name][1][ranks[id] - 1];
+    const ranksSpent = (build = ranks) => UPGRADES.reduce((sum, upgrade) => sum + (build[upgrade.id] || 0), 0);
+    const setRanks = (build) => { for (const upgrade of UPGRADES) ranks[upgrade.id] = clamp(Math.round((build && build[upgrade.id]) || 0), 0, 3); };
+    const tierThrees = () => UPGRADES.filter(upgrade => upgrade.tier === 3 && ranks[upgrade.id] >= 2).length;
+    const upgradeOpen = (upgrade) => upgrade.tier === 4 ? tierThrees() >= 2 : !upgrade.needs || ranks[upgrade.needs] >= 2;
     // The arsenal remembers the best cannon and launcher tiers ever reached, for the menu's tier list.
     function noteArsenal() {
       const best = save.best || (save.best = { weapon: 1, launcher: 1 });
@@ -6097,6 +6192,7 @@
     const menu = document.getElementById('menu'), resumeButton = document.getElementById('resumeButton');
     const graphicsRow = document.getElementById('graphicsRow'), graphicsHead = document.getElementById('graphicsHead');
     const sectorList = document.getElementById('sectorList'), arsenalList = document.getElementById('arsenalList'), difficultyRow = document.getElementById('difficultyRow'), menuNote = document.getElementById('menuNote');
+    const upgradeList = document.getElementById('upgradeList'), upgradeHead = document.getElementById('upgradeHead');
     let menuOpen = false, menuOpenedAt = 0, started = false, sectorTime = 0, briefTimer = 0;
     const WARP_TIME = 2.4;
     // A run starts whenever a sector is started from the menu or a new game begins; warps add to its totals.
@@ -6108,6 +6204,9 @@
     const testKit = (index) => ({ weapon: Math.min(WEAPONS.length, 1 + Math.floor(index / 2)), missiles: Math.min(MISSILE_MAX, index * 2), launcher: index >= 9 ? 3 : index >= 2 ? 2 : 1 });
     function startSector(index) {
       startRun(index);
+      // A sector keeps the build it was last entered with; failing that the current one carries over if the sector's points cover it.
+      const build = recordOf(index)?.ranks || save.ranks;
+      setRanks(index > 0 && ranksSpent(build || {}) <= index ? build : null);
       const kit = recordOf(index) || (UNLOCK_ALL && index > 0 ? testKit(index) : { weapon: 1, missiles: 0 });
       weaponLevel = clamp(kit.weapon, 1, WEAPONS.length); missileAmmo = kit.missiles; launcherLevel = clamp(kit.launcher || 1, 1, LAUNCHERS.length);
       loadLevel(index, 100);
@@ -6148,6 +6247,12 @@
       arsenalList.replaceChildren(
         ...WEAPONS.map((w, i) => tier(w.name, `${w.name} ${w.title}`, w.info, i < best.weapon, i === weaponLevel - 1)),
         ...LAUNCHERS.map((l, i) => tier(`LAUNCHER ${i + 1}`, l.name, l.info, i < best.launcher, i === launcherLevel - 1)));
+      upgradeList.replaceChildren(...UPGRADES.filter(upgrade => ranks[upgrade.id]).map(upgrade => {
+        const item = document.createElement('div'), head = document.createElement('b'), body = document.createElement('small');
+        item.className = 'tier got now'; head.textContent = `${upgrade.name} // RANK ${ranks[upgrade.id]}`; body.textContent = `${upgrade.use}. ${upgrade.info}`;
+        item.append(head, body); return item;
+      }));
+      upgradeHead.textContent = `UPGRADES // ${ranksSpent()} OF ${levelIndex} POINTS SPENT`;
       sectorList.replaceChildren(...LEVELS.map((def, i) => {
         const button = document.createElement('button'), kit = recordOf(i);
         const label = document.createElement('span'), detail = document.createElement('small');
@@ -6157,7 +6262,7 @@
         detail.textContent = kit ? `${WEAPONS[clamp(kit.weapon || 1, 1, WEAPONS.length) - 1].name} / ${kit.missiles || 0} MSL${best}`
           : test ? `TEST // ${WEAPONS[test.weapon - 1].name} / ${test.missiles} MSL` : i === 0 ? 'MK I / 0 MSL' : 'LOCKED';
         button.append(label, detail); button.disabled = !kit && i > 0 && !UNLOCK_ALL;
-        button.addEventListener('click', () => { startSector(i); showBriefing(); });
+        button.addEventListener('click', () => { startSector(i); i ? showUpgrades(true) : showBriefing(); });
         return button;
       }));
     }
@@ -6265,6 +6370,87 @@
       if (screenOpen !== 'intro' || !booted) return;
       screenOpen = null; intro.classList.remove('show'); ensureAudio(); openMenu();
     }
+    // The upgrade bay opens at the end of each sector to spend the point just earned. Points already spent there are fixed;
+    // unspent ones carry over. Picking a sector from the menu opens it for testing instead, with the N - 1 points a pilot
+    // would have by sector N, and the whole build can be changed.
+    const upgradesScreen = document.getElementById('upgrades'), upgradeTree = document.getElementById('upgradeTree'), upgradeCapstone = document.getElementById('upgradeCapstone');
+    const upgradeDetail = document.getElementById('upgradeDetail'), upgradePoints = document.getElementById('upgradePoints'), upgradeDone = document.getElementById('upgradeDone');
+    let upgradeFloor = {}, pickedUpgrade = 'reverse';
+    function canTakeBack(upgrade) {
+      if (ranks[upgrade.id] <= (upgradeFloor[upgrade.id] || 0)) return false;
+      ranks[upgrade.id]--;
+      const fine = UPGRADES.every(other => !ranks[other.id] || upgradeOpen(other));
+      ranks[upgrade.id]++;
+      return fine;
+    }
+    function changeRank(id, by) {
+      const upgrade = upgradeOf[id];
+      if (by > 0 && ranks[id] < 3 && upgradeOpen(upgrade) && ranksSpent() < levelIndex) ranks[id]++;
+      if (by < 0 && canTakeBack(upgrade)) ranks[id]--;
+      pickedUpgrade = id; renderUpgrades();
+    }
+    function powerCard(upgrade) {
+      const button = document.createElement('button'), locked = !upgradeOpen(upgrade) && !ranks[upgrade.id];
+      const name = document.createElement('b'), use = document.createElement('small'), pips = document.createElement('i');
+      button.className = `power${locked ? ' locked' : ''}${ranks[upgrade.id] ? ' owned' : ''}${pickedUpgrade === upgrade.id ? ' picked' : ''}`;
+      button.dataset.id = upgrade.id; name.textContent = upgrade.name; use.textContent = upgrade.use;
+      pips.textContent = '\u25cf'.repeat(ranks[upgrade.id]) + '\u25cb'.repeat(3 - ranks[upgrade.id]);
+      button.append(name, use, pips);
+      button.addEventListener('click', () => changeRank(upgrade.id, 1));
+      button.addEventListener('contextmenu', (event) => { event.preventDefault(); changeRank(upgrade.id, -1); });
+      return button;
+    }
+    const upgradeLink = (text) => { const link = document.createElement('div'); link.className = 'upgrade-link'; link.textContent = text; return link; };
+    function renderUpgrades() {
+      const focused = document.activeElement?.dataset?.id, left = levelIndex - ranksSpent();
+      upgradePoints.textContent = `${left} ${left === 1 ? 'POINT' : 'POINTS'} TO SPEND // ${ranksSpent()} OF ${levelIndex} SPENT`;
+      upgradeTree.replaceChildren(...BRANCHES.map((name, branch) => {
+        const column = document.createElement('div'), head = document.createElement('h2');
+        head.textContent = name; column.append(head);
+        UPGRADES.filter(upgrade => upgrade.branch === branch).forEach((upgrade, i) => { if (i) column.append(upgradeLink('RANK 2 OPENS \u2193')); column.append(powerCard(upgrade)); });
+        return column;
+      }));
+      upgradeCapstone.replaceChildren(upgradeLink('ANY TWO TIER 3 POWERS AT RANK 2 OPEN \u2193'), powerCard(upgradeOf.singularity));
+      const upgrade = upgradeOf[pickedUpgrade], title = document.createElement('h3'), info = document.createElement('p'), list = document.createElement('div');
+      title.textContent = `${upgrade.name} // ${upgrade.use}`;
+      info.textContent = `${upgrade.info} ${upgrade.tier === 4 ? 'Needs rank 2 in any two tier 3 powers.' : upgrade.needs ? `Needs rank 2 in ${upgradeOf[upgrade.needs].name}.` : ''}`;
+      list.className = 'upgrade-ranks';
+      for (let i = 0; i < 3; i++) {
+        const cell = document.createElement('div'), head = document.createElement('b');
+        cell.className = `rank${i < ranks[upgrade.id] ? ' owned' : ''}`; head.textContent = `RANK ${i + 1}`; cell.append(head);
+        for (const [label, values, format] of Object.values(upgrade.stats)) {
+          const line = document.createElement('div'), better = i > 0 && values[i] !== values[i - 1];
+          line.className = better ? 'up' : ''; line.textContent = `${better ? '\u2191 ' : ''}${label} ${format ? format(values[i]) : values[i]}`; cell.append(line);
+        }
+        if (upgrade.adds[i]) { const line = document.createElement('div'); line.className = 'new'; line.textContent = `+ ${upgrade.adds[i]}`; cell.append(line); }
+        list.append(cell);
+      }
+      const buttons = document.createElement('div'), more = document.createElement('button'), less = document.createElement('button');
+      buttons.className = 'row'; buttons.style.marginTop = '10px';
+      more.textContent = 'ADD POINT'; more.disabled = ranks[upgrade.id] >= 3 || !upgradeOpen(upgrade) || left <= 0; more.addEventListener('click', () => changeRank(upgrade.id, 1));
+      less.textContent = 'TAKE BACK'; less.disabled = !canTakeBack(upgrade); less.addEventListener('click', () => changeRank(upgrade.id, -1));
+      buttons.append(more, less);
+      upgradeDetail.replaceChildren(title, info, list, buttons);
+      if (focused) document.querySelector(`.power[data-id="${focused}"]`)?.focus();
+    }
+    function showUpgrades(testing) {
+      menuOpen = false; menu.classList.remove('show');
+      screenOpen = 'upgrades'; paused = true; mouseFiring = false; keys.clear(); releaseTouch();
+      if (document.pointerLockElement) document.exitPointerLock();
+      upgradeFloor = testing ? {} : { ...ranks };
+      document.getElementById('upgradeKicker').textContent = testing ? 'TEST LOADOUT' : 'UPGRADE BAY';
+      document.getElementById('upgradeTitle').textContent = testing ? `SECTOR ${levelIndex + 1} // ${levelIndex} POINTS` : `SECTOR ${levelIndex} CLEAR // 1 POINT EARNED`;
+      document.getElementById('upgradeNote').textContent = testing ? `A pilot reaching this sector has earned ${levelIndex}. Assign them before it begins.` : 'Spend it now or keep it for later. Points spent here are fixed.';
+      upgradesScreen.classList.add('show'); upgradesScreen.scrollTop = 0;
+      renderUpgrades(); upgradeDone.focus(); setTrack('menu');
+    }
+    upgradeDone.addEventListener('click', () => {
+      if (screenOpen !== 'upgrades') return;
+      screenOpen = null; upgradesScreen.classList.remove('show');
+      save.ranks = { ...ranks }; (save.sectors[LEVELS[levelIndex].title] ||= {}).ranks = { ...ranks }; writeSave();
+      resetPowers(); showBriefing();
+    });
+    document.getElementById('upgradeClear').addEventListener('click', () => { setRanks(upgradeFloor); renderUpgrades(); });
     function showBriefing() {
       menuOpen = false; menu.classList.remove('show');
       screenOpen = 'briefing'; paused = true; mouseFiring = false; keys.clear(); releaseTouch();
@@ -6282,7 +6468,7 @@
     }
     introButton.addEventListener('click', leaveIntro);
     launchButton.addEventListener('click', launch);
-    for (const screen of [intro, briefing]) screen.addEventListener('pointerdown', () => ensureAudio());
+    for (const screen of [intro, briefing, upgradesScreen]) screen.addEventListener('pointerdown', () => ensureAudio());
     function openMenu() {
       endBoost();
       menuOpen = true; menuOpenedAt = performance.now(); paused = true; mouseFiring = false; keys.clear(); releaseTouch();
@@ -6291,7 +6477,7 @@
       setTrack('menu');
     }
     function closeMenu() {
-      if (!started) return showBriefing();
+      if (!started) return levelIndex ? showUpgrades(true) : showBriefing();
       menuOpen = false; paused = false; lastTime = performance.now();
       menu.classList.remove('show'); ensureAudio(); setTrack(level.music || 'relay');
       try { const request = canvas.requestPointerLock(); if (request && request.catch) request.catch(() => {}); } catch { /* click the view to capture the mouse */ }
@@ -6310,7 +6496,7 @@
       if (!enter) return;
       Promise.resolve(enter.call(root)).then(() => screen.orientation?.lock?.('landscape')).catch(() => {});
     });
-    document.getElementById('newGameButton').addEventListener('click', () => { weaponLevel = 1; missileAmmo = 0; launcherLevel = 1; startRun(0); loadLevel(0, 100); showBriefing(); });
+    document.getElementById('newGameButton').addEventListener('click', () => { setRanks(null); save.ranks = null; weaponLevel = 1; missileAmmo = 0; launcherLevel = 1; startRun(0); loadLevel(0, 100); showBriefing(); });
     // Checkpoints: opening a gate or destroying a boss records how far the sector has got. Spawns are seeded per
     // sector, so a restart reloads the sector and replays that progress: the same enemies stay dead, barrels and
     // pickups stay gone and gates stay open, with the ship back where it was and the loadout it had then.
@@ -6318,6 +6504,7 @@
     const indexesWhere = (list, test, limit = list.length) => list.slice(0, limit).flatMap((item, i) => test(item) ? [i] : []);
     function takeCheckpoint() {
       if (destroyed || warpTimer > 0) return;
+      if (ranks.phoenix >= 3) phoenixReady = true;
       checkpoint = { position: ship.position.slice(), yaw: ship.yaw, health: Math.max(health, 60), weapon: weaponLevel, launcher: launcherLevel, missiles: missileAmmo,
         hostiles: hostileTotal, dead: indexesWhere(enemies, e => e.hp <= 0, hostileTotal), barrels: indexesWhere(barrels, b => b.exploded),
         pickups: indexesWhere(pickups, p => p.taken, pickupTotal), gates: indexesWhere(gates, g => g.opening), kills, barrelsDestroyed,
@@ -6325,7 +6512,7 @@
     }
     function resetGame(fromStart) {
       const cp = checkpoint, elapsed = sectorTime;
-      if (finished) { weaponLevel = 1; missileAmmo = 0; launcherLevel = 1; startRun(0); loadLevel(0, 100); showBriefing(); return; }
+      if (finished) { setRanks(null); save.ranks = null; weaponLevel = 1; missileAmmo = 0; launcherLevel = 1; startRun(0); loadLevel(0, 100); showBriefing(); return; }
       weaponLevel = levelWeapon; missileAmmo = levelMissiles; launcherLevel = levelLauncher;
       loadLevel(levelIndex, fromStart || !cp ? 100 : cp.health);
       if (fromStart || !cp || cp.hostiles !== hostileTotal) return;
@@ -6348,6 +6535,7 @@
     }
     function damage(amount, label) {
       if (destroyed || finished || warpTimer > 0) return;
+      if (untouchable()) { shieldGlow = Math.max(shieldGlow, 0.5); return; }
       amount *= DIFFICULTIES[save.difficulty].damage;
       // The shield soaks damage first and starts recharging a few seconds after the last hit.
       shieldDelay = 4;
@@ -6357,8 +6545,18 @@
       // Every hit shakes the view; one that reaches the hull shakes it harder and turns the screen red.
       if (amount > 0) { trauma = Math.min(1, trauma + 0.4 + amount / 30); redFlash = Math.max(redFlash, Math.min(1, 0.55 + amount / 40)); playHullHit(amount); }
       else { trauma = Math.min(1, trauma + 0.3 + absorbed / 50); playShieldHit(absorbed); }
-      health = Math.max(0, Math.round(health - amount));
       impactTimer = 1.1; impactText.textContent = label;
+      if (phoenixReady && Math.round(health - amount) <= 0) {
+        // Phoenix protocol: the killing hit is survived once, with a few seconds of immunity.
+        phoenixReady = false; health = stat('phoenix', 'hull'); immuneTimer = 3;
+        notice('PHOENIX PROTOCOL // HULL HOLDING', 2.5); playPower(200, 1200, 0.7);
+        if (ranks.phoenix < 2) return;
+        shield = SHIELD_MAX;
+        explosions.push({ position: ship.position.slice(), life: 0.65, scale: 1.6 });
+        for (const enemy of enemies) if (enemy.hp > 0 && !enemy.hacked && Math.hypot(...sub(enemy.position, ship.position)) < 15) hurtEnemy(enemy, 4);
+        return;
+      }
+      health = Math.max(0, Math.round(health - amount));
       if (health === 0) {
         destroyed = true; ship.speed = 0;
         // The ship goes up in a fireball just ahead of the cockpit.
@@ -6584,6 +6782,29 @@
         streak(boltTail(shot, 0.06), shot.position, width, shot.tint || [0.35, 0.9, 1.0], 1.6);
         billboard(shot.position, width * 2, [0.8, 1.0, 1.0], 1.2);
       }
+      const disc = (position, size, color, alpha) => {
+        const r = mul(camera.view.right, size), u = mul(camera.view.up, size);
+        quad([sub(sub(position, r), u), sub(add(position, r), u), add(add(position, r), u), add(sub(position, r), u)], [[4, 0], [5, 0], [5, 1], [4, 1]], color, alpha);
+      };
+      const ring = (center, radius, color, alpha) => {
+        const r = mul(camera.view.right, radius), u = mul(camera.view.up, radius);
+        let last = add(center, r);
+        for (let k = 1; k <= 24; k++) {
+          const angle = k / 24 * Math.PI * 2, next = add(center, add(mul(r, Math.cos(angle)), mul(u, Math.sin(angle))));
+          streak(last, next, 0.3, color, alpha); last = next;
+        }
+      };
+      for (const pulse of pulses) {
+        const k = 1 - pulse.life / PULSE_TIME;
+        disc(pulse.position, pulse.radius * k, [0.4, 0.8, 1.0], (1 - k) * 0.8);
+        ring(pulse.position, pulse.radius * k, [0.6, 0.9, 1.0], (1 - k) * 1.2);
+      }
+      for (const well of wells) {
+        billboard(well.position, 8, [0.6, 0.2, 1.0], 1);
+        billboard(well.position, 3, [1.0, 0.85, 1.0], 1.2);
+        for (let k = 0; k < 3; k++) { const fall = (time * 0.7 + k / 3) % 1; ring(well.position, well.radius * (1 - fall), [0.65, 0.3, 1.0], 0.8 * fall); }
+      }
+      if (wingmanUp()) billboard(wingman.position, 1.4, [0.4, 1.0, 1.0], 0.5);
       // Shield discs, brighter where they were just struck; one about to drop flickers.
       for (const enemy of enemies) {
         if (!enemy.guard || enemy.hp <= 0 || enemy.guardUp <= 0.02 || !nearby(enemy.position, 220)) continue;
@@ -6796,8 +7017,13 @@
           continue;
         }
         const model = modelMatrix(enemy.position, enemy.yaw, enemy.type === 'sentry' || enemy.type === 'pylon' ? 0 : Math.sin(time * 1.7 + enemy.phase) * 0.25, kind.scale);
-        drawMesh(enemyMeshes[enemy.type], model, enemy.flash * 0.8, enemy.elite ? [kind.tint[0] * 1.35, kind.tint[1] * 1.1, kind.tint[2] * 0.55] : kind.tint, exposureAt(enemy.position));
-        if (enemyGlows[enemy.type]) glowing.push([enemyGlows[enemy.type], model, enemy.elite ? ELITE_EYE : kind.eye, enemy.flash]);
+        drawMesh(enemyMeshes[enemy.type], model, enemy.flash * 0.8, enemy.hacked ? [0.5, 1.5, 0.6] : enemy.elite ? [kind.tint[0] * 1.35, kind.tint[1] * 1.1, kind.tint[2] * 0.55] : kind.tint, exposureAt(enemy.position));
+        if (enemyGlows[enemy.type]) glowing.push([enemyGlows[enemy.type], model, enemy.hacked ? [0.4, 1.0, 0.5] : enemy.elite ? ELITE_EYE : kind.eye, enemy.flash]);
+      }
+      if (wingmanUp()) {
+        const model = modelMatrix(wingman.position, ship.yaw, Math.sin(time * 1.7) * 0.2, 0.7);
+        drawMesh(enemyMeshes.skimmer, model, wingman.flash * 0.8, [0.45, 1.3, 1.5], exposureAt(wingman.position));
+        if (enemyGlows.skimmer) glowing.push([enemyGlows.skimmer, model, [0.4, 1.0, 1.0], wingman.flash]);
       }
       // Engines, eyes and cores glow in the enemy's eye colour.
       if (glowing.length) {
@@ -6857,7 +7083,9 @@
       };
       for (const barrel of barrels) if (!barrel.exploded) mark(barrel.position,'#e8a05e',1.8);
       for (const pickup of pickups) if (!pickup.taken) mark(pickup.position, pickup.type === 'health' ? '#6dffa0' : pickup.type === 'launcher' ? '#d9a6ff' : '#ffc45a', 2.4);
-      for (const enemy of enemies) if (enemy.hp > 0 && !enemy.cloaked) mark(enemy.position, ENEMY_TYPES[enemy.type].radar, ENEMY_TYPES[enemy.type].boss ? 4.6 : enemy.type === 'warden' || enemy.type === 'brood' ? 3.4 : enemy.summoned && enemy.type !== 'hunter' ? 1.7 : 2.6);
+      const seesCloaked = ranks.wingman >= 3 && wingmanUp();
+      if (wingmanUp()) mark(wingman.position, '#65e9ff', 2.2);
+      for (const enemy of enemies) if (enemy.hp > 0 && (!enemy.cloaked || seesCloaked)) mark(enemy.position, enemy.hacked ? '#7dff9a' : ENEMY_TYPES[enemy.type].radar, ENEMY_TYPES[enemy.type].boss ? 4.6 : enemy.type === 'warden' || enemy.type === 'brood' ? 3.4 : enemy.summoned && enemy.type !== 'hunter' ? 1.7 : 2.6);
       r.save(); r.beginPath(); r.arc(cx,cy,51,0,Math.PI*2); r.clip();
       r.strokeStyle = '#ff9a3a'; r.lineWidth = 2.2; r.beginPath();
       for (const gate of gates) {
@@ -7036,6 +7264,7 @@
         registerHit(GUARD_HINTS[enemy.type]); return;
       }
       if (enemy.type === 'phantom') { enemy.reveal = 1.2; enemy.cloaked = false; }
+      if (enemy.stun > 0 && ranks.emp >= 3) amount *= 1.5;
       if (enemy.shieldedBy && enemy.shieldedBy.hp > 0) {
         enemy.flash = 0.3; enemy.shieldHit = 1; if (!enemy.active) alert(enemy);
         registerHit('AEGIS SHIELD // DESTROY THE AEGIS'); return;
@@ -7043,6 +7272,7 @@
       enemy.hp = Math.max(0, enemy.hp - amount); enemy.flash = 1;
       if (!enemy.active) alert(enemy);
       if (enemy.hp > 0) { registerHit('TARGET HIT'); return; }
+      if (timers.overdrive > 0 && ranks.overdrive >= 3) timers.overdrive += 0.5;
       if (!enemy.summoned) kills++;
       if (enemy.type === 'mine') { detonateMine(enemy); registerHit('MINE DESTROYED'); return; }
       if (enemy.type === 'core') {
@@ -7172,14 +7402,17 @@
     }
     const bob = (enemy, sway, rise) => { enemy.position = add(enemy.base, [Math.sin(time * 1.2 + enemy.phase) * sway, Math.cos(time * 1.4 + enemy.phase) * rise, 0]); };
     const capLength = (v, most) => { const n = Math.hypot(...v); return n > most ? mul(v, most / n) : v; };
+    // While an enemy acts, `shooter` is that enemy and `aimTarget` is the wingman if its last attack picked it.
+    let shooter = null, aimTarget = null;
     // Aim where the ship will be when the shot arrives; how far ahead depends on the difficulty.
     const leadAim = (from, speed) => {
+      if (aimTarget) return normalize(sub(aimTarget, from));
       const t = Math.hypot(...sub(ship.position, from)) / speed;
       return normalize(sub(add(ship.position, mul(shipVelocity, t * DIFFICULTIES[save.difficulty].lead)), from));
     };
     const fireBolt = (from, direction, speed, amount, extra) => {
-      if (curve) { const reach = Math.hypot(...sub(ship.position, from)); direction = normalize(sub(bend(add(from, mul(direction, reach)), from), from)); }
-      enemyShots.push(straighten({ position: from, velocity: mul(direction, speed), life: 4, damage: amount, ...extra }));
+      if (curve) { const reach = Math.hypot(...sub(aimTarget || ship.position, from)); direction = normalize(sub(bend(add(from, mul(direction, reach)), from), from)); }
+      enemyShots.push(straighten({ position: from, velocity: mul(direction, speed), life: 4, damage: amount, owner: shooter, ...extra }));
     };
     const ELITE_EYE = [1.0, 0.82, 0.25];
     const CRYSTALLINE = { core: [0.7, 1.3, 1.2], herald: [1.2, 0.8, 1.4], node: [1.1, 0.9, 1.4] };
@@ -7352,7 +7585,7 @@
         case 'herald': return heraldAttack(enemy, aim, distance);
         case 'node': fireBolt(enemy.position.slice(), leadAim(enemy.position, 26), 26, 8); enemy.cooldown = 2.4 + random(); return;
         case 'striker':
-          enemyMissiles.push({ position: add(enemy.position, [0, -0.8, 0]), velocity: mul(normalize(add(aim, [0, 0.35, 0])), 20), life: 6.5 });
+          enemyMissiles.push({ position: add(enemy.position, [0, -0.8, 0]), velocity: mul(normalize(add(aim, [0, 0.35, 0])), 20), life: 6.5, decoy: !!aimTarget });
           enemy.cooldown = 4.5 + random() * 1.5;
           return playMissileLaunch(0.6);
         case 'sentry': case 'relay': enemy.burst = 3; enemy.burstTimer = 0; enemy.cooldown = 2.6 + random() * 0.6; return;
@@ -7367,7 +7600,7 @@
           }
           enemy.cooldown = 2.4 + random() * 0.6; return;
         case 'lancer':
-          enemy.charge = 1.25; enemy.aimPoint = ship.position.slice(); enemy.cooldown = 4 + random() * 1.5;
+          enemy.charge = 1.25; enemy.aimPoint = (aimTarget || ship.position).slice(); enemy.cooldown = 4 + random() * 1.5;
           return playCharge(distance);
         case 'aegis': fireBolt(enemy.position.slice(), leadAim(enemy.position, 24), 24, 8); enemy.cooldown = 3 + random(); return;
         case 'skimmer': {
@@ -7403,6 +7636,12 @@
       for (const enemy of enemies) {
         enemy.flash = Math.max(0, enemy.flash - dt * 5);
         if (enemy.hp <= 0) continue;
+        if (enemy.hacked > 0) { updateHacked(enemy, dt); continue; }
+        if (enemy.stun > 0) {
+          enemy.stun -= dt;
+          if (random() < dt * 5) sparks(enemy.position, 2, [0.5, 0.8, 1.0], 8);
+          continue;
+        }
         const kind = ENEMY_TYPES[enemy.type];
         let toPlayer = sub(ship.position, enemy.position), distance = Math.hypot(...toPlayer) || 0.01;
         const visible = distance < kind.sight && lineOfSight(enemy.position);
@@ -7417,7 +7656,8 @@
         if (enemy.type === 'phantom') { enemy.reveal = Math.max(0, (enemy.reveal || 0) - dt); enemy.cloaked = enemy.reveal <= 0 && distance > 18; }
         enemy.cooldown -= dt;
         if (visible && distance < 70) hostilesNear++;
-        const aim = mul(toPlayer, 1 / distance);
+        shooter = enemy; aimTarget = enemy.decoyed && wingmanUp() ? wingman.position : null;
+        const aim = normalize(sub(aimTarget || ship.position, enemy.position));
         if (enemy.burst > 0) {
           enemy.burstTimer -= dt;
           if (enemy.burstTimer <= 0) {
@@ -7427,11 +7667,17 @@
         }
         if (enemy.charge > 0) {
           // The lancer's aiming beam trails the ship; when the charge completes it fires a fast bolt down the beam.
-          enemy.aimPoint = add(enemy.aimPoint, mul(sub(ship.position, enemy.aimPoint), Math.min(1, dt * 1.7)));
+          enemy.aimPoint = add(enemy.aimPoint, mul(sub(aimTarget || ship.position, enemy.aimPoint), Math.min(1, dt * 1.7)));
           if (!visible) { enemy.charge = 0; enemy.cooldown = 1.5; }
           else if ((enemy.charge -= dt) <= 0) { fireBolt(enemy.position.slice(), normalize(sub(enemy.aimPoint, enemy.position)), 105, kind.lance || 16, { kind: 'lance', life: 2.5 }); playLance(distance); }
         }
-        if (visible && distance > 6 && enemy.cooldown <= 0) { attack(enemy, aim, distance); if (enemy.elite) enemy.cooldown *= 0.75; }
+        if (visible && distance > 6 && enemy.cooldown <= 0) {
+          // Each attack picks its target afresh, so the wingman draws its share of the fire.
+          enemy.decoyed = wingmanUp() && random() < stat('wingman', 'drawn');
+          aimTarget = enemy.decoyed ? wingman.position : null;
+          attack(enemy, normalize(sub(aimTarget || ship.position, enemy.position)), distance);
+          if (enemy.elite) enemy.cooldown *= 0.75;
+        }
         if (enemy.type === 'mine') {
           // Mines arm after a second and burst when the ship comes close; old ones fizzle out.
           if (enemy.age > 1 && distance < 5.5) detonateMine(enemy);
@@ -7439,6 +7685,7 @@
           continue;
         }
         if (distance < kind.radius + 0.6) {
+          if (timers.aegis > 0 && ranks.aegis >= 3 && !kind.boss) { hurtEnemy(enemy, 999); continue; }
           if (kind.bump) {
             if (wallCooldown === 0) { damage(kind.ram, `${kind.name} IMPACT`); wallCooldown = 0.9; ship.speed *= 0.3; }
           } else {
@@ -7447,6 +7694,7 @@
           }
         }
       }
+      shooter = null; aimTarget = null;
       musicIntensity += ((hostilesNear ? 1 : 0) - musicIntensity) * Math.min(1, dt * 0.8);
     }
     // The sentinel fans bolts at the ship and adds homing missiles, more of them once its shield is down;
@@ -7551,7 +7799,7 @@
     function acquireTarget(view) {
       let best = null, bestDot = Math.cos(0.3);
       for (const enemy of enemies) {
-        if (enemy.hp <= 0 || enemy.cloaked) continue;
+        if (enemy.hp <= 0 || enemy.cloaked || enemy.hacked) continue;
         const to = sub(enemy.position, ship.position), distance = Math.hypot(...to);
         if (distance > 160 || distance < 4) continue;
         const facing = dot(to, view.forward) / distance;
@@ -7617,10 +7865,12 @@
       enemy.guardFlash = 1;
       sparks(point, 6, [0.5, 0.85, 1.0], 10);
       registerHit('SHIELDED // FLANK IT');
-      if (audioContext && audioContext.state === 'running' && time - shieldPingAt > 0.06) {
-        shieldPingAt = time;
-        synth(1500, 950, 0.09, 0.022, 'sine', audioContext.currentTime); synth(3100, 2200, 0.05, 0.008, 'triangle', audioContext.currentTime);
-      }
+      pingShield();
+    }
+    function pingShield() {
+      if (!audioContext || audioContext.state !== 'running' || time - shieldPingAt < 0.06) return;
+      shieldPingAt = time;
+      synth(1500, 950, 0.09, 0.022, 'sine', audioContext.currentTime); synth(3100, 2200, 0.05, 0.008, 'triangle', audioContext.currentTime);
     }
     // Plasma bursts on impact, hurting everything close by apart from what it hit directly.
     function plasmaSplash(position, skip) {
@@ -7670,14 +7920,14 @@
     function salvoTargets(view, count) {
       const list = lockTarget ? [lockTarget] : [];
       const others = enemies.filter(enemy => {
-        if (enemy.hp <= 0 || enemy.cloaked || enemy === lockTarget) return false;
+        if (enemy.hp <= 0 || enemy.cloaked || enemy.hacked || enemy === lockTarget) return false;
         const to = sub(enemy.position, ship.position), distance = Math.hypot(...to);
         return distance < 160 && distance > 4 && dot(to, view.forward) / distance > Math.cos(0.6) && lineOfSight(enemy.position);
       }).map(enemy => [enemy, dot(normalize(sub(enemy.position, ship.position)), view.forward)]).sort((a, b) => b[1] - a[1]);
       for (const [enemy] of others) if (list.length < count) list.push(enemy);
       return list;
     }
-    function updateMissiles(dt, view) {
+    function updateMissiles(dt, view, world) {
       // Lock-on: hold an enemy near the reticle for LOCK_TIME seconds.
       const candidate = missileAmmo > 0 ? acquireTarget(view) : null;
       if (candidate && candidate === lockTarget) lockTimer += dt;
@@ -7707,7 +7957,7 @@
         if (Math.random() < 0.7) particles.push({ position: previous.slice(), velocity: [Math.random() - 0.5, Math.random() + 0.5, Math.random() - 0.5], life: 0.35, maxLife: 0.35, color: [1.0, 0.5, 0.2] });
         const guarded = shieldStop(previous, missile.position);
         if (guarded) { shieldBlocked(guarded); detonateMissile(guarded.point, null, guarded.enemy); missiles.splice(i, 1); continue; }
-        const struck = enemies.find(enemy => enemy.hp > 0 && segmentHitsSphere(previous, missile.position, enemy.position, ENEMY_TYPES[enemy.type].radius + 0.6));
+        const struck = enemies.find(enemy => enemy.hp > 0 && !enemy.hacked && segmentHitsSphere(previous, missile.position, enemy.position, ENEMY_TYPES[enemy.type].radius + 0.6));
         const barrel = barrels.find(b => !b.exploded && segmentHitsSphere(previous, missile.position, b.position, 2.3));
         const blocked = !freeAt(...missile.position) || insideGirder(missile.position);
         if (struck || barrel || blocked || missile.life <= 0) {
@@ -7718,15 +7968,16 @@
       // Striker missiles chase the ship with a wide turning circle; they can be shot down.
       let warning = false;
       for (let i = enemyMissiles.length - 1; i >= 0; i--) {
-        const missile = enemyMissiles[i], previous = missile.position;
-        missile.life -= dt;
-        const wanted = normalize(sub(ship.position, missile.position));
-        missile.velocity = mul(steer(normalize(missile.velocity), wanted, 1.5 * dt), Math.min(32, Math.hypot(...missile.velocity) + 20 * dt));
-        missile.position = add(missile.position, mul(missile.velocity, dt));
+        const missile = enemyMissiles[i], previous = missile.position, chasing = missile.decoy && wingmanUp() ? wingman.position : ship.position;
+        missile.life -= world;
+        // A blink dash at rank 3 shakes off a missile's lock, and it flies on straight.
+        const wanted = missile.lost ? normalize(missile.velocity) : normalize(sub(chasing, missile.position));
+        missile.velocity = mul(steer(normalize(missile.velocity), wanted, 1.5 * world), Math.min(32, Math.hypot(...missile.velocity) + 20 * world));
+        missile.position = add(missile.position, mul(missile.velocity, world));
         if (Math.random() < 0.6) particles.push({ position: previous.slice(), velocity: [Math.random() - 0.5, Math.random() + 0.5, Math.random() - 0.5], life: 0.3, maxLife: 0.3, color: [1.0, 0.3, 0.15] });
         if (Math.hypot(...sub(ship.position, missile.position)) < 70) warning = true;
-        const hit = segmentHitsSphere(previous, missile.position, ship.position, 1.8);
-        if (hit) damage(18, 'MISSILE HIT');
+        const hit = segmentHitsSphere(previous, missile.position, chasing, 1.8);
+        if (hit) { if (chasing === wingman.position) hitWingman(2); else damage(18, 'MISSILE HIT'); }
         if (hit || missile.life <= 0 || !freeAt(...missile.position) || insideGirder(missile.position)) {
           explosions.push({ position: missile.position.slice(), life: 0.65, scale: 0.5 });
           sparks(missile.position, 12, [1.0, 0.4, 0.2], 14);
@@ -7735,6 +7986,227 @@
         }
       }
       warningText.style.opacity = warning && Math.sin(time * 14) > 0 ? '1' : '0';
+    }
+    // The powers in flight. Everything here resets when a sector loads or the build changes.
+    const ACTIVE_POWERS = ['aegis', 'emp', 'overdrive', 'turncoat', 'singularity'];
+    const HACK_BASIC = ['drone', 'hunter'], HACK_WIDE = [...HACK_BASIC, 'warden', 'striker', 'sentry', 'lancer', 'aegis', 'brood', 'skimmer', 'miner', 'phantom'];
+    const HACK_MOBILE = ['drone', 'hunter', 'warden', 'striker', 'skimmer', 'brood', 'phantom'];
+    const PULLABLE = [...HACK_WIDE.filter(type => type !== 'sentry'), 'mite', 'mine'];
+    const DASH_TIME = 0.18, FLIP_TIME = 0.45, PULSE_TIME = 0.6;
+    const timers = {}, waits = {}, wells = [], pulses = [];
+    const wingman = { position: [0, 0, 0], hits: 0, rebuild: 0, cooldown: 0, flash: 0 };
+    const powerBar = document.getElementById('powerBar'), powerButtons = document.getElementById('powerButtons');
+    const aegisFlash = document.getElementById('aegisFlash'), timeFlash = document.getElementById('timeFlash');
+    let dashTimer = 0, dashVelocity = [0, 0, 0], dashCharges = 0, dashWait = 0, flipTimer = 0, flipHeading = null, flipPitch = 0, immuneTimer = 0, phoenixReady = false;
+    let powerChips = [], lastTap = { key: '', at: 0 };
+    const wingmanUp = () => ranks.wingman > 0 && wingman.hits > 0;
+    const untouchable = () => timers.aegis > 0 || dashTimer > 0 || immuneTimer > 0;
+    function playPower(from, to, length = 0.4) {
+      if (!audioContext || audioContext.state !== 'running') return;
+      const at = audioContext.currentTime;
+      synth(from, to, length, 0.05, 'sawtooth', at); synth(from * 2, to * 2, length * 0.7, 0.025, 'triangle', at);
+    }
+    function resetPowers() {
+      for (const id of ACTIVE_POWERS) { timers[id] = 0; waits[id] = 0; }
+      dashTimer = 0; flipTimer = 0; immuneTimer = 0; dashWait = 0; wells.length = 0; pulses.length = 0;
+      dashCharges = ranks.dash ? stat('dash', 'charges') : 0; phoenixReady = ranks.phoenix > 0;
+      Object.assign(wingman, { position: ship.position.slice(), hits: ranks.wingman ? stat('wingman', 'hits') : 0, rebuild: 0, cooldown: 1, flash: 0 });
+      // The bar along the top of the cockpit shows what is owned; touch screens get a button for each thing a key would do.
+      const owned = UPGRADES.filter(upgrade => ranks[upgrade.id] && upgrade.chip).sort((a, b) => (a.key || 9) - (b.key || 9));
+      powerChips = owned.map(upgrade => {
+        const element = document.createElement('div'), value = document.createElement('b');
+        element.textContent = `${upgrade.key ? `${upgrade.key} ` : ''}${upgrade.chip}`; element.append(value);
+        return { id: upgrade.id, element, value };
+      });
+      powerBar.replaceChildren(...powerChips.map(chip => chip.element));
+      const button = (label, action) => { const element = document.createElement('button'); element.className = 'tbutton small'; element.textContent = label; bindTap(element, action); return element; };
+      powerButtons.replaceChildren(...owned.filter(upgrade => upgrade.key).map(upgrade => button(upgrade.chip.slice(0, 4), () => usePower(upgrade.id))),
+        ...(ranks.dash ? [button('DASH', () => dashShip(touch.steerX < 0 ? 'a' : 'd'))] : []), ...(ranks.reverse >= 2 ? [button('FLIP', flipShip)] : []));
+    }
+    function chipReading(id) {
+      if (id === 'dash') return [dashCharges ? '' : 'wait', `${dashCharges}/${stat('dash', 'charges')}`];
+      if (id === 'wingman') return wingman.rebuild > 0 ? ['wait', `${Math.ceil(wingman.rebuild)} S`] : ['', `${wingman.hits}/${stat('wingman', 'hits')}`];
+      if (id === 'phoenix') return phoenixReady ? ['', 'READY'] : ['wait', 'SPENT'];
+      if (timers[id] > 0) return ['live', timers[id].toFixed(1)];
+      return waits[id] > 0 ? ['wait', `${Math.ceil(waits[id])} S`] : ['', 'READY'];
+    }
+    function showChips() {
+      for (const chip of powerChips) {
+        const [state, text] = chipReading(chip.id), wanted = `chip ${state}`;
+        if (chip.element.className !== wanted) chip.element.className = wanted;
+        setText(chip.value, text);
+      }
+    }
+    function usePower(id) {
+      if (!ranks[id] || paused || destroyed || finished || warpTimer > 0 || timers[id] > 0) return;
+      if (waits[id] > 0) { notice(`${upgradeOf[id].chip} RECHARGING // ${Math.ceil(waits[id])} S`, 1); return; }
+      const view = basis(ship.yaw, ship.pitch, ship.roll);
+      if (id === 'aegis') { timers.aegis = stat('aegis', 'time'); notice('AEGIS PULSE', 1.2); playPower(300, 900); }
+      if (id === 'overdrive') { timers.overdrive = stat('overdrive', 'time'); notice('OVERDRIVE', 1.2); playPower(900, 200, 0.6); }
+      if (id === 'emp') fireEmp();
+      if (id === 'singularity') fireSingularity(view);
+      if (id === 'turncoat' && !fireTurncoat(view)) return;
+      waits[id] = stat(id, 'cooldown');
+    }
+    function fireEmp() {
+      const reach = stat('emp', 'radius'), stun = stat('emp', 'stun'), rank = ranks.emp, inReach = (point) => Math.hypot(...sub(point, ship.position)) < reach;
+      pulses.push({ position: ship.position.slice(), radius: reach, life: PULSE_TIME });
+      notice('EMP BURST', 1.2); playPower(1400, 90, 0.5);
+      for (const enemy of enemies) {
+        if (enemy.hp <= 0 || !inReach(enemy.position)) continue;
+        if (enemy.guard) {
+          if (enemy.guardOn) { enemy.guardOn = false; enemy.guardTimer = range(28, 32); }
+          enemy.guardUp = 0;
+          if (rank >= 3) enemy.guardTimer = Math.max(enemy.guardTimer, 60);
+        }
+        if (rank >= 2 && enemy.type === 'mine') { hurtEnemy(enemy, 99); continue; }
+        if (!ENEMY_TYPES[enemy.type].boss) enemy.stun = stun;
+      }
+      if (rank < 2) return;
+      for (let m = enemyMissiles.length - 1; m >= 0; m--) {
+        if (!inReach(enemyMissiles[m].position)) continue;
+        explosions.push({ position: enemyMissiles[m].position.slice(), life: 0.65, scale: 0.45 });
+        enemyMissiles.splice(m, 1);
+      }
+    }
+    // The way to fire from `from` to meet a moving enemy, for bolts on the ship's side.
+    const leadOn = (foe, from, speed) => normalize(sub(add(foe.position, mul(foe.velocity, Math.hypot(...sub(foe.position, from)) / speed)), from));
+    // A hack takes the locked target first, then whatever is nearest the reticle.
+    function fireTurncoat(view) {
+      const kinds = ranks.turncoat >= 2 ? HACK_WIDE : HACK_BASIC, facing = (enemy) => dot(normalize(sub(enemy.position, ship.position)), view.forward);
+      const picks = enemies.filter(enemy => enemy.hp > 0 && !enemy.cloaked && !enemy.hacked && !enemy.target && kinds.includes(enemy.type) &&
+        Math.hypot(...sub(enemy.position, ship.position)) < 160 && facing(enemy) > Math.cos(0.6) && lineOfSight(enemy.position))
+        .sort((a, b) => (b === lockTarget) - (a === lockTarget) || facing(b) - facing(a)).slice(0, stat('turncoat', 'count'));
+      if (!picks.length) { notice('TURNCOAT // NO TARGET AHEAD', 1.6); return false; }
+      for (const enemy of picks) {
+        Object.assign(enemy, { hacked: stat('turncoat', 'time'), active: true, cooldown: 0.4, stun: 0, charge: 0, burst: 0, guardOn: false, guardUp: 0, foe: null, foeCheck: 0 });
+        sparks(enemy.position, 14, [0.5, 1.0, 0.6], 12);
+      }
+      registerHit(`TURNCOAT // ${ENEMY_TYPES[picks[0].type].name}${picks.length > 1 ? ' +1' : ''} HACKED`); playPower(500, 1500, 0.3);
+      return true;
+    }
+    // A hacked enemy hunts the nearest hostile it can see, or stays by the ship when there is none, and fires on the ship's side.
+    function updateHacked(enemy, dt) {
+      if ((enemy.hacked -= dt) <= 0) {
+        enemy.hacked = 0;
+        if (ranks.turncoat < 3) return;
+        for (const other of enemies) if (other !== enemy && !other.hacked && other.hp > 0 && Math.hypot(...sub(other.position, enemy.position)) < 12) hurtEnemy(other, 4);
+        hurtEnemy(enemy, 999);
+        return;
+      }
+      if (enemy.foe && (enemy.foe.hp <= 0 || enemy.foe.hacked)) enemy.foe = null;
+      if ((enemy.foeCheck -= dt) <= 0) {
+        enemy.foeCheck = 0.5;
+        let nearest = 80; enemy.foe = null;
+        for (const other of enemies) {
+          if (other === enemy || other.hp <= 0 || other.hacked || other.cloaked) continue;
+          const gap = Math.hypot(...sub(other.position, enemy.position));
+          if (gap < nearest && lineOfSight(other.position, enemy.position)) { nearest = gap; enemy.foe = other; }
+        }
+      }
+      const foe = enemy.foe, to = sub(foe ? foe.position : ship.position, enemy.position), gap = Math.hypot(...to) || 0.01, radius = ENEMY_TYPES[enemy.type].radius;
+      if (HACK_MOBILE.includes(enemy.type)) drive(enemy, capLength(mul(to, (gap - (foe ? 22 : 14)) / gap * 1.5), 15), dt, 2.5, radius - 0.1);
+      enemy.yaw = Math.atan2(to[0], to[2]);
+      if ((enemy.cooldown -= dt) > 0 || !foe) return;
+      const direction = leadOn(foe, enemy.position, 110);
+      shots.push(straighten({ position: add(enemy.position, mul(direction, radius + 0.6)), velocity: mul(direction, 110), life: 1.4, damage: 2, tint: [0.5, 1.0, 0.6] }));
+      enemy.cooldown = 0.9;
+    }
+    function fireSingularity(view) {
+      let reach = 6;
+      while (reach < 50 && freeAt(...add(ship.position, mul(view.forward, reach)))) reach += 2;
+      wells.push({ position: add(ship.position, mul(view.forward, reach - 3)), life: 3, radius: stat('singularity', 'radius'), damage: stat('singularity', 'damage'), swallow: ranks.singularity >= 3 });
+      notice('SINGULARITY CHARGE', 1.2); playPower(80, 420, 1.2);
+    }
+    function updateWells(dt) {
+      for (let i = wells.length - 1; i >= 0; i--) {
+        const well = wells[i], reached = (point) => Math.hypot(...sub(point, well.position)) < well.radius;
+        well.life -= dt;
+        for (const enemy of enemies) {
+          if (enemy.hp <= 0 || enemy.hacked || !PULLABLE.includes(enemy.type) || !reached(enemy.position)) continue;
+          const to = sub(well.position, enemy.position), gap = Math.hypot(...to);
+          if (gap < 2) continue;
+          // Bobbing enemies hang off their base point, so it moves with them.
+          const step = mul(to, Math.min(1, 28 * dt / gap)), next = add(enemy.position, step);
+          if (freeAt(...next, 1)) { enemy.position = next; enemy.base = add(enemy.base, step); }
+        }
+        if (well.swallow) {
+          for (let k = enemyShots.length - 1; k >= 0; k--) if (reached(enemyShots[k].position)) enemyShots.splice(k, 1);
+          for (let k = enemyMissiles.length - 1; k >= 0; k--) if (reached(enemyMissiles[k].position)) enemyMissiles.splice(k, 1);
+        }
+        if (well.life > 0) continue;
+        explosions.push({ position: well.position.slice(), life: 0.65, scale: 2.4 });
+        sparks(well.position, 40, [0.7, 0.4, 1.0], 26); playExplosionSound(); playExplosionSound();
+        for (const enemy of enemies) if (enemy.hp > 0 && !enemy.hacked && reached(enemy.position)) hurtEnemy(enemy, well.damage);
+        wells.splice(i, 1);
+      }
+    }
+    function hitWingman(count) {
+      wingman.hits = Math.max(0, wingman.hits - count); wingman.flash = 1;
+      sparks(wingman.position, 8, [0.4, 1.0, 1.0], 10);
+      if (wingman.hits) return;
+      explosions.push({ position: wingman.position.slice(), life: 0.65, scale: 0.6 });
+      wingman.rebuild = stat('wingman', 'rebuild'); notice('WINGMAN DOWN', 1.5);
+    }
+    function updateWingman(dt, view) {
+      wingman.flash = Math.max(0, wingman.flash - dt * 4);
+      if (wingman.rebuild > 0) {
+        if ((wingman.rebuild -= dt) > 0) return;
+        wingman.rebuild = 0; wingman.hits = stat('wingman', 'hits'); wingman.position = ship.position.slice(); notice('WINGMAN REBUILT', 1.5);
+      }
+      // It holds station off the right wing, or the left, or astern when a wall is in the way.
+      const station = [7, -7, 0].map(side => add(ship.position, add(mul(view.right, side), add(mul(view.up, 1.5), mul(view.forward, side ? -2 : -8))))).find(spot => freeAt(...spot)) || ship.position;
+      const off = sub(station, wingman.position);
+      wingman.position = Math.hypot(...off) > 90 ? station.slice() : add(wingman.position, mul(off, Math.min(1, dt * 4)));
+      if (ranks.wingman < 3 || (wingman.cooldown -= dt) > 0) return;
+      wingman.cooldown = 0.7;
+      let foe = null, nearest = 70;
+      for (const enemy of enemies) {
+        if (enemy.hp <= 0 || enemy.hacked || enemy.cloaked) continue;
+        const gap = Math.hypot(...sub(enemy.position, wingman.position));
+        if (gap < nearest && lineOfSight(enemy.position, wingman.position)) { nearest = gap; foe = enemy; }
+      }
+      if (foe) shots.push(straighten({ position: wingman.position.slice(), velocity: mul(leadOn(foe, wingman.position, 130), 130), life: 1.4, damage: 1, tint: [0.4, 1.0, 0.9] }));
+    }
+    // A bolt that reaches the ship may glance off the plating; at rank 3 it goes back at whoever fired it.
+    function glanced(shot) {
+      if (!ranks.deflector || untouchable() || random() >= stat('deflector', 'chance')) return false;
+      shieldGlow = Math.max(shieldGlow, 0.6); registerHit('DEFLECTED'); pingShield();
+      if (ranks.deflector >= 3) {
+        const back = shot.owner && shot.owner.hp > 0 ? normalize(sub(shot.owner.position, ship.position)) : normalize(mul(shot.velocity, -1));
+        shots.push(straighten({ position: add(ship.position, mul(back, 2.5)), velocity: mul(back, 120), life: 1.6, damage: 2, tint: [1.0, 0.8, 0.4] }));
+      }
+      return true;
+    }
+    function dashShip(key) {
+      if (!ranks.dash || dashCharges < 1 || dashTimer > 0 || paused || destroyed || finished || warpTimer > 0) return;
+      const view = basis(ship.yaw, ship.pitch, ship.roll), direction = { a: mul(view.right, -1), d: view.right, w: view.up, s: mul(view.up, -1) }[key];
+      if (dashCharges === stat('dash', 'charges')) dashWait = stat('dash', 'recharge');
+      dashCharges--; dashTimer = DASH_TIME; dashVelocity = mul(direction, stat('dash', 'distance') / DASH_TIME);
+      if (ranks.dash >= 3) for (const missile of enemyMissiles) missile.lost = true;
+      playPower(600, 140, 0.22);
+    }
+    function flipShip() {
+      if (ranks.reverse < 2 || flipTimer > 0 || paused || destroyed || finished || warpTimer > 0) return;
+      flipTimer = FLIP_TIME; flipPitch = ship.pitch; flipHeading = basis(ship.yaw, ship.pitch, ship.roll).forward;
+      playPower(260, 520, 0.3);
+    }
+    function noteTap(key) {
+      const now = performance.now(), twice = key === lastTap.key && now - lastTap.at < 280;
+      lastTap = twice ? { key: '', at: 0 } : { key, at: now };
+      if (!twice) return;
+      if (key === 'z') flipShip();
+      if (['w', 'a', 's', 'd'].includes(key)) dashShip(key);
+    }
+    function updatePowers(dt, view) {
+      for (const id of ACTIVE_POWERS) { if (timers[id] > 0) timers[id] = Math.max(0, timers[id] - dt); else waits[id] = Math.max(0, waits[id] - dt); }
+      immuneTimer = Math.max(0, immuneTimer - dt);
+      if (ranks.dash && dashCharges < stat('dash', 'charges') && (dashWait -= dt) <= 0) { dashCharges++; dashWait = stat('dash', 'recharge'); }
+      if (ranks.wingman) updateWingman(dt, view);
+      updateWells(dt);
+      for (let i = pulses.length - 1; i >= 0; i--) if ((pulses[i].life -= dt) <= 0) pulses.splice(i, 1);
+      setStyle(aegisFlash, 'opacity', timers.aegis > 0 || immuneTimer > 0 ? (0.7 + 0.2 * Math.sin(performance.now() / 90)).toFixed(2) : '0');
+      setStyle(timeFlash, 'opacity', timers.overdrive > 0 ? '0.8' : '0');
     }
     function updateEffects(dt) {
       for (let i = explosions.length - 1; i >= 0; i--) {
@@ -7751,7 +8223,7 @@
         if (spark.position[1] < floor + 0.1) { spark.position[1] = floor + 0.1; spark.velocity = [spark.velocity[0] * 0.6, -spark.velocity[1] * 0.35, spark.velocity[2] * 0.6]; }
       }
     }
-    function updateCombat(dt) {
+    function updateCombat(dt, world) {
       fireCooldown = Math.max(0, fireCooldown - dt);
       muzzleTimer = Math.max(0, muzzleTimer - dt);
       const view = basis(ship.yaw, ship.pitch, ship.roll), weapon = WEAPONS[weaponLevel - 1];
@@ -7764,13 +8236,13 @@
         }
         lastFired = time;
         if (weapon.rail && ++railCount % weapon.rail.every === 0) fireRail(view, weapon.rail.damage);
-        fireCooldown = weapon.cooldown;
+        fireCooldown = weapon.cooldown * (ship.speed < 0 && ranks.reverse >= 3 ? 0.8 : 1);
         muzzleTimer = 0.12;
         playPew(weapon.bolts.some(bolt => bolt[3] === 'plasma'));
       }
       for (let i = rails.length - 1; i >= 0; i--) if ((rails[i].life -= dt) <= 0) rails.splice(i, 1);
-      updateEnemies(dt);
-      updateMissiles(dt, view);
+      updateEnemies(world);
+      updateMissiles(dt, view, world);
       for (let i = shots.length - 1; i >= 0; i--) {
         const shot = shots[i], previous = advanceBolt(shot, dt);
         shot.life -= dt;
@@ -7782,7 +8254,7 @@
         }
         let hit = false;
         for (const enemy of enemies) {
-          if (enemy.hp > 0 && !shot.struck?.includes(enemy) && segmentHitsSphere(previous, shot.position, enemy.position, ENEMY_TYPES[enemy.type].radius)) {
+          if (enemy.hp > 0 && !enemy.hacked && !shot.struck?.includes(enemy) && segmentHitsSphere(previous, shot.position, enemy.position, ENEMY_TYPES[enemy.type].radius)) {
             sparks(shot.position, 8, [1.0, 0.5, 0.4], 14);
             hurtEnemy(enemy, shot.damage);
             if (shot.kind === 'plasma') plasmaSplash(shot.position, enemy);
@@ -7825,10 +8297,13 @@
         if (hit || shot.life <= 0) shots.splice(i, 1);
       }
       for (let i = enemyShots.length - 1; i >= 0; i--) {
-        const shot = enemyShots[i], previous = advanceBolt(shot, dt);
-        shot.life -= dt;
+        const shot = enemyShots[i], previous = advanceBolt(shot, world);
+        shot.life -= world;
         if (segmentHitsSphere(previous,shot.position,ship.position,1.5)) {
-          damage(shot.damage,'HOSTILE FIRE'); enemyShots.splice(i,1);
+          if (!glanced(shot)) damage(shot.damage,'HOSTILE FIRE');
+          enemyShots.splice(i,1);
+        } else if (wingmanUp() && segmentHitsSphere(previous, shot.position, wingman.position, 1.8)) {
+          hitWingman(1); enemyShots.splice(i, 1);
         } else if (shot.life <= 0 || !freeAt(...shot.position) || insideGirder(shot.position)) {
           if (shot.life > 0) sparks(previous, 5, [1.0, 0.5, 0.2], 9);
           enemyShots.splice(i,1);
@@ -7898,7 +8373,9 @@
       setStyle(warpFlash, 'opacity', warpGlow.toFixed(2));
       if (destroyed && !paused) { time += dt; updateEffects(dt); }
       if (paused || destroyed || finished) return;
-      time += dt;
+      // Overdrive slows the world's clock and leaves the ship's alone.
+      const world = timers.overdrive > 0 ? dt * stat('overdrive', 'rate') : dt;
+      time += world;
       if (warpTimer === 0) sectorTime += dt;
       if (briefTimer > 0 && (briefTimer -= dt) <= 0) notice(level.brief, 4);
       noticeTimer = Math.max(0, noticeTimer - dt);
@@ -7908,7 +8385,7 @@
         warpTimer = Math.max(0, warpTimer - dt);
         ship.position = add(ship.position, mul(sub(exitCenter(), ship.position), Math.min(1, dt * 3)));
         if (warpTimer === 0) {
-          if (levelIndex + 1 < LEVELS.length) { loadLevel(levelIndex + 1, Math.min(100, health + 25)); showBriefing(); }
+          if (levelIndex + 1 < LEVELS.length) { loadLevel(levelIndex + 1, Math.min(100, health + 25)); showUpgrades(false); }
           else finishGame();
         }
         return;
@@ -7924,13 +8401,20 @@
       if (touchMode && touch.steerY === 0 && climb === 0) ship.pitch -= ship.pitch * Math.min(1, dt * 0.9);
       ship.roll += bank * dt * 1.4;
       ship.roll += (-(turn * 0.35 + slideX * 0.2) - ship.roll) * Math.min(1, dt * 0.7);
-      ship.speed = clamp(ship.speed + (Number(down('x', ' ') || touch.thrust) * 18 - Number(down('z') || touch.brake) * 24) * dt, 0, 45);
+      const reverseLimit = ranks.reverse ? -45 * stat('reverse', 'speed') : 0;
+      ship.speed = clamp(ship.speed + (Number(down('x', ' ') || touch.thrust) * 18 - Number(down('z') || touch.brake) * 24) * dt, reverseLimit, 45);
       if (boostFrom !== null) ship.speed += (45 - ship.speed) * Math.min(1, dt * 5);
+      if (flipTimer > 0) {
+        // A flip turns the nose right round while the ship keeps sliding the way it was going, then flies on in reverse.
+        const step = Math.min(flipTimer, dt);
+        flipTimer -= step; ship.yaw += Math.PI * step / FLIP_TIME; ship.pitch -= 2 * flipPitch * step / FLIP_TIME;
+        if (flipTimer === 0) ship.speed = clamp(-ship.speed, reverseLimit, 45);
+      }
       // Strafing slides along the view's right and up axes, easing in and out.
       const easing = Math.min(1, dt * 6), view = basis(ship.yaw, ship.pitch, ship.roll);
       ship.strafe = [ship.strafe[0] + (slideX * STRAFE_SPEED - ship.strafe[0]) * easing, ship.strafe[1] + (slideY * STRAFE_SPEED - ship.strafe[1]) * easing];
       const updraft = ventAt(ship.position[0], ship.position[2], ship.position[1]) ? 13 : 0;
-      ship.position = add(ship.position, add(add(mul(view.forward, ship.speed * dt), [0, updraft * dt, 0]),
+      ship.position = add(ship.position, add(add(mul(flipTimer > 0 ? flipHeading : view.forward, ship.speed * dt), [0, updraft * dt, 0]),
         add(mul(view.right, ship.strafe[0] * dt), mul(view.up, ship.strafe[1] * dt))));
       wallCooldown = Math.max(0, wallCooldown - dt);
       const fits = (p) => shipFits(p) && !insideGirder(p, 0.8);
@@ -7946,6 +8430,16 @@
         ship.speed *= 0.55; ship.strafe = [ship.strafe[0] * 0.3, ship.strafe[1] * 0.3];
         if (wallCooldown === 0 && outside) { notice('OPERATIONS LIMIT // TURN BACK', 1.6); wallCooldown = 0.9; }
         else if (wallCooldown === 0) { damage(10, label); wallCooldown = 0.9; }
+      }
+      if (dashTimer > 0) {
+        // A dash moves in small steps and stops dead at a wall, without a scrape.
+        const step = Math.min(dashTimer, dt) / 6;
+        dashTimer = Math.max(0, dashTimer - dt);
+        for (let k = 0; k < 6; k++) {
+          const next = add(ship.position, mul(dashVelocity, step));
+          if (!fits(next)) { dashTimer = 0; break; }
+          ship.position = next;
+        }
       }
       shipVelocity = mul(sub(ship.position, previous), 1 / Math.max(dt, 0.001));
       if (level.cylinder) {
@@ -7975,8 +8469,9 @@
       redFlash = Math.max(0, redFlash - dt * 1.1); trauma = Math.max(0, trauma - dt * 1.4);
       impactTimer = Math.max(0, impactTimer - dt);
       hitTimer = Math.max(0, hitTimer - dt);
+      updatePowers(dt, view);
       const c0 = performance.now();
-      updateCombat(dt);
+      updateCombat(dt, world);
       updateObjectives();
       perfParts.combat += performance.now() - c0;
       setStyle(impactText, 'opacity', String(clamp(impactTimer, 0, 1)));
@@ -7986,6 +8481,7 @@
       hudTimer -= dt;
       if (hudTimer <= 0) {
         hudTimer = 0.1;
+        showChips();
         setText(shieldText, String(Math.floor(shield / SHIELD_MAX * 100)));
         setStyle(shieldBar, 'width', `${Math.round(shield / SHIELD_MAX * 200) / 2}%`);
         setText(missileText, launcherLevel > 1 ? `${missileAmmo} x${LAUNCHERS[launcherLevel - 1].salvo}` : String(missileAmmo));
@@ -7998,7 +8494,7 @@
         setText(healthText, String(health));
         setStyle(healthBar, 'width', `${health}%`);
         setStyle(healthBar, 'background', health > 35 ? '#69e4c2' : '#ff786a');
-        setStyle(speedBar, 'width', `${Math.round(ship.speed / 45 * 200) / 2}%`);
+        setStyle(speedBar, 'width', `${Math.round(Math.abs(ship.speed) / 45 * 200) / 2}%`);
         setText(objectiveText, objectiveLabel());
       }
       const zone = zoneAt(ship.position[0], ship.position[2]);
@@ -8024,7 +8520,7 @@
       { style: 'position:fixed;left:8px;bottom:8px;z-index:99;font:12px monospace;color:#9fe;background:#000a;padding:4px 6px;white-space:pre;pointer-events:none' });
     // ?debug exposes the game state on window.radix, for testing sectors from the browser console.
     if (new URLSearchParams(location.search).has('debug'))
-      window.radix = { ship, enemies, shots, enemyShots, bend, unbend, damage, barrels, pickups, gates, addEnemy, openGate, hurtEnemy, resetGame, insideGirder, startSector, cells: { open, floorY, ceilY, roofY, underY, cellIndex }, get level() { return level; }, set health(v) { health = v; }, get firing() { return mouseFiring; }, set firing(v) { mouseFiring = v; }, get boosting() { return boostFrom !== null; }, get objective() { return objectiveIndex; }, get mapOpen() { return mapOpen; }, set mapOpen(v) { mapOpen = v; } };
+      window.radix = { exitCenter, exitOpen, step(seconds) { for (let t = 0; t < seconds; t += 1 / 60) update(1 / 60); }, ship, enemies, shots, enemyShots, bend, unbend, damage, ranks, timers, waits, wells, wingman, usePower, dashShip, flipShip, resetPowers, showUpgrades, enemyMissiles, barrels, pickups, gates, addEnemy, openGate, hurtEnemy, resetGame, insideGirder, startSector, cells: { open, floorY, ceilY, roofY, underY, cellIndex }, get level() { return level; }, get health() { return health; }, set health(v) { health = v; }, get phoenixReady() { return phoenixReady; }, get dashCharges() { return dashCharges; }, get time() { return time; }, get firing() { return mouseFiring; }, set firing(v) { mouseFiring = v; }, get boosting() { return boostFrom !== null; }, get objective() { return objectiveIndex; }, get mapOpen() { return mapOpen; }, set mapOpen(v) { mapOpen = v; } };
     let perfSums = [0, 0, 0, 0], perfFrames = 0, perfStart = 0;
     const perfParts = { combat: 0, reveal: 0, music: 0 }, slowFactor = Number(new URLSearchParams(location.search).get('slow')) || 1;
     function perfReport(parts) {
