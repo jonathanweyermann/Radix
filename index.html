@@ -307,7 +307,7 @@
     let shipVelocity = [0, 0, 0];
     const STRAFE_SPEED = 14;
     let width = 0, height = 0, dpr = 1, lastTime = performance.now(), time = 0, paused = false, impactTimer = 0, hitTimer = 0, muzzleTimer = 0, fireCooldown = 0, lastFired = -9, wallCooldown = 0, health = 100, barrelsDestroyed = 0, kills = 0, destroyed = false, mouseFiring = false, audioContext = null, musicBus = null, musicOn = true, musicStep = 0, musicNextTime = 0;
-    let musicIn = null, reverbIn = null, delayIn = null, noiseBuffer = null, musicIntensity = 0;
+    let musicIn = null, reverbIn = null, delayIn = null, driveIn = null, pumpIn = null, noiseBuffer = null, musicIntensity = 0;
     let shield = 34, shieldDelay = 0, shieldGlow = 0, redFlash = 0, trauma = 0, missileAmmo = 0, levelMissiles = 0, missileCooldown = 0, missileRequest = false, lockTarget = null, lockTimer = 0;
     let sludgeCooldown = 0, weaponLevel = 1, levelWeapon = 1, launcherLevel = 1, levelLauncher = 1, railCount = 0, finished = false, warpTimer = 0, warpGlow = 0, noticeTimer = 0;
     let seed = 0x5eed;
@@ -401,7 +401,7 @@
     }
     const LEVELS = [
       {
-        name: 'DELTA-9', title: 'RELAY STATION', music: 'relay', start: [0, -4, 0], yaw: 0, exit: [0, 16, 680, true],
+        name: 'DELTA-9', title: 'RELAY STATION', music: 'relay', music2: 'press', start: [0, -4, 0], yaw: 0, exit: [0, 16, 680, true],
         sky: { zenith: [0.02, 0.03, 0.06], fog: [0.17, 0.19, 0.23], sun: [0.6, 0.55, 0.5], sunDir: [0.4, 0.5, 0.75] },
         walls: { lower: [['wallComputer', 0.4], ['wallLower', 0.3], ['wallVent', 0.15], ['wallDoor', 0.15]], upper: [['wallUpper', 0.8], ['wallWindows', 0.2]] },
         rooms: [
@@ -471,7 +471,7 @@
         ],
       },
       {
-        name: 'DELTA-9', title: 'TOXIN REFINERY', music: 'toxin', top: 45, start: [0, -4, 0], yaw: 0, exit: [0, 24, 700, true],
+        name: 'DELTA-9', title: 'TOXIN REFINERY', music: 'acidbath', music2: 'toxin', top: 45, start: [0, -4, 0], yaw: 0, exit: [0, 24, 700, true],
         sky: { zenith: [0.04, 0.06, 0.03], fog: [0.19, 0.23, 0.15], sun: [0.7, 0.75, 0.5], sunDir: [-0.3, 0.45, 0.8] },
         walls: { lower: [['wallRust', 0.45], ['wallPipes', 0.3], ['wallVent', 0.25]], upper: [['wallRust', 0.55], ['wallUpper', 0.45]] },
         rooms: [
@@ -543,7 +543,7 @@
         ],
       },
       {
-        name: 'EPSILON-5', title: 'CRYO VAULTS', music: 'cryo', top: 49, start: [0, -4, 0], yaw: 0, exit: [0, 24, 724, true], tint: [0.88, 0.96, 1.1],
+        name: 'EPSILON-5', title: 'CRYO VAULTS', music: 'cryo', music2: 'nadir', top: 49, start: [0, -4, 0], yaw: 0, exit: [0, 24, 724, true], tint: [0.88, 0.96, 1.1],
         sky: { zenith: [0.05, 0.08, 0.14], fog: [0.36, 0.44, 0.54], sun: [0.8, 0.9, 1.0], sunDir: [0.3, 0.6, 0.7] },
         walls: { lower: [['wallIce', 0.5], ['wallLower', 0.2], ['wallComputer', 0.15], ['wallDoor', 0.15]], upper: [['wallIce', 0.6], ['wallWindows', 0.4]] },
         rooms: [
@@ -609,7 +609,7 @@
       {
         // A glacier moon of Epsilon-5: a frozen curved world of crystal spire fields, frozen lakes and a glacier ridge with ice
         // caves running through it, and a research compound to the west.
-        name: 'EPSILON-5B', title: 'GLACIER MOON', music: 'glacier', top: 60, width: 256, start: [0, -4, -24], yaw: 0, exit: [0, 0, 722, true], since: 'six',
+        name: 'EPSILON-5B', title: 'GLACIER MOON', music: 'ascent', music2: 'glacier', top: 60, width: 256, start: [0, -4, -24], yaw: 0, exit: [0, 0, 722, true], since: 'six',
         moon: { radius: 1500 }, roof: 'floorPlate',
         sky: { zenith: [0.0, 0.01, 0.03], fog: [0.08, 0.1, 0.14], sun: [0.95, 1.0, 1.1], sunDir: [0.4, 0.35, 0.6] },
         walls: { lower: [['wallTech', 0.6], ['wallComputer', 0.4]], upper: [['wallTech', 1]] },
@@ -707,7 +707,7 @@
         ],
       },
       {
-        name: 'EPSILON-5', title: 'MAGMA WORKS', music: 'magma', top: 49, start: [0, -4, 0], yaw: 0, exit: [0, 32, 728, true], tint: [1.12, 0.95, 0.85],
+        name: 'EPSILON-5', title: 'MAGMA WORKS', music: 'press', music2: 'magma', top: 49, start: [0, -4, 0], yaw: 0, exit: [0, 32, 728, true], tint: [1.12, 0.95, 0.85],
         sky: { zenith: [0.12, 0.05, 0.03], fog: [0.4, 0.23, 0.14], sun: [1.0, 0.6, 0.35], sunDir: [0.5, 0.35, 0.8] },
         walls: { lower: [['wallBasalt', 0.5], ['wallRust', 0.3], ['wallPipes', 0.2]], upper: [['wallBasalt', 0.6], ['wallRust', 0.4]] },
         rooms: [
@@ -776,7 +776,7 @@
       {
         // The magma gorge under Epsilon-5's foundry: a plateau of slag cut by a winding gorge a hundred units deep with a river
         // of lava along its floor, smelters and gun pads on its rims, and girder bridges across it.
-        name: 'EPSILON-5', title: 'MAGMA GORGE', music: 'gorge', top: 100, width: 256, start: [-296, 40, -24], yaw: 0, exit: [120, -55, 600, true], since: 'six', canyon: true,
+        name: 'EPSILON-5', title: 'MAGMA GORGE', music: 'rivet', music2: 'gorge', top: 100, width: 256, start: [-296, 40, -24], yaw: 0, exit: [120, -55, 600, true], since: 'six', canyon: true,
         sky: { zenith: [0.12, 0.03, 0.02], fog: [0.36, 0.13, 0.06], sun: [1.15, 0.65, 0.38], sunDir: [0.45, 0.4, 0.35] },
         walls: { lower: [['wallRust', 0.5], ['wallPipes', 0.5]], upper: [['wallRust', 1]] },
         rooms: [
@@ -844,7 +844,7 @@
         ],
       },
       {
-        name: 'EPSILON-5', title: 'SIGNAL SPIRE', music: 'spire', top: 65, start: [0, -4, 0], yaw: 0, exit: [0, 52, 724, true], tint: [0.95, 0.95, 1.06],
+        name: 'EPSILON-5', title: 'SIGNAL SPIRE', music: 'spire', music2: 'ascent', top: 65, start: [0, -4, 0], yaw: 0, exit: [0, 52, 724, true], tint: [0.95, 0.95, 1.06],
         sky: { zenith: [0.015, 0.015, 0.05], fog: [0.12, 0.12, 0.2], sun: [0.5, 0.56, 0.9], sunDir: [-0.4, 0.55, 0.7] },
         walls: { lower: [['wallTech', 0.4], ['wallComputer', 0.3], ['wallDoor', 0.3]], upper: [['wallTech', 0.4], ['wallWindows', 0.4], ['wallSign', 0.2]] },
         rooms: [
@@ -910,7 +910,7 @@
         ],
       },
       {
-        name: 'TAU-3', title: 'DROWNED DOCKS', music: 'docks', top: 49, start: [0, -4, 0], yaw: 0, exit: [0, 36, 728, true], tint: [0.92, 1.02, 1.05],
+        name: 'TAU-3', title: 'DROWNED DOCKS', music: 'docks', music2: 'furnace', top: 49, start: [0, -4, 0], yaw: 0, exit: [0, 36, 728, true], tint: [0.92, 1.02, 1.05],
         sky: { zenith: [0.08, 0.12, 0.14], fog: [0.3, 0.36, 0.38], sun: [0.7, 0.75, 0.8], sunDir: [0.2, 0.5, 0.8] },
         walls: { lower: [['wallContainer', 0.25], ['wallContainerB', 0.2], ['wallPipes', 0.25], ['wallRust', 0.3]], upper: [['wallContainer', 0.2], ['wallContainerB', 0.2], ['wallUpper', 0.3], ['wallRust', 0.3]] },
         rooms: [
@@ -977,7 +977,7 @@
       {
         // A tide drum turning over Tau-3: a cylinder of sea, its islands and harbour towns curving up round you to meet
         // overhead. A sea wall rings the drum with one gate, and the desalination plant stands on the far shore, across the axis.
-        name: 'TAU-3', title: 'TIDE DRUM', music: 'tide', top: 160, width: 256, start: [0, -3, -24], yaw: 0, exit: [0, 0, 730, true], since: 'six',
+        name: 'TAU-3', title: 'TIDE DRUM', music: 'horizon', music2: 'tide', top: 160, width: 256, start: [0, -3, -24], yaw: 0, exit: [0, 0, 730, true], since: 'six',
         cylinder: true, roof: 'floorPlate',
         sky: { zenith: [0.5, 0.62, 0.8], fog: [0.6, 0.72, 0.84], sun: [1.0, 0.96, 0.86], sunDir: [0.25, 1, 0.2] },
         walls: { lower: [['wallTech', 0.5], ['wallWindows', 0.5]], upper: [['wallWindows', 0.6], ['wallTech', 0.4]] },
@@ -1076,7 +1076,7 @@
         ],
       },
       {
-        name: 'TAU-3', title: 'HIVE WARRENS', music: 'hive', top: 49, start: [0, -4, 0], yaw: 0, exit: [0, 40, 728, true], tint: [1.06, 1.0, 0.86],
+        name: 'TAU-3', title: 'HIVE WARRENS', music: 'hivemind', music2: 'hive', top: 49, start: [0, -4, 0], yaw: 0, exit: [0, 40, 728, true], tint: [1.06, 1.0, 0.86],
         sky: { zenith: [0.05, 0.04, 0.02], fog: [0.2, 0.17, 0.1], sun: [0.8, 0.65, 0.4], sunDir: [0.3, 0.6, 0.7] },
         walls: { lower: [['wallHive', 0.6], ['wallPipes', 0.2], ['wallRust', 0.2]], upper: [['wallHive', 0.7], ['wallRust', 0.3]] },
         rooms: [
@@ -1146,7 +1146,7 @@
       {
         // The brood ark: a living ship in open space, its rounded hive hull grown round a hold where the brood mother sits
         // among her egg sacs, with two smaller pods and egg spheres drifting round it. You enter through the maw.
-        name: 'TAU-3', title: 'BROOD ARK', music: 'brood', top: 200, width: 256, start: [0, 0, -30], yaw: 0, exit: [0, 20, 730, true], since: 'six',
+        name: 'TAU-3', title: 'BROOD ARK', music: 'brood', music2: 'hivemind', top: 200, width: 256, start: [0, 0, -30], yaw: 0, exit: [0, 20, 730, true], since: 'six',
         space: true, roof: 'floorHive', hull: 'floorHive', ceiling: 'wallBasalt', crown: 'wallHive', posts: false, tint: [0.72, 0.62, 0.5],
         sky: { zenith: [0.0, 0.0, 0.01], fog: [0.02, 0.015, 0.01], sun: [1.1, 0.95, 0.75], sunDir: [0.5, 0.5, 0.3] },
         walls: { lower: [['wallHive', 1]], upper: [['wallHive', 1]] },
@@ -1224,7 +1224,7 @@
         ],
       },
       {
-        name: 'TAU-3', title: 'TETHER ANCHOR', music: 'tether', top: 65, start: [0, -4, 0], yaw: 0, exit: [0, 54, 728, true], tint: [1.0, 1.0, 1.04],
+        name: 'TAU-3', title: 'TETHER ANCHOR', music: 'anvil', music2: 'tether', top: 65, start: [0, -4, 0], yaw: 0, exit: [0, 54, 728, true], tint: [1.0, 1.0, 1.04],
         sky: { zenith: [0.12, 0.22, 0.42], fog: [0.62, 0.7, 0.8], sun: [1.0, 0.95, 0.85], sunDir: [0.3, 0.7, 0.6] },
         walls: { lower: [['wallTech', 0.4], ['wallDoor', 0.2], ['wallPipes', 0.2], ['wallComputer', 0.2]], upper: [['wallTech', 0.4], ['wallWindows', 0.4], ['wallSign', 0.2]] },
         rooms: [
@@ -1294,7 +1294,7 @@
         // A garden cylinder in orbit over Tau-3: the sector lines the inside of a spinning drum, so meadows, lakes and a small
         // town curve up on both sides and meet overhead, lit by a sun line down the axis. Fly up past the axis to come
         // down on the far side.
-        name: 'TAU-3', title: 'ORBITAL GARDEN', music: 'garden', top: 77, start: [0, -3, -24], yaw: 0, exit: [0, 0, 730, true],
+        name: 'TAU-3', title: 'ORBITAL GARDEN', music: 'garden', music2: 'horizon', top: 77, start: [0, -3, -24], yaw: 0, exit: [0, 0, 730, true],
         cylinder: true,
         sky: { zenith: [0.5, 0.62, 0.78], fog: [0.56, 0.66, 0.78], sun: [1.0, 0.95, 0.82], sunDir: [0.25, 1, 0.2] },
         walls: { lower: [['wallTech', 0.5], ['wallWindows', 0.5]], upper: [['wallWindows', 0.6], ['wallTech', 0.4]] },
@@ -1352,7 +1352,7 @@
         // is plate cut by canals of slag and sludge and crowded with machinery, under the inner cylinder's lit underside and
         // the machines hung from it; pillars hold the two apart, two bulkheads ring the drum, and gaps in the inner cylinder lead
         // up into its core round the sun line. The block layout below was scattered by a seeded script.
-        name: 'TAU-3', title: 'ORBITAL YARDS', music: 'yards', top: 160, width: 256, start: [0, -3, -24], yaw: 0, exit: [0, 0, 730, true],
+        name: 'TAU-3', title: 'ORBITAL YARDS', music: 'press', music2: 'yards', top: 160, width: 256, start: [0, -3, -24], yaw: 0, exit: [0, 0, 730, true],
         cylinder: true, lit: true, tint: [1.0, 0.93, 0.84],
         sky: { zenith: [0.2, 0.18, 0.16], fog: [0.16, 0.13, 0.11], sun: [0.75, 0.66, 0.56], sunDir: [0.25, 1, 0.2] },
         walls: { lower: [['wallRust', 0.3], ['wallPipes', 0.3], ['wallVent', 0.2], ['wallContainer', 0.2]], upper: [['wallRust', 0.5], ['wallUpper', 0.5]] },
@@ -1880,7 +1880,7 @@
         ],
       },
       {
-        name: 'SIGMA-4', title: 'REFINERY TERRACES', music: 'terraces', top: 61, start: [0, -4, 0], yaw: 0, exit: [0, 48, 640, true],
+        name: 'SIGMA-4', title: 'REFINERY TERRACES', music: 'anvil', music2: 'terraces', top: 61, start: [0, -4, 0], yaw: 0, exit: [0, 48, 640, true],
         sky: { zenith: [0.1, 0.16, 0.3], fog: [0.52, 0.44, 0.38], sun: [0.95, 0.75, 0.55], sunDir: [0.3, 0.6, -0.45] },
         walls: { lower: [['wallRust', 0.35], ['wallContainer', 0.25], ['wallPipes', 0.4]], upper: [['wallRust', 0.5], ['wallUpper', 0.5]] },
         rooms: [
@@ -1935,7 +1935,7 @@
       {
         // A shepherd moon of Sigma-4, two kilometres across: the sector wraps around its curve with open ground and no walls,
         // and its goals are taken in order before the extraction gate opens.
-        name: 'SIGMA-4B', title: 'SHEPHERD MOON', music: 'mesa', top: 55, start: [0, -4, -20], yaw: 0, exit: [0, 0, 676, true],
+        name: 'SIGMA-4B', title: 'SHEPHERD MOON', music: 'ascent', music2: 'mesa', top: 55, start: [0, -4, -20], yaw: 0, exit: [0, 0, 676, true],
         moon: { radius: 1000 }, roof: 'floorPlate',
         sky: { zenith: [0.0, 0.0, 0.012], fog: [0.05, 0.05, 0.06], sun: [1.05, 1.0, 0.92], sunDir: [0.55, 0.32, 0.55] },
         walls: { lower: [['wallTech', 0.5], ['wallComputer', 0.3], ['wallLower', 0.2]], upper: [['wallTech', 0.7], ['wallUpper', 0.3]] },
@@ -2011,7 +2011,7 @@
       {
         // The ore belt between Sigma-4's moon and Omega: open space crowded with asteroids, the big ones bored by drill rigs and
         // strung together by conveyor trusses, and a rounded refinery where the ore is smelted, with a tug hauling it away.
-        name: 'SIGMA-4', title: 'ORE BELT', music: 'belt', top: 200, width: 256, start: [0, 0, -30], yaw: 0, exit: [0, 20, 730, true], since: 'six',
+        name: 'SIGMA-4', title: 'ORE BELT', music: 'nadir', music2: 'belt', top: 200, width: 256, start: [0, 0, -30], yaw: 0, exit: [0, 20, 730, true], since: 'six',
         space: true, roof: 'floorPlate', hull: 'floorPlate', rockMaterial: 'wallBasalt',
         sky: { zenith: [0.0, 0.0, 0.01], fog: [0.015, 0.012, 0.01], sun: [1.15, 1.0, 0.85], sunDir: [-0.5, 0.45, 0.4] },
         walls: { lower: [['wallRust', 0.4], ['wallPipes', 0.3], ['wallTech', 0.3]] },
@@ -2068,7 +2068,7 @@
         // Omega's high station, hanging in open space over the crown world. The operations area is a box about four hundred
         // units each way, marked by lights at its edges. You approach from outside and fly in through the docking port to a
         // whole deck inside the hub; a maintenance shaft in engineering drops out of its underside to the reactor.
-        name: 'OMEGA', title: 'HIGH STATION', music: 'station', top: 200, start: [0, 0, -30], yaw: 0, exit: [0, 20, 720, true],
+        name: 'OMEGA', title: 'HIGH STATION', music: 'horizon', music2: 'station', top: 200, start: [0, 0, -30], yaw: 0, exit: [0, 20, 720, true],
         space: true, roof: 'floorPlate', hull: 'floorPlate',
         sky: { zenith: [0.0, 0.0, 0.01], fog: [0.01, 0.012, 0.02], sun: [1.15, 1.05, 0.95], sunDir: [0.6, 0.45, 0.3] },
         walls: { lower: [['wallTech', 0.45], ['wallPipes', 0.2], ['wallWindows', 0.2], ['wallVent', 0.15]] },
@@ -2182,7 +2182,7 @@
       {
         // The rift lands on Omega's surface: a flat world cut by a deep winding rift and its side canyons, with terraced walls,
         // a thin river along the bottom, and mesas standing above the plateau. Goals sit on the rims, down in the rift and on a mesa.
-        name: 'OMEGA', title: 'RIFT LANDS', music: 'rift', top: 90, start: [-70, 48, -24], yaw: 0, exit: [16, -57, 664, true], canyon: true,
+        name: 'OMEGA', title: 'RIFT LANDS', music: 'rivet', music2: 'rift', top: 90, start: [-70, 48, -24], yaw: 0, exit: [16, -57, 664, true], canyon: true,
         sky: { zenith: [0.22, 0.32, 0.58], fog: [0.78, 0.56, 0.4], sun: [1.15, 0.92, 0.72], sunDir: [0.5, 0.45, 0.3] },
         walls: { lower: [['wallTech', 0.6], ['wallComputer', 0.4]], upper: [['wallTech', 1]] },
         rooms: [
@@ -2227,7 +2227,7 @@
         ],
       },
       {
-        name: 'OMEGA', title: 'CORE BREACH', music: 'omega', top: 49, start: [0, -4, 0], yaw: 0, exit: [0, 36, 728, true],
+        name: 'OMEGA', title: 'CORE BREACH', music: 'furnace', music2: 'omega', top: 49, start: [0, -4, 0], yaw: 0, exit: [0, 36, 728, true],
         brief: 'THE OMEGA SENTINEL GUARDS THE CROWN HALL',
         sky: { zenith: [0.06, 0.02, 0.1], fog: [0.24, 0.16, 0.27], sun: [0.85, 0.5, 0.78], sunDir: [-0.5, 0.4, 0.6] },
         walls: { lower: [['wallVoid', 0.35], ['wallComputer', 0.35], ['wallLower', 0.3]], upper: [['wallVoid', 0.5], ['wallUpper', 0.5]] },
@@ -2274,7 +2274,7 @@
         ],
       },
       {
-        name: 'VOID-1', title: 'ABYSS SHAFT', music: 'abyss', top: 81, start: [0, 52, 0], yaw: 0, exit: [0, 68, 728, true], tint: [0.95, 0.92, 1.08],
+        name: 'VOID-1', title: 'ABYSS SHAFT', music: 'furnace', music2: 'abyss', top: 81, start: [0, 52, 0], yaw: 0, exit: [0, 68, 728, true], tint: [0.95, 0.92, 1.08],
         sky: { zenith: [0.02, 0.02, 0.06], fog: [0.11, 0.1, 0.17], sun: [0.6, 0.55, 0.9], sunDir: [0.2, 0.85, 0.4] },
         walls: { lower: [['wallVoid', 0.5], ['wallTech', 0.25], ['wallPipes', 0.25]], upper: [['wallVoid', 0.6], ['wallUpper', 0.4]] },
         rooms: [
@@ -2342,7 +2342,7 @@
       {
         // The sunless sea: a cavern under the Void's crust, its roof hung with stalactites over a black lake, with glowing crystal
         // stalagmites on the shore and a drowned shrine on an island in the middle.
-        name: 'VOID-1B', title: 'SUNLESS SEA', music: 'sunless', top: 70, width: 256, start: [0, -3, -24], yaw: 0, exit: [0, 0, 730, true], since: 'six', crowd: 3,
+        name: 'VOID-1B', title: 'SUNLESS SEA', music: 'nadir', music2: 'sunless', top: 70, width: 256, start: [0, -3, -24], yaw: 0, exit: [0, 0, 730, true], since: 'six', crowd: 3,
         interior: true, ceiling: 'wallBasalt', crown: 'wallBasalt', posts: false, roof: 'floorVoid', tint: [0.95, 0.85, 1.1], fog: [140, 900, 0.8], haze: 0.25,
         sky: { zenith: [0.02, 0.01, 0.04], fog: [0.1, 0.06, 0.16], sun: [0.8, 0.62, 1.05], sunDir: [0.3, 1, 0.25] },
         walls: { lower: [['wallBasalt', 1]], upper: [['wallBasalt', 1]] },
@@ -2607,7 +2607,7 @@
         ],
       },
       {
-        name: 'VOID-2', title: 'CRYSTAL CANYON', music: 'canyon', top: 65, start: [0, -4, 0], yaw: 0, exit: [0, 4, 728, true], tint: [0.92, 1.0, 1.08],
+        name: 'VOID-2', title: 'CRYSTAL CANYON', music: 'canyon', music2: 'horizon', top: 65, start: [0, -4, 0], yaw: 0, exit: [0, 4, 728, true], tint: [0.92, 1.0, 1.08],
         brief: 'A VOID CARRIER IS DOCKED AT THE END OF THE CANYON',
         sky: { zenith: [0.1, 0.2, 0.38], fog: [0.55, 0.66, 0.78], sun: [1.0, 0.95, 0.9], sunDir: [0.4, 0.55, 0.6] },
         walls: { lower: [['wallIce', 0.7], ['wallTech', 0.3]], upper: [['wallIce', 0.8], ['wallWindows', 0.2]] },
@@ -2666,7 +2666,7 @@
         ],
       },
       {
-        name: 'VOID-3', title: 'DRIFT FOUNDRY', music: 'drift', top: 81, start: [0, -4, 0], yaw: 0, exit: [0, 68, 724, true], tint: [1.08, 0.96, 0.9],
+        name: 'VOID-3', title: 'DRIFT FOUNDRY', music: 'rivet', music2: 'drift', top: 81, start: [0, -4, 0], yaw: 0, exit: [0, 68, 724, true], tint: [1.08, 0.96, 0.9],
         sky: { zenith: [0.1, 0.05, 0.05], fog: [0.34, 0.2, 0.16], sun: [1.0, 0.65, 0.45], sunDir: [-0.4, 0.6, 0.6] },
         walls: { lower: [['wallBasalt', 0.4], ['wallPipes', 0.3], ['wallTech', 0.3]], upper: [['wallBasalt', 0.5], ['wallRust', 0.3], ['wallUpper', 0.2]] },
         brief: 'CLIMB THE FOUNDRY // UPDRAFTS RISE FROM THE VENTS',
@@ -2726,7 +2726,7 @@
         // Inside the ark: a sealed hull of corridors opening into chambers far taller than any room so far. Floating blocks
         // hang in the cargo void, a habitat drum turns for gravity in the spin section, and the reactor hall is built
         // around a crackling column caged by turning rings.
-        name: 'THE ARK', title: 'REACTOR SPINE', music: 'ark', top: 100, start: [0, -2, -24], yaw: 0, exit: [0, 12, 736, true],
+        name: 'THE ARK', title: 'REACTOR SPINE', music: 'anvil', music2: 'ark', top: 100, start: [0, -2, -24], yaw: 0, exit: [0, 12, 736, true],
         interior: true, roof: 'floorPlate', tint: [0.86, 0.9, 1.0],
         sky: { zenith: [0.01, 0.015, 0.03], fog: [0.03, 0.045, 0.07], sun: [0.3, 0.34, 0.42], sunDir: [0.2, 1, 0.15] },
         walls: { lower: [['wallTech', 0.35], ['wallComputer', 0.25], ['wallPipes', 0.25], ['wallVent', 0.15]], upper: [['wallUpper', 0.5], ['wallTech', 0.3], ['wallWindows', 0.2]] },
@@ -2802,7 +2802,7 @@
         ],
       },
       {
-        name: 'VOID-4', title: 'MIRROR ARCHIVE', music: 'archive', top: 57, start: [0, -4, 0], yaw: 0, exit: [0, 40, 684, true], tint: [0.95, 1.0, 1.06],
+        name: 'VOID-4', title: 'MIRROR ARCHIVE', music: 'nadir', music2: 'archive', top: 57, start: [0, -4, 0], yaw: 0, exit: [0, 40, 684, true], tint: [0.95, 1.0, 1.06],
         sky: { zenith: [0.03, 0.05, 0.1], fog: [0.14, 0.18, 0.24], sun: [0.7, 0.85, 1.0], sunDir: [0.3, 0.7, 0.5] },
         walls: { lower: [['wallComputer', 0.4], ['wallTech', 0.4], ['wallVoid', 0.2]], upper: [['wallTech', 0.5], ['wallWindows', 0.3], ['wallVoid', 0.2]] },
         brief: 'DESTROY THE THREE DATA CORES TO OPEN THE ARCHIVE',
@@ -2877,7 +2877,7 @@
         ],
       },
       {
-        name: 'VOID-5', title: 'ASH MESAS', music: 'mesa', top: 57, start: [0, -4, 0], yaw: 0, exit: [0, -4, 680, true], tint: [1.05, 0.95, 0.9],
+        name: 'VOID-5', title: 'ASH MESAS', music: 'mesa', music2: 'furnace', top: 57, start: [0, -4, 0], yaw: 0, exit: [0, -4, 680, true], tint: [1.05, 0.95, 0.9],
         sky: { zenith: [0.08, 0.03, 0.03], fog: [0.3, 0.17, 0.13], sun: [1.0, 0.55, 0.35], sunDir: [0.3, 0.35, 0.85] },
         walls: { lower: [['wallBasalt', 0.6], ['wallRust', 0.4]], upper: [['wallBasalt', 0.7], ['wallRust', 0.3]] },
         brief: 'DESTROY THE THREE DATA CORES ACROSS THE MESAS TO OPEN THE HANGAR',
@@ -2919,7 +2919,7 @@
         ],
       },
       {
-        name: 'VOID-6', title: 'HEART OF THE VOID', music: 'void', top: 81, start: [0, 12, 0], yaw: 0, exit: [0, 44, 728, true], tint: [1.0, 0.9, 1.1],
+        name: 'VOID-6', title: 'HEART OF THE VOID', music: 'void', music2: 'hivemind', top: 81, start: [0, 12, 0], yaw: 0, exit: [0, 44, 728, true], tint: [1.0, 0.9, 1.1],
         brief: 'THE VOID HERALD WAITS BEYOND THE NULL CORRIDOR',
         sky: { zenith: [0.05, 0.0, 0.08], fog: [0.2, 0.08, 0.24], sun: [0.9, 0.4, 0.9], sunDir: [-0.3, 0.5, 0.7] },
         walls: { lower: [['wallVoid', 0.7], ['wallComputer', 0.3]], upper: [['wallVoid', 0.8], ['wallSign', 0.2]] },
@@ -5629,33 +5629,39 @@
     function ensureAudio() {
       const AudioCtor = window.AudioContext || window.webkitAudioContext;
       if (!AudioCtor) return;
-      if (!audioContext) {
-        audioContext = new AudioCtor();
-        musicBus = audioContext.createGain();
-        musicBus.gain.value = musicOn ? 1 : 0;
-        const compressor = audioContext.createDynamicsCompressor();
-        compressor.threshold.value = -20; compressor.knee.value = 12; compressor.ratio.value = 4;
-        compressor.attack.value = 0.004; compressor.release.value = 0.25;
-        musicBus.connect(compressor); compressor.connect(audioContext.destination);
-        musicIn = audioContext.createGain(); musicIn.gain.value = 0.09; musicIn.connect(musicBus);
-        noiseBuffer = audioContext.createBuffer(1, audioContext.sampleRate, audioContext.sampleRate);
-        const samples = noiseBuffer.getChannelData(0);
-        for (let i = 0; i < samples.length; i++) samples[i] = Math.random() * 2 - 1;
-        // A long noise-tail reverb and a dotted-eighth echo give the synths their factory-hall space.
-        const reverb = audioContext.createConvolver(), length = Math.floor(audioContext.sampleRate * 2.8);
-        reverb.buffer = audioContext.createBuffer(2, length, audioContext.sampleRate);
-        for (let channel = 0; channel < 2; channel++) {
-          const tail = reverb.buffer.getChannelData(channel);
-          for (let i = 0; i < length; i++) tail[i] = (Math.random() * 2 - 1) * (1 - i / length) ** 2.6;
-        }
-        reverbIn = audioContext.createGain(); reverbIn.gain.value = 0.5;
-        reverbIn.connect(reverb); reverb.connect(musicIn);
-        const echo = audioContext.createDelay(1), feedback = audioContext.createGain(), tone = audioContext.createBiquadFilter();
-        echo.delayTime.value = track.step * 3; echoNode = echo; feedback.gain.value = 0.42; tone.type = 'lowpass'; tone.frequency.value = 2200;
-        delayIn = audioContext.createGain(); delayIn.gain.value = 0.45;
-        delayIn.connect(echo); echo.connect(tone); tone.connect(feedback); feedback.connect(echo); tone.connect(musicIn); tone.connect(reverbIn);
-      }
+      if (!audioContext) { audioContext = new AudioCtor(); wireMusic(); }
       if (audioContext.state === 'suspended') audioContext.resume();
+    }
+    function wireMusic() {
+      musicBus = audioContext.createGain();
+      musicBus.gain.value = musicOn ? 1 : 0;
+      const compressor = audioContext.createDynamicsCompressor();
+      compressor.threshold.value = -20; compressor.knee.value = 12; compressor.ratio.value = 4;
+      compressor.attack.value = 0.004; compressor.release.value = 0.25;
+      musicBus.connect(compressor); compressor.connect(audioContext.destination);
+      musicIn = audioContext.createGain(); musicIn.gain.value = 0.09; musicIn.connect(musicBus);
+      noiseBuffer = audioContext.createBuffer(1, audioContext.sampleRate, audioContext.sampleRate);
+      const samples = noiseBuffer.getChannelData(0);
+      for (let i = 0; i < samples.length; i++) samples[i] = Math.random() * 2 - 1;
+      // A long noise-tail reverb and a dotted-eighth echo give the synths their factory-hall space.
+      const reverb = audioContext.createConvolver(), length = Math.floor(audioContext.sampleRate * 2.8);
+      reverb.buffer = audioContext.createBuffer(2, length, audioContext.sampleRate);
+      for (let channel = 0; channel < 2; channel++) {
+        const tail = reverb.buffer.getChannelData(channel);
+        for (let i = 0; i < length; i++) tail[i] = (Math.random() * 2 - 1) * (1 - i / length) ** 2.6;
+      }
+      reverbIn = audioContext.createGain(); reverbIn.gain.value = 0.5;
+      reverbIn.connect(reverb); reverb.connect(musicIn);
+      const echo = audioContext.createDelay(1), feedback = audioContext.createGain(), tone = audioContext.createBiquadFilter();
+      echo.delayTime.value = track.step * 3; echoNode = echo; feedback.gain.value = 0.42; tone.type = 'lowpass'; tone.frequency.value = 2200;
+      delayIn = audioContext.createGain(); delayIn.gain.value = 0.45;
+      delayIn.connect(echo); echo.connect(tone); tone.connect(feedback); feedback.connect(echo); tone.connect(musicIn); tone.connect(reverbIn);
+      // Heavy tracks drive their kicks and basses through a soft clipper; trance pads and leads duck under the kick on a pump bus.
+      const clip = audioContext.createWaveShaper(), shape = new Float32Array(1024), tame = audioContext.createBiquadFilter(), trim = audioContext.createGain();
+      for (let i = 0; i < 1024; i++) shape[i] = Math.tanh((i / 511.5 - 1) * 5);
+      clip.curve = shape; tame.type = 'lowpass'; tame.frequency.value = 5600; trim.gain.value = 0.52;
+      clip.connect(tame); tame.connect(trim); trim.connect(musicIn); driveIn = clip;
+      pumpIn = audioContext.createGain(); pumpIn.connect(musicIn);
     }
     function playPew(plasma) {
       if (!audioContext || audioContext.state !== 'running') return;
@@ -5688,7 +5694,7 @@
       oscillator.start(when); oscillator.stop(when + length + 0.01);
     }
 
-    // Music: original synth tracks built from 16th-note steps, one per sector style, plus a boss theme.
+    // Music: original synth tracks built from 16th-note steps, two for each sector taking turns, plus a boss theme.
     // A track sets its tempo, swing, a four-chord loop (two bars per chord), drum and bass patterns per
     // section, an eight-bar lead hook and its voices. Eight-bar phrases follow the track's arrangement,
     // and nearby hostiles push extra hats, an arpeggio and a brighter bass into the mix.
@@ -5724,8 +5730,15 @@
       dub: [[0, 4, 1], _, _, _, _, _, [0, 2, 0], _, [7, 3, 1], _, _, [5, 2, 0], _, [0, 3, 0], _, _],
       tribal: [[0, 2, 1], _, _, [0, 1, 0], [0, 2, 0], _, [7, 2, 0], _, [0, 2, 1], _, _, [0, 1, 0], [10, 2, 0], _, [7, 2, 0], _],
       sparse: [[0, 8, 1], _, _, _, _, _, _, _, [7, 6, 0], _, _, _, _, _, _, _],
+      roll: [_, [0, 1, 1], [0, 1, 0], [0, 1, 0], _, [0, 1, 1], [0, 1, 0], [0, 1, 0], _, [0, 1, 1], [0, 1, 0], [0, 1, 0], _, [0, 1, 1], [12, 1, 0], [0, 1, 0]],
+      psy: [_, [0, 1, 1], [0, 1, 0], [0, 1, 0], _, [0, 1, 1], [0, 1, 0], [12, 1, 0], _, [0, 1, 1], [0, 1, 0], [0, 1, 0], _, [0, 1, 1], [1, 1, 0], [12, 1, 0]],
+      acid: [[0, 1, 1], [0, 1, 0], [12, 1, 1], [0, 1, 0], _, [0, 1, 0], [10, 1, 1], [0, 1, 0], [0, 1, 1], _, [12, 1, 0], [15, 1, 1], [0, 1, 0], [7, 1, 0], [10, 1, 1], [12, 1, 0]],
+      stomp: [[0, 2, 1], _, _, [0, 1, 0], _, _, [0, 2, 1], _, [0, 1, 0], _, [0, 2, 1], _, [1, 2, 0], _, [0, 1, 0], _],
+      machine: [[0, 1, 1], [0, 1, 0], _, [0, 1, 0], [0, 1, 1], _, [0, 1, 0], [0, 1, 0], [0, 1, 1], [0, 1, 0], _, [0, 1, 0], [1, 1, 1], _, [0, 1, 0], [12, 1, 0]],
+      rumble: [_, _, [0, 1, 1], [0, 1, 0], _, _, [0, 1, 1], [0, 1, 0], _, _, [0, 1, 1], [0, 1, 0], _, _, [0, 1, 1], [12, 1, 0]],
+      doom: [[0, 6, 1], _, _, _, _, _, [0, 2, 0], _, [1, 4, 1], _, _, _, [0, 4, 0], _, _, _],
     };
-    const ALL_STEPS = [...Array(16).keys()], EIGHTHS = [0, 2, 4, 6, 8, 10, 12, 14], OFFBEATS = [2, 6, 10, 14];
+    const ALL_STEPS = [...Array(16).keys()], EIGHTHS = [0, 2, 4, 6, 8, 10, 12, 14], OFFBEATS = [2, 6, 10, 14], FOUR = [0, 4, 8, 12], TRANCE_GATE = [0, 2, 3, 5, 6, 8, 10, 11, 13, 14];
     // Section kits: which drums play on which steps, which bass pattern runs, and whether pad, arpeggio and hook play.
     const KITS = {
       industrial: {
@@ -5764,6 +5777,48 @@
         assault: { kick: [0, 8], snare: [8], hats: ALL_STEPS, stab: [4, 12], bass: 'dub', hook: true },
         breakdown: { rim: [8], stab: [12], bass: 'long', pad: true, riser: true },
       },
+      ironworks: {
+        intro: { kick: [0, 8], piston: [4, 12], steam: [14], anvil: [6], bass: 'stomp' },
+        drive: { kick: FOUR, clap: [4, 12], hats: OFFBEATS, piston: [2, 6, 10, 14], anvil: [7], metal: [15], bass: 'stomp', pad: true },
+        assault: { kick: [0, 3, 4, 8, 11, 12], snare: [4, 12], hats: ALL_STEPS, piston: [2, 6, 10, 14], anvil: [3, 11], metal: [7, 15], bass: 'machine', hook: true },
+        breakdown: { piston: [0, 6, 10], steam: [8], anvil: [4], bass: 'long', pad: true, riser: true },
+      },
+      ebm: {
+        intro: { kick: FOUR, piston: [14], bass: 'eighths', pad: true },
+        drive: { kick: FOUR, snare: [4, 12], hats: EIGHTHS, metal: [6, 14], steam: [15], bass: 'eighths', arp: true },
+        assault: { kick: FOUR, snare: [4, 12], clap: [12], hats: ALL_STEPS, open: [14], anvil: [10], bass: 'eighths', hook: true },
+        breakdown: { snare: [12], piston: [4, 8], bass: 'long', pad: true, riser: true },
+      },
+      hardtech: {
+        intro: { kick: FOUR, hats: OFFBEATS, bass: 'rumble' },
+        drive: { kick: FOUR, clap: [4, 12], hats: ALL_STEPS, open: OFFBEATS, metal: [3, 11], bass: 'rumble', arp: 'soft' },
+        assault: { kick: FOUR, clap: [4, 12], hats: ALL_STEPS, open: OFFBEATS, metal: [3, 7, 11, 15], anvil: [14], bass: 'rumble', hook: true },
+        breakdown: { open: OFFBEATS, steam: [0], bass: 'long', pad: true, roll: true, riser: true },
+      },
+      dirge: {
+        intro: { kick: [0], anvil: [8], steam: [12], bass: 'doom', pad: true },
+        drive: { kick: [0, 10], snare: [8], hats: EIGHTHS, anvil: [14], piston: [6], bass: 'doom', pad: true },
+        assault: { kick: [0, 3, 10], snare: [8], hats: EIGHTHS, open: [14], anvil: [6, 14], piston: [4, 12], bass: 'doom', hook: true },
+        breakdown: { anvil: [0, 8], steam: [4], bass: 'long', pad: true, riser: true },
+      },
+      trance: {
+        intro: { kick: FOUR, open: OFFBEATS, shaker: ALL_STEPS, bass: 'roll', pad: true, arp: 'soft' },
+        drive: { kick: FOUR, clap: [4, 12], open: OFFBEATS, shaker: ALL_STEPS, bass: 'roll', pad: true, gate: TRANCE_GATE, arp: true },
+        assault: { kick: FOUR, clap: [4, 12], open: OFFBEATS, hats: ALL_STEPS, bass: 'roll', pad: true, gate: TRANCE_GATE, hook: true },
+        breakdown: { bass: 'long', pad: true, arp: 'soft', roll: true, riser: true },
+      },
+      psy: {
+        intro: { kick: FOUR, hats: OFFBEATS, bass: 'psy' },
+        drive: { kick: FOUR, clap: [12], open: OFFBEATS, shaker: ALL_STEPS, bass: 'psy', arp: true },
+        assault: { kick: FOUR, clap: [4, 12], open: OFFBEATS, hats: ALL_STEPS, metal: [11], bass: 'psy', hook: true },
+        breakdown: { open: [14], bass: 'long', pad: true, arp: 'soft', roll: true, riser: true },
+      },
+      acid: {
+        intro: { kick: FOUR, hats: OFFBEATS, bass: 'acid' },
+        drive: { kick: FOUR, clap: [4, 12], open: OFFBEATS, bass: 'acid', pad: true },
+        assault: { kick: FOUR, clap: [4, 12], open: OFFBEATS, hats: ALL_STEPS, bass: 'acid', hook: true },
+        breakdown: { hats: OFFBEATS, bass: 'acid', pad: true, roll: true, riser: true },
+      },
       tribal: {
         intro: { toms: [[0, 0.7], [3, 0.7], [10, 0.9]], shaker: EIGHTHS, bass: 'tribal', pad: true },
         drive: { kick: [0, 8], clap: [12], toms: [[3, 0.7], [6, 1], [10, 0.7], [14, 1.3]], shaker: ALL_STEPS, bass: 'tribal', pad: true, arp: 'soft' },
@@ -5772,7 +5827,8 @@
       },
     };
     const ARRANGEMENT = ['intro', 'drive', 'assault', 'breakdown', 'drive', 'assault'];
-    // Voices: lead is 'saw', 'square', 'soft' or 'bell'; pad is 'warm', 'glass' or 'dark'.
+    // Voices: lead is 'saw', 'square', 'soft', 'bell' or 'supersaw'; pad is 'warm', 'glass' or 'dark'. `heavy` drives the kick and
+    // bass through the clipper, `pump` ducks pads and leads under the kick, and bass 'acid' is a squelching resonant line.
     const TRACKS = {
       relay: { bpm: 122, kit: 'industrial', lead: 'saw', pad: 'warm', chords: [[38, 'm'], [34], [31, 'm'], [33]],
         hook: ['74.2 77.2 81.4 79.2 77.2 76.4', '77.4 74.4 69.8', '74.2 77.2 82.4 81.2 79.2 77.4', '79.4 77.4 74.8',
@@ -5848,6 +5904,32 @@
       ark: { bpm: 104, kit: 'halftime', lead: 'saw', pad: 'dark', arp: 'sine', chords: [[37, 'm'], [33], [40], [35]],
         hook: ['C#5.4 E5.2 G#5.2 C#6.4 B5.4', 'A5.4 G#5.4 E5.8', 'C#5.4 E5.2 A5.2 C#6.4 E6.4', 'D#6.8 C#6.8',
           'E5.4 G#5.2 B5.2 E6.4 D#6.4', 'C#6.4 B5.4 G#5.8', 'F#5.4 A5.2 C#6.2 F#6.4 E6.4', 'D#6.4 B5.4 G#5.8'] },
+      press: { bpm: 128, kit: 'ironworks', heavy: true, lead: 'saw', pad: 'dark', chords: [[40, 'm'], [41], [40, 'm'], [36]],
+        hook: ['E5.2 E5.2 G5.2 E5.2 F5.4 E5.4', 'B4.4 C5.2 B4.2 G4.8', 'F5.2 F5.2 A5.2 F5.2 G5.4 F5.4', 'C5.4 D5.2 C5.2 A4.8',
+          'E5.2 E5.2 G5.2 E5.2 F5.4 E5.4', 'B4.4 C5.2 B4.2 E5.8', 'C5.2 C5.2 E5.2 C5.2 D5.4 C5.4', 'B4.2 C5.2 B4.4 E4.8'] },
+      anvil: { bpm: 140, kit: 'ebm', heavy: true, lead: 'square', pad: 'dark', arp: 'square', chords: [[36, 'm'], [32], [39], [34]],
+        hook: ['C5.3 C5.3 Eb5.2 G5.4 F5.4', 'Eb5.4 D5.4 C5.8', 'Ab4.3 Ab4.3 C5.2 Eb5.4 D5.4', 'C5.4 Bb4.4 Ab4.8',
+          'Eb5.3 Eb5.3 G5.2 Bb5.4 Ab5.4', 'G5.4 F5.4 Eb5.8', 'Bb4.3 Bb4.3 D5.2 F5.4 Eb5.4', 'D5.4 C5.4 Bb4.8'] },
+      rivet: { bpm: 146, kit: 'hardtech', heavy: true, lead: 'saw', pad: 'dark', chords: [[41, 'm'], [41, 'm'], [37], [39]],
+        hook: ['F5.1 r.1 F5.1 r.1 Ab5.2 F5.2 C6.2 Ab5.2 G5.4', 'F5.4 Eb5.4 C5.8', 'F5.1 r.1 F5.1 r.1 Ab5.2 F5.2 C6.2 Ab5.2 G5.4', 'Ab5.4 G5.4 F5.8',
+          'Db5.1 r.1 Db5.1 r.1 F5.2 Db5.2 Ab5.2 F5.2 Eb5.4', 'Db5.4 C5.4 Ab4.8', 'Eb5.1 r.1 Eb5.1 r.1 G5.2 Eb5.2 Bb5.2 G5.2 F5.4', 'Eb5.4 D5.4 Bb4.8'] },
+      furnace: { bpm: 84, kit: 'dirge', heavy: true, lead: 'saw', pad: 'dark', chords: [[38, 'm'], [39], [38, 'm'], [34]],
+        hook: ['D4.8 F4.4 D4.4', 'A4.12 r.4', 'Eb4.8 G4.4 Eb4.4', 'Bb4.8 G4.8', 'D4.8 F4.4 A4.4', 'G4.4 F4.4 D4.8', 'Bb3.4 D4.4 F4.8', 'Eb4.4 D4.4 Bb3.8'] },
+      ascent: { bpm: 138, kit: 'trance', pump: true, lead: 'supersaw', pad: 'warm', arp: 'sawtooth', chords: [[33, 'm'], [29], [36], [31]],
+        hook: ['A5.3 C6.3 E6.2 D6.3 C6.3 B5.2', 'A5.6 B5.2 C6.8', 'F5.3 A5.3 C6.2 E6.3 D6.3 C6.2', 'A5.6 C6.2 F6.8',
+          'E6.3 G6.3 C7.2 B6.3 G6.3 E6.2', 'G6.6 F6.2 E6.8', 'D6.3 G6.3 B6.2 A6.3 G6.3 D6.2', 'G6.6 A6.2 B6.8'] },
+      horizon: { bpm: 132, kit: 'trance', pump: true, lead: 'supersaw', pad: 'glass', arp: 'triangle', chords: [[38], [45], [35, 'm'], [43]],
+        hook: ['F#5.4 A5.2 D6.2 C#6.4 A5.4', 'F#5.4 A5.2 D6.2 F#6.8', 'E5.4 A5.2 C#6.2 E6.4 C#6.4', 'E6.4 C#6.4 A5.8',
+          'D5.4 F#5.2 B5.2 D6.4 B5.4', 'A5.4 F#5.4 D5.8', 'G5.4 B5.2 D6.2 G6.4 F#6.4', 'E6.4 D6.4 B5.8'] },
+      nadir: { bpm: 136, kit: 'trance', pump: true, lead: 'supersaw', pad: 'dark', arp: 'sawtooth', chords: [[31, 'm'], [27], [34], [29]],
+        hook: ['G5.3 Bb5.3 D6.2 C6.3 Bb5.3 A5.2', 'G5.6 A5.2 Bb5.8', 'Eb5.3 G5.3 Bb5.2 D6.3 C6.3 Bb5.2', 'G5.6 Bb5.2 Eb6.8',
+          'D6.3 F6.3 Bb6.2 A6.3 F6.3 D6.2', 'F6.6 Eb6.2 D6.8', 'C6.3 F6.3 A6.2 G6.3 F6.3 C6.2', 'F6.6 G6.2 A6.8'] },
+      hivemind: { bpm: 145, kit: 'psy', bass: 'acid', lead: 'square', pad: 'dark', arp: 'sawtooth', chords: [[30, 'm'], [30, 'm'], [31], [30, 'm']],
+        hook: ['F#5.2 G5.2 F#5.2 C#5.2 F#5.2 A5.2 G5.2 F#5.2', 'C#5.4 D5.4 C#5.8', 'F#5.2 G5.2 F#5.2 C#5.2 A5.2 C#6.2 B5.2 A5.2', 'G5.4 A5.4 F#5.8',
+          'G5.2 B5.2 G5.2 D5.2 G5.2 B5.2 D6.2 B5.2', 'A5.4 G5.4 D5.8', 'F#5.2 A5.2 F#5.2 C#5.2 F#5.2 A5.2 C#6.2 A5.2', 'G5.4 F#5.4 C#5.8'] },
+      acidbath: { bpm: 134, kit: 'acid', bass: 'acid', lead: 'square', pad: 'dark', chords: [[40, 'm'], [40, 'm'], [43], [38]],
+        hook: ['r.4 B5.2 r.2 E6.2 r.2 D6.2 B5.2', 'G5.4 A5.4 B5.8', 'r.4 B5.2 r.2 G6.2 r.2 E6.2 D6.2', 'B5.4 G5.4 E5.8',
+          'r.4 D6.2 r.2 G6.2 r.2 F#6.2 D6.2', 'B5.4 D6.4 G5.8', 'r.4 A5.2 r.2 D6.2 r.2 F#6.2 E6.2', 'D6.4 A5.4 F#5.8'] },
       menu: { bpm: 76, kit: 'ambient', lead: 'bell', pad: 'glass', arp: 'sine', arrangement: ['intro', 'drive', 'breakdown', 'drive'], chords: [[38, 'm'], [34], [41], [36]],
         hook: ['A5.4 F5.4 D5.4 E5.4', 'F5.12 r.4', 'D6.4 Bb5.4 F5.4 Bb5.4', 'A5.12 r.4', 'C6.4 A5.4 F5.4 A5.4', 'G5.8 F5.8', 'E5.4 G5.4 C6.4 E6.4', 'D6.16'] },
       boss: { bpm: 150, kit: 'foundry', lead: 'saw', pad: 'dark', arrangement: ['drive', 'assault', 'assault', 'breakdown', 'drive', 'assault'], chords: [[38, 'm'], [34], [36], [33]],
@@ -5858,7 +5940,8 @@
       t.step = 60 / t.bpm / 4; t.sections = KITS[t.kit]; t.arrangement ||= ARRANGEMENT;
       t.progression = t.chords.map(([root, quality]) => chord(root, quality)); t.melody = parseHook(t.hook);
     }
-    let track = TRACKS.relay, trackName = 'relay', echoNode = null;
+    let track = TRACKS.relay, trackName = 'relay', echoNode = null, secondTrack = false;
+    const sectorTrack = () => (secondTrack && level.music2) || level.music || 'relay';
     // Switch tracks at the start of the next step; the new one begins from its intro.
     function setTrack(name) {
       if (!TRACKS[name] || name === trackName) return;
@@ -5888,8 +5971,9 @@
       source.start(at, Math.random() * 0.8); source.stop(at + length + 0.05);
     }
     function kick(at, volume) {
-      const body = amp(musicIn); envelope(body.gain, at, 0.002, volume, 0.45);
-      tone('sine', 165, at, 0.45, body).frequency.exponentialRampToValueAtTime(44, at + 0.11);
+      const heavy = track.heavy, body = amp(heavy ? driveIn : musicIn); envelope(body.gain, at, 0.002, volume, heavy ? 0.3 : 0.45);
+      tone('sine', heavy ? 210 : 165, at, 0.45, body).frequency.exponentialRampToValueAtTime(heavy ? 48 : 44, at + (heavy ? 0.07 : 0.11));
+      if (track.pump) { pumpIn.gain.setValueAtTime(0.3, at); pumpIn.gain.linearRampToValueAtTime(1, at + track.step * 3); }
       const click = amp(musicIn); envelope(click.gain, at, 0.001, volume * 0.25, 0.03);
       hiss(at, 0.03, filter('highpass', 2500, 0.7, click, at));
     }
@@ -5927,8 +6011,25 @@
       const band = filter('bandpass', 2600 * pitch, 3, out, at);
       for (const ratio of [1, 1.46, 2.13, 2.87]) tone('square', 380 * pitch * ratio, at, 0.28, band);
     }
+    // A hydraulic hit: a burst of noise falling through a tight band.
+    function piston(at, volume) {
+      const out = amp(musicIn, reverbIn); envelope(out.gain, at, 0.002, volume, 0.16);
+      const band = filter('bandpass', 2400, 4, out, at);
+      band.frequency.exponentialRampToValueAtTime(320, at + 0.14);
+      hiss(at, 0.16, band);
+    }
+    // Struck iron: inharmonic partials that ring on into the hall.
+    function anvil(at, volume, pitch) {
+      const out = amp(musicIn, reverbIn, delayIn); envelope(out.gain, at, 0.001, volume, 0.9);
+      for (const ratio of [1, 2.76, 5.4, 8.93]) tone('sine', 520 * pitch * ratio, at, 0.9, out);
+    }
+    function steam(at, length, volume) {
+      const out = amp(musicIn, reverbIn); envelope(out.gain, at, length * 0.5, volume, length);
+      hiss(at, length, filter('highpass', 3200, 0.7, out, at));
+    }
     function bass(at, frequency, length, volume, cutoff) {
-      const out = amp(musicIn);
+      if (track.bass === 'acid') volume *= track.kit === 'acid' ? 1.9 : 1.1;
+      const out = amp(track.heavy ? driveIn : musicIn);
       out.gain.setValueAtTime(0.0001, at); out.gain.exponentialRampToValueAtTime(volume, at + 0.006);
       out.gain.setValueAtTime(volume, at + Math.max(0.01, length - 0.05)); out.gain.exponentialRampToValueAtTime(0.0001, at + length + 0.04);
       if (track.bass === 'sub') {
@@ -5938,13 +6039,20 @@
         tone('square', frequency, at, length + 0.05, filter('lowpass', 400 + cutoff * 0.2, 1, edge, at));
         return;
       }
+      if (track.bass === 'acid') {
+        // One saw an octave up through a screaming filter that snaps shut.
+        const squelch = filter('lowpass', cutoff * 1.6, 16, out, at);
+        squelch.frequency.exponentialRampToValueAtTime(Math.max(160, frequency * 4), at + 0.14);
+        tone('sawtooth', frequency * 2, at, length + 0.05, squelch);
+        return;
+      }
       const low = filter('lowpass', cutoff, 8, out, at);
       low.frequency.exponentialRampToValueAtTime(Math.max(120, frequency * 1.5), at + Math.min(0.25, length));
       tone('sawtooth', frequency, at, length + 0.05, low);
       tone('square', frequency / 2, at, length + 0.05, low, 4);
     }
     function pad(at, frequencies, length) {
-      const out = amp(musicIn, reverbIn), voice = track.pad, level = voice === 'glass' ? 0.035 : 0.045;
+      const out = amp(track.pump ? pumpIn : musicIn, reverbIn), voice = track.pad, level = voice === 'glass' ? 0.035 : 0.045;
       out.gain.setValueAtTime(0.0001, at); out.gain.linearRampToValueAtTime(level, at + 1.1);
       out.gain.setValueAtTime(level, at + length - 0.4); out.gain.linearRampToValueAtTime(0.0001, at + length + 0.9);
       const [lo, hi] = voice === 'dark' ? [300, 900] : voice === 'glass' ? [1400, 4200] : [500, 1600];
@@ -5954,9 +6062,9 @@
     }
     // A short chopped chord: synthwave gates and dub off-beat stabs.
     function stab(at, frequencies, volume, length) {
-      const out = amp(musicIn, delayIn); envelope(out.gain, at, 0.004, volume, length);
+      const out = amp(track.pump ? pumpIn : musicIn, delayIn); envelope(out.gain, at, 0.004, volume, length);
       const low = filter('lowpass', 2000 + musicIntensity * 1200, 1, out, at);
-      for (const frequency of frequencies) tone('square', frequency, at, length, low, 5);
+      for (const frequency of frequencies) tone(track.lead === 'supersaw' ? 'sawtooth' : 'square', frequency, at, length, low, 5);
     }
     function bell(at, frequency, volume, length) {
       const out = amp(musicIn, delayIn, reverbIn); envelope(out.gain, at, 0.002, volume, length);
@@ -5965,6 +6073,15 @@
     }
     function lead(at, frequency, length, volume) {
       if (track.lead === 'bell') return bell(at, frequency, volume * 1.4, Math.max(0.6, length + 0.4));
+      if (track.lead === 'supersaw') {
+        // A stack of detuned saws; the low graphics settings, meant for slow machines, use fewer.
+        const wide = amp(pumpIn, delayIn, reverbIn), level = volume * 0.42;
+        wide.gain.setValueAtTime(0.0001, at); wide.gain.exponentialRampToValueAtTime(level, at + 0.012);
+        wide.gain.setValueAtTime(level, at + Math.max(0.02, length - 0.04)); wide.gain.exponentialRampToValueAtTime(0.0001, at + length + 0.22);
+        const low = filter('lowpass', 3000 + musicIntensity * 1800, 0.9, wide, at);
+        for (const detune of GRAPHICS[graphics].detail ? [-17, -8, 0, 8, 17] : [-11, 0, 11]) tone('sawtooth', frequency, at, length + 0.3, low, detune);
+        return;
+      }
       const out = amp(musicIn, delayIn);
       out.gain.setValueAtTime(0.0001, at); out.gain.exponentialRampToValueAtTime(volume, at + 0.012);
       out.gain.exponentialRampToValueAtTime(volume * 0.55, at + 0.18);
@@ -6008,6 +6125,8 @@
       if (has(kicks) || (fill && kicks.length > 2 && step === 14)) kick(at, step === 0 ? 0.95 : 0.85);
       if (has(section.snare)) snare(at, 0.55);
       else if (fill && section.snare && step > 12) snare(at, 0.22 + (step - 12) * 0.1);
+      // A build: the snare doubles up over the last four bars of a breakdown, climbing to the drop.
+      if (section.roll && barInPhrase >= 4 && step % (barInPhrase < 6 ? 4 : barInPhrase === 6 ? 2 : 1) === 0) snare(at, 0.1 + (barInPhrase - 4 + step / 16) * 0.11);
       if (has(section.clap)) clap(at, 0.42);
       if (has(section.rim)) rim(at, 0.16);
       for (const [at16, pitch] of section.toms || []) if (at16 === step) tom(at, 0.5, pitch);
@@ -6015,11 +6134,14 @@
       if (has(section.open)) hat(at, 0.13, true);
       else if (has(section.hats) || (heat > 0.45 && step % 2 === 1)) hat(at, step % 4 === 2 ? 0.17 : 0.1, false);
       if (has(section.metal) && (bar % 2 === 0 || step > 8)) metal(at, 0.3, bar % 2 ? 1.12 : 1);
+      if (has(section.piston)) piston(at, 0.32);
+      if (has(section.anvil)) anvil(at, 0.09, bar % 2 ? 1.19 : 1);
+      if (has(section.steam)) steam(at, track.step * 3, 0.1);
       if (reprise && fill && kicks.length > 2 && step >= 8 && step % 2 === 0) tom(at, 0.4, 1.4 - (step - 8) * 0.08);
       if (has(section.stab)) stab(at, chord.pad.slice(1).map(n => midi(n + 12)), 0.05, track.step * 1.6);
       const note = BASS[section.bass][step];
       if (note) bass(at, midi(chord.root + note[0]), note[1] * track.step * 0.92, note[2] ? 0.34 : 0.25, (note[2] ? 1500 : 850) + heat * 900);
-      if (section.pad && section.gate) { if (step % 2 === 0) stab(at, chord.pad.map(midi), 0.035, track.step * 1.4); }
+      if (section.pad && section.gate) { if (has(section.gate === true ? EIGHTHS : section.gate)) stab(at, chord.pad.map(midi), 0.035, track.step * (section.gate === true ? 1.4 : 0.9)); }
       else if (section.pad && step === 0 && barInPhrase % 2 === 0) pad(at, chord.pad.map(midi), track.step * 32);
       if (section.hook) {
         const melody = track.melody.get(barInPhrase * 16 + step);
@@ -6034,6 +6156,8 @@
       while (musicNextTime < audioContext.currentTime + 0.2) {
         playMusicStep(musicStep, musicNextTime);
         musicStep++; musicNextTime += track.step;
+        // Once a sector's track has played through, its second track takes over, and back again.
+        if (level.music2 && trackName === sectorTrack() && musicStep >= track.arrangement.length * 128) { secondTrack = !secondTrack; setTrack(sectorTrack()); }
       }
     }
     function playExplosionSound() {
@@ -6088,7 +6212,7 @@
       impactTimer = 0; hitTimer = 0; muzzleTimer = 0; fireCooldown = 0; wallCooldown = 0; warpTimer = 0; redFlash = 0; trauma = 0;
       shots.length = 0; enemyShots.length = 0; explosions.length = 0; particles.length = 0;
       gameOverText.classList.remove('show'); pausedText.classList.remove('show');
-      bossBlast = null; resetMap(); setTrack(menuOpen || screenOpen ? 'menu' : level.music || 'relay');
+      bossBlast = null; resetMap(); secondTrack = false; setTrack(menuOpen || screenOpen ? 'menu' : sectorTrack());
       sectorText.textContent = `${index + 1} / ${LEVELS.length}`; levelText.textContent = level.name;
       Object.assign(save.sectors[LEVELS[index].title] ||= {}, { weapon: weaponLevel, missiles: missileAmmo, launcher: launcherLevel }); save.last = index; save.lastTitle = LEVELS[index].title; noteArsenal();
       checkpoint = null;
@@ -6463,7 +6587,7 @@
       if (screenOpen !== 'briefing') return;
       screenOpen = null; briefing.classList.remove('show');
       started = true; paused = false; lastTime = performance.now();
-      ensureAudio(); setTrack(level.music || 'relay');
+      ensureAudio(); setTrack(sectorTrack());
       try { const request = canvas.requestPointerLock(); if (request && request.catch) request.catch(() => {}); } catch { /* click the view to capture the mouse */ }
     }
     introButton.addEventListener('click', leaveIntro);
@@ -6479,7 +6603,7 @@
     function closeMenu() {
       if (!started) return levelIndex ? showUpgrades(true) : showBriefing();
       menuOpen = false; paused = false; lastTime = performance.now();
-      menu.classList.remove('show'); ensureAudio(); setTrack(level.music || 'relay');
+      menu.classList.remove('show'); ensureAudio(); setTrack(sectorTrack());
       try { const request = canvas.requestPointerLock(); if (request && request.catch) request.catch(() => {}); } catch { /* click the view to capture the mouse */ }
     }
     resumeButton.addEventListener('click', closeMenu);
@@ -8506,7 +8630,7 @@
       perfParts.reveal += performance.now() - r0;
       const boss = enemies.find(e => ENEMY_TYPES[e.type].boss && !e.summoned), fighting = !!boss && boss.active && boss.hp > 0;
       bossBar.classList.toggle('show', fighting);
-      setTrack(fighting ? 'boss' : level.music || 'relay');
+      setTrack(fighting ? 'boss' : sectorTrack());
       if (fighting) {
         const left = GUARDS[boss.type] ? guardsLeft(boss) : 0, part = GUARDS[boss.type] ? ENEMY_TYPES[GUARDS[boss.type]].name : '';
         setText(bossName, ENEMY_TYPES[boss.type].boss);
@@ -8520,7 +8644,17 @@
       { style: 'position:fixed;left:8px;bottom:8px;z-index:99;font:12px monospace;color:#9fe;background:#000a;padding:4px 6px;white-space:pre;pointer-events:none' });
     // ?debug exposes the game state on window.radix, for testing sectors from the browser console.
     if (new URLSearchParams(location.search).has('debug'))
-      window.radix = { exitCenter, exitOpen, step(seconds) { for (let t = 0; t < seconds; t += 1 / 60) update(1 / 60); }, ship, enemies, shots, enemyShots, bend, unbend, damage, ranks, timers, waits, wells, wingman, usePower, dashShip, flipShip, resetPowers, showUpgrades, enemyMissiles, barrels, pickups, gates, addEnemy, openGate, hurtEnemy, resetGame, insideGirder, startSector, cells: { open, floorY, ceilY, roofY, underY, cellIndex }, get level() { return level; }, get health() { return health; }, set health(v) { health = v; }, get phoenixReady() { return phoenixReady; }, get dashCharges() { return dashCharges; }, get time() { return time; }, get firing() { return mouseFiring; }, set firing(v) { mouseFiring = v; }, get boosting() { return boostFrom !== null; }, get objective() { return objectiveIndex; }, get mapOpen() { return mapOpen; }, set mapOpen(v) { mapOpen = v; } };
+      window.radix = { TRACKS, async renderMusic(name, seconds, fromStep = 128) {
+        const saved = [audioContext, musicBus, musicIn, reverbIn, delayIn, noiseBuffer, echoNode, driveIn, pumpIn, track, trackName];
+        const offline = audioContext = new OfflineAudioContext(1, Math.round(44100 * seconds), 44100);
+        track = TRACKS[name]; trackName = name; wireMusic();
+        for (let i = fromStep, at = 0.02; at < seconds - 0.5; i++, at += track.step) playMusicStep(i, at);
+        [audioContext, musicBus, musicIn, reverbIn, delayIn, noiseBuffer, echoNode, driveIn, pumpIn, track, trackName] = saved;
+        const data = (await offline.startRendering()).getChannelData(0);
+        let peak = 0, sum = 0;
+        for (const v of data) { peak = Math.max(peak, Math.abs(v)); sum += v * v; }
+        return { peak: +peak.toFixed(3), rms: +Math.sqrt(sum / data.length).toFixed(3) };
+      }, exitCenter, exitOpen, step(seconds) { for (let t = 0; t < seconds; t += 1 / 60) update(1 / 60); }, ship, enemies, shots, enemyShots, bend, unbend, damage, ranks, timers, waits, wells, wingman, usePower, dashShip, flipShip, resetPowers, showUpgrades, enemyMissiles, barrels, pickups, gates, addEnemy, openGate, hurtEnemy, resetGame, insideGirder, startSector, cells: { open, floorY, ceilY, roofY, underY, cellIndex }, get level() { return level; }, get health() { return health; }, set health(v) { health = v; }, get phoenixReady() { return phoenixReady; }, get dashCharges() { return dashCharges; }, get time() { return time; }, get firing() { return mouseFiring; }, set firing(v) { mouseFiring = v; }, get boosting() { return boostFrom !== null; }, get objective() { return objectiveIndex; }, get mapOpen() { return mapOpen; }, set mapOpen(v) { mapOpen = v; } };
     let perfSums = [0, 0, 0, 0], perfFrames = 0, perfStart = 0;
     const perfParts = { combat: 0, reveal: 0, music: 0 }, slowFactor = Number(new URLSearchParams(location.search).get('slow')) || 1;
     function perfReport(parts) {

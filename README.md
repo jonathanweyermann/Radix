@@ -137,10 +137,19 @@ All surfaces use textures painted in JavaScript at load time, with no image file
 
 ### Music
 
-Every sector has its own original track, synthesized in JavaScript, plus a boss theme that takes over during boss fights and a quiet theme for the menu. Music starts after your first click or key press. Each track has its own tempo, key, chord loop, lead melody and drum kit:
+Every sector has two original tracks, synthesized in JavaScript, that take turns: when one has played through, about a minute and a half in, the other takes over. There is also a boss theme that takes over during boss fights and a quiet theme for the menu. Music starts after your first click or key press. Each track has its own tempo, key, chord loop, lead melody and drum kit:
 
 | Track | Sectors | Style |
 | --- | --- | --- |
+| Press | 1, 5, 14 | heavy industrial with hydraulic pistons, ringing anvils and a distorted stomping bass, E Phrygian, 128 BPM |
+| Anvil | 12, 15, 25 | EBM stomp with a driven eighth-note bass, C minor, 140 BPM |
+| Rivet | 6, 19, 24 | hard techno with a rumbling kick and bass, F minor, 146 BPM |
+| Furnace | 8, 20, 21, 27 | slow doom industrial, D Phrygian, 84 BPM |
+| Ascent | 4, 7, 16 | uplifting trance with a supersaw lead, a gated pad and a pumping mix, A minor, 138 BPM |
+| Horizon | 9, 13, 18, 23 | progressive trance, D major, 132 BPM |
+| Nadir | 3, 17, 22, 26 | dark trance, G minor, 136 BPM |
+| Hivemind | 10, 11, 28 | psytrance with a rolling acid bass, F# Phrygian, 145 BPM |
+| Acidbath | 2 | acid techno with a squelching resonant bassline, E minor, 134 BPM |
 | Relay | 1 | industrial, D minor, 122 BPM |
 | Toxin | 2 | half-time grind, E Phrygian, 98 BPM |
 | Cryo | 3 | ambient bells, F# minor, 88 BPM |
