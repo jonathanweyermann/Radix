@@ -296,24 +296,16 @@
     //     'destroy' (kill every enemy in `targets`, given as [type, x, y, z]), 'gate' (open gates[`gate`]) or 'exit' (fly
     //     through the exit gate, which stays locked until every goal before it is done)
     //   moon: { radius } wraps the sector around a small moon with no walls at its edge, airless sky and open ground beyond
+    //   terrain: natural ground for rooms of MOON floor with 'wallMoon' sides: { hills (height of the rolling ground),
+    //     craters: [x, z, radius, depth], ridges: [x, z0, z1, half width, height], small and boulders (how many small craters
+    //     and loose rocks to scatter), clear: areas [x0, z0, x1, z1] kept flat for buildings }. Its floors follow a smooth
+    //     heightfield instead of flat steps.
     //   walls: optional weighted wall-texture variants for the lower and upper bands
     //   vents: floor material whose updraft lifts the ship; lasers: timed beam grids [x0, z0, x1, z1, bottom, top, period, offset]
     //   music: the sector's track
     const FLOOR_MATERIALS = ['floorPlate', 'floorGrate', 'floorPad', 'floorFoundry', 'floorSludge', 'floorLava', 'floorIce', 'floorHive', 'floorWater', 'floorVent', 'floorVoid', 'floorMoon'];
     const PLATE = 0, GRATE = 1, PAD = 2, SLAG = 3, SLUDGE = 4, LAVA = 5, ICE = 6, HIVE = 7, WATER = 8, VENT = 9, VOID = 10, MOON = 11;
     const BULKHEAD = 1, COLUMN = 2, REACTOR = 3, CRYSTAL = 4, SKY = undefined;
-    // Scatters boulders [x0, z0, x1, z1, MOON, height, SKY, 'wallMoon'] over a level's open ground, away from `clear` areas.
-    function moonRocks(count, clear, salt) {
-      const rocks = [];
-      for (let k = 0; rocks.length < count && k < count * 20; k++) {
-        const w = 4 + Math.floor(hashInt(k, 1, salt) * 3) * 4, d = 4 + Math.floor(hashInt(k, 2, salt) * 3) * 4;
-        const x = -248 + Math.floor(hashInt(k, 3, salt) * (496 - w) / 4) * 4, z = -40 + Math.floor(hashInt(k, 4, salt) * (784 - d) / 4) * 4;
-        const box = [x - 4, z - 4, x + w + 4, z + d + 4];
-        if ([...clear, ...rocks].some(([a, b, c, e]) => box[0] < c && box[2] > a && box[1] < e && box[3] > b)) continue;
-        rocks.push([x, z, x + w, z + d, MOON, BASE + 2 + Math.round(hashInt(k, 5, salt) * 6), SKY, 'wallMoon']);
-      }
-      return rocks;
-    }
     const LEVELS = [
       {
         name: 'DELTA-9', title: 'RELAY STATION', music: 'relay', start: [0, -4, 0], yaw: 0, exit: [0, 16, 680, true],
@@ -918,19 +910,14 @@
           [-256, -48, 256, 752, MOON, BASE, SKY, 'wallMoon'],
           // Landing site.
           [-16, -40, 16, -8, PAD, BASE + 1, SKY, 'wallTech'],
-          // Terraced crater west of the landing site.
-          [-164, 20, -76, 100, MOON, BASE - 4, SKY, 'wallMoon'], [-148, 36, -92, 84, MOON, BASE - 9, SKY, 'wallMoon'], [-128, 52, -112, 68, MOON, BASE - 13, SKY, 'wallMoon'],
-          // The tanker crater: three terraces down to the wreck.
-          [76, 116, 204, 244, MOON, BASE - 5, SKY, 'wallMoon'], [92, 132, 188, 228, MOON, BASE - 11, SKY, 'wallMoon'], [112, 152, 168, 208, MOON, BASE - 17, SKY, 'wallMoon'],
-          [124, 172, 156, 184, PLATE, BASE - 13, SKY, 'wallContainer'], [132, 164, 144, 172, PLATE, BASE - 9, SKY, 'wallContainerB'], [140, 184, 152, 196, PLATE, BASE - 15, SKY, 'wallContainer'],
+          // The downed tanker's wreck, lying in the bottom of its crater.
+          [124, 172, 156, 184, PLATE, BASE - 13, SKY, 'wallContainer'], [132, 164, 144, 172, PLATE, BASE - 9, SKY, 'wallContainerB'], [140, 184, 152, 196, PLATE, BASE - 12, SKY, 'wallContainer'],
           // The comms mesa, with a ramp up its south face and four antenna masts.
           [-216, 176, -104, 308, MOON, BASE + 16, SKY, 'wallMoon'], [-196, 196, -124, 288, PAD, BASE + 17, SKY, 'wallTech'],
           [-200, 212, -196, 216, PLATE, BASE + 44, SKY, 'wallTech'], [-124, 212, -120, 216, PLATE, BASE + 40, SKY, 'wallTech'],
           [-200, 268, -196, 272, PLATE, BASE + 38, SKY, 'wallTech'], [-124, 268, -120, 272, PLATE, BASE + 46, SKY, 'wallTech'],
           [-164, 236, -156, 244, PLATE, BASE + 30, SKY, 'wallTech'],
-          // Twin ridges with a natural arch bridging the canyon between them.
-          [-72, 256, -40, 404, MOON, BASE + 14, SKY, 'wallMoon'], [-64, 280, -48, 380, MOON, BASE + 24, SKY, 'wallMoon'],
-          [40, 256, 72, 404, MOON, BASE + 14, SKY, 'wallMoon'], [48, 300, 64, 372, MOON, BASE + 22, SKY, 'wallMoon'],
+          // A natural arch bridging the canyon between the twin ridges.
           [-40, 324, 40, 336, MOON, BASE, BASE + 10, 'wallMoon', BASE + 14, 'floorMoon'],
           // East bunkers: two roofed huts with open doors, holding supplies.
           [144, 316, 180, 320, PLATE, BASE + 12, SKY, 'wallTech'], [144, 344, 180, 348, PLATE, BASE + 12, SKY, 'wallTech'],
@@ -948,13 +935,18 @@
           [-24, 492, -20, 556, PLATE, BASE + 22, SKY, 'wallTech'], [20, 492, 24, 556, PLATE, BASE + 22, SKY, 'wallTech'],
           [-20, 488, 20, 492, PLATE, BASE, BASE + 12, null, BASE + 22],
           [-52, 516, -40, 528, PAD, BASE + 2, BASE + 18, 'wallTech', BASE + 22], [-6, 516, 6, 528, PAD, BASE + 2, BASE + 18, 'wallTech', BASE + 22], [40, 516, 52, 528, PAD, BASE + 2, BASE + 18, 'wallTech', BASE + 22],
-          // The far side: a crater chain and the extraction pad.
-          [-200, 600, -120, 680, MOON, BASE - 6, SKY, 'wallMoon'], [-184, 616, -136, 664, MOON, BASE - 12, SKY, 'wallMoon'],
-          [120, 584, 216, 664, MOON, BASE - 4, SKY, 'wallMoon'], [140, 604, 196, 644, MOON, BASE - 10, SKY, 'wallMoon'],
+          // The extraction pad on the far side.
           [-32, 644, 32, 708, PAD, BASE + 2, SKY, 'wallTech'],
-          ...moonRocks(70, [[-48, -48, 48, 48], [-172, 12, -68, 108], [68, 108, 212, 252], [-224, 168, -96, 316], [-80, 248, 80, 412],
-            [136, 308, 232, 396], [-80, 408, 80, 568], [-208, 592, -112, 688], [112, 576, 224, 672], [-40, 636, 40, 716]], 41),
         ],
+        // Rolling dust, round craters (the tanker's is the deep one) and the twin ridges are all heightfield; the buildings sit
+        // on flattened ground.
+        terrain: {
+          hills: 5, small: 90, boulders: 170,
+          craters: [[-120, 60, 44, 13], [140, 180, 64, 17], [-160, 640, 46, 12], [168, 624, 50, 10], [40, 150, 34, 7], [-30, 196, 24, 5],
+            [210, 40, 40, 9], [-210, 430, 34, 8], [196, 486, 30, 7], [-100, 706, 30, 6], [100, 722, 26, 6], [-226, 70, 22, 6]],
+          ridges: [[-58, 256, 404, 30, 22], [58, 256, 404, 30, 22]],
+          clear: [[-24, -48, 24, 0], [124, 160, 156, 200], [-224, 144, -96, 316], [-44, 318, 44, 342], [136, 308, 232, 396], [-80, 408, 80, 568], [-40, 636, 40, 716]],
+        },
         stairs: [[-176, 152, -144, 176, MOON, BASE, BASE + 16, 'z']],
         blocks: [],
         girders: [[-196, 24, 212, -124, 26, 216]],
@@ -1426,6 +1418,13 @@
       def.gates = scale(def.gates || []);
       if (def.extras) def.extras = { barrels: scale(def.extras.barrels || []), enemies: scale(def.extras.enemies || []) };
       for (const zone of def.zones) zone.area = zone.area.map(v => v * WORLD_SCALE);
+      if (def.terrain) {
+        const t = def.terrain;
+        t.hills = (t.hills || 0) * WORLD_SCALE;
+        t.craters = (t.craters || []).map(row => row.map(v => v * WORLD_SCALE));
+        t.ridges = (t.ridges || []).map(row => row.map(v => v * WORLD_SCALE));
+        t.clear = (t.clear || []).map(row => row.map(v => v * WORLD_SCALE));
+      }
       for (const goal of def.objectives || []) {
         if (goal.at) goal.at = goal.at.map(v => v * WORLD_SCALE);
         if (goal.radius) goal.radius *= WORLD_SCALE;
@@ -1459,6 +1458,7 @@
       for (const block of def.blocks) fillCells(block, i => { open[i] = 0; solidKind[i] = block[4]; });
       sealed.fill(0);
       for (const gate of def.gates || []) fillCells(gate, i => { sealed[i] = 1; });
+      applyTerrain(def);
     }
     // cellAt sees the carved shape for building geometry; cellIndex also treats closed gates as solid.
     const cellAt = (gx, gz) => gx >= 0 && gz >= 0 && gx < GRID_W && gz < GRID_D ? open[gz * GRID_W + gx] : 0;
@@ -1485,10 +1485,75 @@
         isOpen(x - margin, z + margin) && isOpen(x + margin, z + margin));
     }
     const flatAt = (x, z, margin) => [[-margin, -margin], [margin, -margin], [-margin, margin], [margin, margin]]
-      .every(([dx, dz]) => floorAt(x + dx, z + dz) === floorAt(x, z));
+      .every(([dx, dz]) => Math.abs(floorAt(x + dx, z + dz) - floorAt(x, z)) < (natural[cellIndex(x, z)] ? 0.9 : 0.01));
     const shipFits = (p, margin = 0.7) => [[0, 0], [-margin, -margin], [margin, -margin], [-margin, margin], [margin, margin]]
       .every(([dx, dz]) => freeAt(p[0] + dx, p[1], p[2] + dz, 1));
-    const insideGirder = (p, pad = 0) => level.girders.some(([x0, y0, z0, x1, y1, z1]) =>
+    // Natural ground: a heightfield sampled at every cell corner from rolling hills, round craters with raised rims and
+    // long ridges. Cells take the average of their corners as their floor, so collisions follow it in 5-unit steps while
+    // the ground itself is drawn smooth. Hills and small craters fade out near buildings and the map's edge.
+    const natural = new Uint8Array(GRID_W * GRID_D), cornerHeight = new Float32Array((GRID_W + 1) * (GRID_D + 1));
+    const valueNoise = (x, z, salt) => {
+      const xi = Math.floor(x), zi = Math.floor(z), tx = x - xi, tz = z - zi, sx = tx * tx * (3 - 2 * tx), sz = tz * tz * (3 - 2 * tz);
+      const a = hashInt(xi, zi, salt), b = hashInt(xi + 1, zi, salt), c = hashInt(xi, zi + 1, salt), d = hashInt(xi + 1, zi + 1, salt);
+      return a + (b - a) * sx + (c - a) * sz + (a - b - c + d) * sx * sz;
+    };
+    const craterShape = (gap, radius, depth) => {
+      const r = gap / radius, rim = depth * 0.28 * Math.exp(-(((r - 1) / 0.28) ** 2));
+      return (r < 1 ? depth * (r * r - 1) : 0) + rim;
+    };
+    function prepareTerrain(def) {
+      const t = def.terrain;
+      if (t.small_list) return;
+      const x1 = GRID_X0 + GRID_W * CELL, z1 = GRID_Z0 + GRID_D * CELL;
+      const away = (x, z, margin) => x > GRID_X0 + margin && x < x1 - margin && z > GRID_Z0 + margin && z < z1 - margin &&
+        t.clear.every(([a, b, c, d]) => x < a - margin || x > c + margin || z < b - margin || z > d + margin);
+      t.small_list = [];
+      for (let k = 0; t.small_list.length < (t.small || 0) && k < 4000; k++) {
+        const radius = 6 + hashInt(k, 1, 77) ** 2 * 22, x = GRID_X0 + hashInt(k, 2, 77) * GRID_W * CELL, z = GRID_Z0 + hashInt(k, 3, 77) * GRID_D * CELL;
+        if (away(x, z, radius * 1.4 + 8)) t.small_list.push([x, z, radius, radius * (0.25 + hashInt(k, 4, 77) * 0.15)]);
+      }
+      t.boulder_list = [];
+      for (let k = 0; t.boulder_list.length < (t.boulders || 0) && k < 6000; k++) {
+        const x = GRID_X0 + hashInt(k, 5, 91) * GRID_W * CELL, z = GRID_Z0 + hashInt(k, 6, 91) * GRID_D * CELL, size = 0.8 + hashInt(k, 7, 91) ** 3 * 4.5;
+        if (away(x, z, size + 10)) t.boulder_list.push({ x, z, size, yaw: hashInt(k, 8, 91) * Math.PI * 2, squash: 0.55 + hashInt(k, 9, 91) * 0.35, variant: k % 4 });
+      }
+      t.heights = new Float32Array((GRID_W + 1) * (GRID_D + 1));
+      for (let iz = 0; iz <= GRID_D; iz++) for (let ix = 0; ix <= GRID_W; ix++) {
+        const x = GRID_X0 + ix * CELL, z = GRID_Z0 + iz * CELL;
+        let fade = smoothstep(0, 50, Math.min(x - GRID_X0, x1 - x, z - GRID_Z0, z1 - z));
+        for (const [a, b, c, d] of t.clear) fade = Math.min(fade, smoothstep(0, 30, Math.max(a - x, x - c, b - z, z - d)));
+        let h = (valueNoise(x / 70, z / 70, 3) - 0.5 + (valueNoise(x / 23, z / 23, 4) - 0.5) * 0.35) * t.hills * fade;
+        for (const [cx, cz, radius, depth] of t.craters) if (Math.abs(x - cx) < radius * 1.8 && Math.abs(z - cz) < radius * 1.8) h += craterShape(Math.hypot(x - cx, z - cz), radius, depth);
+        for (const [cx, cz, radius, depth] of t.small_list) if (Math.abs(x - cx) < radius * 1.8 && Math.abs(z - cz) < radius * 1.8) h += craterShape(Math.hypot(x - cx, z - cz), radius, depth) * fade;
+        for (const [rx, r0, r1, half, peak] of t.ridges) {
+          const across = Math.abs(x - rx) / (half * (0.85 + 0.3 * valueNoise(z / 30, rx, 9))), along = Math.max(r0 - z, z - r1, 0) / half;
+          if (across < 1 && along < 1) h += peak * (1 - across * across) * (1 - along * along) * (0.8 + 0.35 * valueNoise(x / 12, z / 12, 11));
+        }
+        t.heights[iz * (GRID_W + 1) + ix] = h;
+      }
+    }
+    // After carving, natural cells take the heightfield as an offset from their room's floor.
+    function applyTerrain(def) {
+      natural.fill(0);
+      if (!def.terrain) return;
+      prepareTerrain(def);
+      const h = def.terrain.heights, row = GRID_W + 1;
+      for (let gz = 0; gz < GRID_D; gz++) for (let gx = 0; gx < GRID_W; gx++) {
+        const i = gz * GRID_W + gx;
+        if (open[i] !== 1 + MOON || sideOf[i] !== 'wallMoon' || ceilY[i] < WALL_TOP || roofY[i] < Infinity || sealed[i]) continue;
+        natural[i] = 1;
+        floorY[i] += (h[gz * row + gx] + h[gz * row + gx + 1] + h[(gz + 1) * row + gx] + h[(gz + 1) * row + gx + 1]) / 4;
+      }
+    }
+    // Loose boulders are baked into the level mesh; each also blocks the ship and shots as a sphere.
+    let rocks = [];
+    const rockCells = new Array(GRID_W * GRID_D).fill(null);
+    const insideRock = (p, pad) => {
+      const gx = Math.floor((p[0] - GRID_X0) / CELL), gz = Math.floor((p[2] - GRID_Z0) / CELL);
+      const list = gx >= 0 && gz >= 0 && gx < GRID_W && gz < GRID_D ? rockCells[gz * GRID_W + gx] : null;
+      return !!list && list.some(rock => (p[0] - rock.center[0]) ** 2 + (p[1] - rock.center[1]) ** 2 + (p[2] - rock.center[2]) ** 2 < (rock.radius + pad) ** 2);
+    };
+    const insideGirder = (p, pad = 0) => (rocks.length > 0 && insideRock(p, pad)) || level.girders.some(([x0, y0, z0, x1, y1, z1]) =>
       p[0] > x0 - pad && p[0] < x1 + pad && p[1] > y0 - pad && p[1] < y1 + pad && p[2] > z0 - pad && p[2] < z1 + pad);
     function lineOfSight(point, from = ship.position) {
       const delta = sub(point, from), steps = Math.ceil(Math.hypot(...delta) / 1.5);
@@ -2440,9 +2505,9 @@
         }
       };
       make('floorMoon', 512, 512, '#55575a', p => {
-        for (let i = 0; i < 26; i++) stain(p, rnd() * 512, rnd() * 512, between(40, 140), between(30, 110), rnd() > 0.5 ? '120,120,118' : '40,41,44', between(0.15, 0.35));
-        for (let i = 0; i < 5; i++) crater(p, rnd() * 512, rnd() * 512, between(40, 80));
-        for (let i = 0; i < 22; i++) crater(p, rnd() * 512, rnd() * 512, between(8, 30));
+        for (let i = 0; i < 40; i++) stain(p, rnd() * 512, rnd() * 512, between(30, 160), between(25, 120), rnd() > 0.5 ? '120,120,118' : '40,41,44', between(0.1, 0.3));
+        for (let i = 0; i < 2; i++) crater(p, rnd() * 512, rnd() * 512, between(30, 50));
+        for (let i = 0; i < 9; i++) crater(p, rnd() * 512, rnd() * 512, between(5, 16));
         for (let i = 0; i < 400; i++) fillRect(p, rnd() * 512, rnd() * 512, between(1, 3), between(1, 3), rnd() > 0.5 ? 'rgba(170,170,165,0.5)' : 'rgba(30,30,32,0.5)', between(0.4, 0.62));
       }, { grime: 0.1, rust: 0, wear: 0, strength: 3 });
       // Moon cliffs: layered grey strata, cracked and slumped.
@@ -2577,6 +2642,19 @@
         return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
       }
       float fbm(vec2 p) { float s = 0.0, a = 0.5; for (int i = 0; i < 5; i++) { s += a * noise(p); p = p * 2.07 + 13.1; a *= 0.5; } return s; }
+      float hash3(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
+      // One layer of stars: each 3D cell of the sky may hold a star at a random spot, with its own brightness and tint.
+      // Stars smaller than a pixel are drawn a pixel wide and dimmed to match, so they don't shimmer as the view turns.
+      vec3 starLayer(vec3 dir, float scale, float chance) {
+        vec3 p = dir * scale, cell = floor(p);
+        if (hash3(cell + 5.3) > chance) return vec3(0.0);
+        vec3 spot = cell + 0.2 + 0.6 * vec3(hash3(cell), hash3(cell + 17.1), hash3(cell + 31.7));
+        float bright = 0.3 + pow(hash3(cell + 9.1), 6.0) * 4.0, size = 0.05 + bright * 0.04;
+        float pixel = length(fwidth(p)) * 0.6, radius = max(size, pixel);
+        float glow = smoothstep(radius, 0.0, length(p - spot)) * bright * (size * size) / (radius * radius);
+        float warm = hash3(cell + 43.3);
+        return glow * mix(vec3(0.7, 0.82, 1.0), vec3(1.0, 0.86, 0.66), warm);
+      }
       void main() {
         vec3 dir = normalize(uForward + uRight * vNdc.x * uSpread.x + uUp * vNdc.y * uSpread.y);
         float h = dir.y;
@@ -2604,8 +2682,11 @@
           float cloud = uQuality > 0 && uAirless < 0.5 ? fbm(dir.xz / (h + 0.15) * 1.1 + vec2(uTime * 0.012, uTime * 0.005)) : 0.0;
           float mask = smoothstep(0.5, 0.82, cloud) * smoothstep(0.0, 0.35, h);
           color = mix(color, mix(vec3(0.3, 0.36, 0.44), vec3(0.95, 0.62, 0.42), pow(sun, 4.0) * 0.8), mask * 0.6);
-          float star = hash(floor(vec2(atan(dir.z, dir.x), asin(h)) * 220.0));
-          color += vec3(0.8, 0.9, 1.0) * step(uAirless > 0.5 ? 0.996 : 0.9975, star) * smoothstep(uAirless > 0.5 ? 0.0 : 0.25, uAirless > 0.5 ? 0.08 : 0.7, h) * (1.0 - mask);
+          // A dusty band crosses the sky: more stars along it, and a faint glow where there is no air to hide it.
+          float band = smoothstep(0.42, 0.0, abs(dot(dir, normalize(vec3(0.35, 0.62, -0.7))))) * (0.45 + 0.55 * noise(dir.xz * 6.0 + dir.y * 3.0));
+          vec3 stars = starLayer(dir, 110.0, 0.1 + band * 0.15) + starLayer(dir, 260.0, 0.16 + band * 0.45) * 0.7;
+          float show = smoothstep(uAirless > 0.5 ? 0.0 : 0.25, uAirless > 0.5 ? 0.08 : 0.7, h) * (1.0 - mask);
+          color += (stars + vec3(0.07, 0.07, 0.1) * band * band * uAirless) * show;
         }
         outColor = vec4(color, 1.0);
       }`;
@@ -2736,10 +2817,30 @@
     let levelMeshes = [];
     function buildLevel(def) {
       let groups = {};
-      const quad = (name, covered, corners, normal, uvs, shades) => {
+      const quad = (name, covered, corners, normal, uvs, shades, normals) => {
         const key = covered ? `${name}|covered` : name, list = groups[key] || (groups[key] = []);
-        for (const i of [0, 1, 2, 0, 2, 3]) list.push(...corners[i], ...normal, ...uvs[i], shades[i]);
+        for (const i of [0, 1, 2, 0, 2, 3]) list.push(...corners[i], ...(normals ? normals[i] : normal), ...uvs[i], shades[i]);
       };
+      // Natural ground: each cell corner is the average of the natural cells around it whose floors are within a cliff's
+      // height of this one; next to anything built, a corner stays at the cell's own floor so walls meet it exactly.
+      const CLIFF = 9, row = GRID_W + 1, terrain = def.terrain?.heights;
+      const cornerOf = (i, ix, iz) => {
+        let sum = 0, count = 0;
+        for (const [cx, cz] of [[ix - 1, iz - 1], [ix, iz - 1], [ix - 1, iz], [ix, iz]]) {
+          if (outsideGrid(cx, cz)) { if (Math.abs(FLOOR - floorY[i]) < CLIFF) { sum += FLOOR; count++; } continue; }
+          const k = cz * GRID_W + cx;
+          if (!natural[k]) return floorY[i];
+          if (Math.abs(floorY[k] - floorY[i]) < CLIFF) { sum += floorY[k]; count++; }
+        }
+        return sum / count;
+      };
+      const slope = (ix, iz) => {
+        const at = (x, z) => terrain[clamp(z, 0, GRID_D) * row + clamp(x, 0, GRID_W)];
+        const n = [(at(ix - 1, iz) - at(ix + 1, iz)) / (2 * CELL), 1, (at(ix, iz - 1) - at(ix, iz + 1)) / (2 * CELL)], l = Math.hypot(...n);
+        return [n[0] / l, n[1] / l, n[2] / l];
+      };
+      // Broad light and dark patches across the dust, like a moon's seas and highlands.
+      const tone = (x, z) => 0.74 + 0.36 * valueNoise(x / 110, z / 110, 21) + 0.12 * (valueNoise(x / 17, z / 17, 22) - 0.5);
       const box = (name, covered, [x0, y0, z0], [x1, y1, z1], uvOf) => {
         const faces = [
           [[1, 0, 0], [[x1, y0, z0], [x1, y0, z1], [x1, y1, z1], [x1, y1, z0]]],
@@ -2763,7 +2864,7 @@
           const gx = px + dx, gz = pz + dz, inside = gx >= 0 && gz >= 0 && gx < GRID_W && gz < GRID_D, k = gz * GRID_W + gx;
           if (!inside) continue;
           const edge = dx < 0 || dz < 0 || dx === PATCH || dz === PATCH;
-          if (!open[k] || (!edge && (open[k] !== open[first] || floorY[k] !== floorY[first] || ceilY[k] < WALL_TOP))) same = false;
+          if (!open[k] || natural[k] || (!edge && (open[k] !== open[first] || floorY[k] !== floorY[first] || ceilY[k] < WALL_TOP))) same = false;
         }
         if (!same) continue;
         for (let dz = 0; dz < PATCH; dz++) for (let dx = 0; dx < PATCH; dx++) merged[(pz + dz) * GRID_W + px + dx] = dz === 0 && dx === 0 ? 2 : 1;
@@ -2774,7 +2875,12 @@
         const i = gz * GRID_W + gx, floor = floorY[i], ceil = ceilY[i], covered = ceil < WALL_TOP;
         const x0 = GRID_X0 + gx * CELL, z0 = GRID_Z0 + gz * CELL, x1 = x0 + CELL, z1 = z0 + CELL;
         const corners = [ao(gx, gz), ao(gx + 1, gz), ao(gx + 1, gz + 1), ao(gx, gz + 1)];
-        if (merged[i] === 2) {
+        if (natural[i]) {
+          const ids = [[gx, gz], [gx + 1, gz], [gx + 1, gz + 1], [gx, gz + 1]];
+          quad('floorMoon', false, ids.map(([ix, iz]) => [GRID_X0 + ix * CELL, cornerOf(i, ix, iz), GRID_Z0 + iz * CELL]), [0, 1, 0],
+            ids.map(([ix, iz]) => [(GRID_X0 + ix * CELL) / 30, (GRID_Z0 + iz * CELL) / 30]),
+            ids.map(([ix, iz]) => tone(GRID_X0 + ix * CELL, GRID_Z0 + iz * CELL)), ids.map(([ix, iz]) => slope(ix, iz)));
+        } else if (merged[i] === 2) {
           const mx = x0 + CELL * PATCH, mz = z0 + CELL * PATCH;
           quad(FLOOR_MATERIALS[material - 1], false, [[x0, floor, z0], [mx, floor, z0], [mx, floor, mz], [x0, floor, mz]], [0, 1, 0],
             [[x0 / 8, z0 / 8], [mx / 8, z0 / 8], [mx / 8, mz / 8], [x0 / 8, mz / 8]], [1, 1, 1, 1]);
@@ -2793,6 +2899,15 @@
           const half = CELL / 2, cx = x0 + half + dx * half, cz = z0 + half + dz * half;
           const a = [cx - right[0] * half, cz - right[2] * half], b = [cx + right[0] * half, cz + right[2] * half];
           const ua = (a[0] * right[0] + a[1] * right[2]) / 8, ub = ua + CELL / 8;
+          if (natural[i] && natural[n]) {
+            // Between two natural cells, fill any step between their edges from the lower side: a cliff, or a seam.
+            const ia = [Math.round((a[0] - GRID_X0) / CELL), Math.round((a[1] - GRID_Z0) / CELL)], ib = [Math.round((b[0] - GRID_X0) / CELL), Math.round((b[1] - GRID_Z0) / CELL)];
+            const lowA = cornerOf(i, ...ia), lowB = cornerOf(i, ...ib), highA = cornerOf(n, ...ia), highB = cornerOf(n, ...ib);
+            if (highA + highB > lowA + lowB + 0.02)
+              quad(sideOf[n] || 'wallMoon', false, [[a[0], lowA, a[1]], [b[0], lowB, b[1]], [b[0], highB, b[1]], [a[0], highA, a[1]]], normal,
+                [[ua * 0.5, -lowA / 16], [ub * 0.5, -lowB / 16], [ub * 0.5, -highB / 16], [ua * 0.5, -highA / 16]], [0.72, 0.72, 0.95, 0.95]);
+            continue;
+          }
           const cornerA = closed(gx - right[0], gz - right[2]) ? 0.62 : 1, cornerB = closed(gx + right[0], gz + right[2]) ? 0.62 : 1;
           const tile = Math.floor(ua + 0.25), plane = dx ? cx : cz;
           const lower = pickVariant(def.walls?.lower || LOWER_VARIANTS, hashInt(tile, plane, dx * 3 + dz + 7));
@@ -2826,6 +2941,7 @@
             continue;
           }
           const neighborFloor = floorY[n], neighborCeil = ceilY[n];
+          if (roofY[i] < Infinity && neighborFloor > roofY[i] + 0.01) band(sideOf[n] || lower, roofY[i], neighborFloor, neighborFloor, TEXTURE_HEIGHT[sideOf[n]] || lowerSize);
           if (neighborFloor > floor + 0.01) {
             const top = Math.min(neighborFloor, ceil), side = sideOf[n];
             if (side) band(side, floor, top, top, TEXTURE_HEIGHT[side] || 10);
@@ -2862,10 +2978,27 @@
           if (x >= gx0 && x + TILE <= gx1 && z >= gz0 && z + TILE <= gz1) continue;
           const xa = x, za = z, xb = x + TILE, zb = z + TILE;
           quad('floorMoon', false, [[xa, FLOOR, za], [xb, FLOOR, za], [xb, FLOOR, zb], [xa, FLOOR, zb]], [0, 1, 0],
-            [[xa / 8, za / 8], [xb / 8, za / 8], [xb / 8, zb / 8], [xa / 8, zb / 8]], [1, 1, 1, 1]);
+            [[xa / 30, za / 30], [xb / 30, za / 30], [xb / 30, zb / 30], [xa / 30, zb / 30]], [tone(xa, za), tone(xb, za), tone(xb, zb), tone(xa, zb)]);
         }
         for (let x = gx0 + 20; x < gx1; x += 40) for (const z of [gz0 + 1, gz1 - 1]) beacons.push({ position: [x, floorAt(x, z) + 1.5, z], phase: x * 0.05 });
         for (let z = gz0 + 20; z < gz1; z += 40) for (const x of [gx0 + 1, gx1 - 1]) beacons.push({ position: [x, floorAt(x, z) + 1.5, z], phase: z * 0.05 });
+      }
+      // Boulders: lumpy rocks, partly sunk into the dust, sharing the cliff texture.
+      rocks = []; rockCells.fill(null);
+      for (const boulder of def.terrain?.boulder_list || []) {
+        const i = cellIndex(boulder.x, boulder.z);
+        if (i < 0 || !natural[i]) continue;
+        const shape = ROCK_SHAPES[boulder.variant], c = Math.cos(boulder.yaw), s = Math.sin(boulder.yaw), size = boulder.size;
+        const points = shape.map(([x, y, z]) => [(x * c + z * s) * size, y * size * boulder.squash, (z * c - x * s) * size]);
+        const data = facetedData(points, ROCK_TRIS, 3), base = [boulder.x, floorY[i] - size * boulder.squash * 0.3, boulder.z];
+        const list = groups.wallMoon || (groups.wallMoon = []);
+        for (let k = 0; k < data.length; k += 9) list.push(data[k] + base[0], data[k + 1] + base[1], data[k + 2] + base[2], data[k + 3], data[k + 4], data[k + 5], data[k + 6], data[k + 7], 0.85);
+        const rock = { center: [base[0], base[1] + size * boulder.squash * 0.2, base[2]], radius: size * 0.85 };
+        rocks.push(rock);
+        const reach = rock.radius + 3;
+        for (let rz = Math.floor((base[2] - reach - GRID_Z0) / CELL); rz <= Math.floor((base[2] + reach - GRID_Z0) / CELL); rz++)
+          for (let rx = Math.floor((base[0] - reach - GRID_X0) / CELL); rx <= Math.floor((base[0] + reach - GRID_X0) / CELL); rx++)
+            if (!outsideGrid(rx, rz)) (rockCells[rz * GRID_W + rx] ||= []).push(rock);
       }
       for (let iz = 1; iz < GRID_D; iz++) for (let ix = 1; ix < GRID_W; ix++) {
         const cells = [[ix - 1, iz - 1], [ix, iz - 1], [ix - 1, iz], [ix, iz]];
@@ -2940,6 +3073,16 @@
       }
       return data;
     }
+    // Four lumpy rock shapes: an icosahedron split once into 80 faces, each corner pushed in or out at random.
+    const [ROCK_SHAPES, ROCK_TRIS] = (() => {
+      const t = (1 + Math.sqrt(5)) / 2, points = [[-1, t, 0], [1, t, 0], [-1, -t, 0], [1, -t, 0], [0, -1, t], [0, 1, t], [0, -1, -t], [0, 1, -t], [t, 0, -1], [t, 0, 1], [-t, 0, -1], [-t, 0, 1]].map(normalize);
+      const faces = [[0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11], [1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6], [7, 1, 8],
+        [3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8], [3, 8, 9], [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1]];
+      const middle = new Map(), split = [];
+      const mid = (a, b) => { const key = a < b ? `${a},${b}` : `${b},${a}`; if (!middle.has(key)) { middle.set(key, points.length); points.push(normalize(add(points[a], points[b]))); } return middle.get(key); };
+      for (const [a, b, c] of faces) { const ab = mid(a, b), bc = mid(b, c), ca = mid(c, a); split.push([a, ab, ca], [b, bc, ab], [c, ca, bc], [ab, bc, ca]); }
+      return [[0, 1, 2, 3].map(v => points.map((p, k) => mul(p, 0.72 + 0.5 * hashInt(k, v, 63)))), split];
+    })();
     const HULL_TRIS = [[0, 1, 2], [0, 2, 3], [0, 3, 4], [0, 4, 1], [5, 2, 1], [5, 3, 2], [5, 4, 3], [5, 1, 4], [1, 2, 6], [1, 6, 4], [2, 4, 6], [3, 7, 2], [3, 4, 7], [2, 7, 4]];
     const barrelMesh = buildBarrel();
     const enemyMeshes = {
@@ -3068,7 +3211,17 @@
       ensureAudio();
       if (document.pointerLockElement !== canvas && !menuOpen) canvas.requestPointerLock();
     });
-    window.addEventListener('pointerup', (event) => { if (event.button === 0) mouseFiring = false; if (event.button === 2) endBoost(); });
+    // A mouse only sends pointerdown for the first button pressed and pointerup for the last one released; pressing or
+    // releasing the other while one is held arrives as a pointermove. So the held buttons are read from `buttons` on every
+    // pointer event: a release always counts, a press only while the mouse is captured.
+    const syncMouseButtons = (event) => {
+      if (event.pointerType !== 'mouse') return;
+      const left = (event.buttons & 1) !== 0, right = (event.buttons & 2) !== 0, captured = document.pointerLockElement === canvas;
+      if (!left) mouseFiring = false; else if (captured) mouseFiring = true;
+      if (!right) endBoost(); else if (captured) startBoost();
+    };
+    for (const type of ['pointerup', 'pointermove']) window.addEventListener(type, syncMouseButtons);
+    window.addEventListener('pointercancel', () => { mouseFiring = false; endBoost(); });
     // Holding the right mouse button gives full thrust; letting go restores the speed the ship had before.
     let boostFrom = null;
     const startBoost = () => { if (boostFrom === null) boostFrom = ship.speed; };
@@ -5315,7 +5468,7 @@
       { style: 'position:fixed;left:8px;bottom:8px;z-index:99;font:12px monospace;color:#9fe;background:#000a;padding:4px 6px;white-space:pre;pointer-events:none' });
     // ?debug exposes the game state on window.radix, for testing sectors from the browser console.
     if (new URLSearchParams(location.search).has('debug'))
-      window.radix = { ship, enemies, gates, openGate, hurtEnemy, resetGame, set health(v) { health = v; }, get objective() { return objectiveIndex; }, get mapOpen() { return mapOpen; }, set mapOpen(v) { mapOpen = v; } };
+      window.radix = { ship, enemies, gates, openGate, hurtEnemy, resetGame, set health(v) { health = v; }, get firing() { return mouseFiring; }, get boosting() { return boostFrom !== null; }, get objective() { return objectiveIndex; }, get mapOpen() { return mapOpen; }, set mapOpen(v) { mapOpen = v; } };
     let perfSums = [0, 0, 0, 0], perfFrames = 0, perfStart = 0;
     const perfParts = { combat: 0, reveal: 0, music: 0 }, slowFactor = Number(new URLSearchParams(location.search).get('slow')) || 1;
     function perfReport(parts) {
