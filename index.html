@@ -7203,26 +7203,25 @@
     // How hard each type jinks when the ship lines it up and fires, or hits it: a kick across the ship's view, mostly away
     // from the reticle, that its steering then eases off.
     const EVASION = { drone: 20, phantom: 20, skimmer: 26, striker: 16, hunter: 12, warden: 9 };
+    // A shield holds for 6 to 9 seconds. Once it drops, for whatever reason, the bearer needs about 30 seconds to recharge
+    // before it can set down another.
     function updateGuard(enemy, toPlayer, distance, visible, dt) {
       enemy.guardFlash = Math.max(0, enemy.guardFlash - dt * 4);
-      const engaged = enemy.active && visible && distance < 110;
-      if (!engaged) { enemy.guardOn = false; enemy.guardTimer = Math.min(enemy.guardTimer, 0.6); }
-      else if ((enemy.guardTimer -= dt) <= 0) {
-        enemy.guardOn = !enemy.guardOn;
-        enemy.guardTimer = enemy.guardOn ? range(6, 9) : range(2.5, 4);
-      }
-      const r = ENEMY_TYPES[enemy.type].radius;
-      // A new shield is set down a little in front of the bearer, facing the ship, and stays put until it drops.
-      if (enemy.guardOn && enemy.guardUp === 0) {
-        enemy.guardDir = mul(toPlayer, 1 / distance);
-        enemy.guardCenter = add(enemy.position, mul(enemy.guardDir, r + 1.6));
-      }
-      // Once the ship is more than 65 degrees round its edge, or the bearer has been pushed away from it, the shield is no
-      // use: the bearer drops it and sets down a new one soon after.
-      if (enemy.guardOn && enemy.guardUp > 0) {
+      const engaged = enemy.active && visible && distance < 110, r = ENEMY_TYPES[enemy.type].radius;
+      enemy.guardTimer -= dt;
+      if (enemy.guardOn) {
+        // It is dropped early once it is no use: the ship is out of sight or more than 65 degrees round its edge, or the bearer
+        // has been pushed away from it.
         const fromShield = sub(ship.position, enemy.guardCenter);
         const flanked = dot(fromShield, enemy.guardDir) < Math.hypot(...fromShield) * 0.42;
-        if (flanked || Math.hypot(...sub(enemy.position, enemy.guardCenter)) > r * 2 + 5) { enemy.guardOn = false; enemy.guardTimer = range(1.2, 2); }
+        if (enemy.guardTimer <= 0 || !engaged || flanked || Math.hypot(...sub(enemy.position, enemy.guardCenter)) > r * 2 + 5) {
+          enemy.guardOn = false; enemy.guardTimer = range(28, 32);
+        }
+      } else if (engaged && enemy.guardTimer <= 0) {
+        // A new shield is set down a little in front of the bearer, facing the ship, and stays put until it drops.
+        enemy.guardOn = true; enemy.guardTimer = range(6, 9);
+        enemy.guardDir = mul(toPlayer, 1 / distance);
+        enemy.guardCenter = add(enemy.position, mul(enemy.guardDir, r + 1.6));
       }
       enemy.guardUp = clamp(enemy.guardUp + (enemy.guardOn ? 3 : -3) * dt, 0, 1);
     }
