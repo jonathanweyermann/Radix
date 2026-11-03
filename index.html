@@ -252,7 +252,7 @@
     const ship = { position: [0, -4, 0], yaw: 0, pitch: 0, roll: 0, speed: 8, strafe: [0, 0] };
     let shipVelocity = [0, 0, 0];
     const STRAFE_SPEED = 14;
-    let width = 0, height = 0, dpr = 1, lastTime = performance.now(), time = 0, paused = false, impactTimer = 0, hitTimer = 0, muzzleTimer = 0, fireCooldown = 0, wallCooldown = 0, health = 100, barrelsDestroyed = 0, kills = 0, destroyed = false, mouseFiring = false, audioContext = null, musicBus = null, musicOn = true, musicStep = 0, musicNextTime = 0;
+    let width = 0, height = 0, dpr = 1, lastTime = performance.now(), time = 0, paused = false, impactTimer = 0, hitTimer = 0, muzzleTimer = 0, fireCooldown = 0, lastFired = -9, wallCooldown = 0, health = 100, barrelsDestroyed = 0, kills = 0, destroyed = false, mouseFiring = false, audioContext = null, musicBus = null, musicOn = true, musicStep = 0, musicNextTime = 0;
     let musicIn = null, reverbIn = null, delayIn = null, noiseBuffer = null, musicIntensity = 0;
     let shield = 34, shieldDelay = 0, shieldGlow = 0, shieldOnly = false, missileAmmo = 0, levelMissiles = 0, missileCooldown = 0, missileRequest = false, lockTarget = null, lockTimer = 0;
     let sludgeCooldown = 0, weaponLevel = 1, levelWeapon = 1, launcherLevel = 1, levelLauncher = 1, railCount = 0, finished = false, warpTimer = 0, warpGlow = 0, noticeTimer = 0;
@@ -5976,9 +5976,9 @@
     }
     // Difficulty scales how many enemies each zone spawns, how much damage reaches the ship and how far ahead enemies aim.
     const DIFFICULTIES = {
-      easy: { label: 'EASY', enemies: 0.65, damage: 0.6, lead: 0 },
-      normal: { label: 'NORMAL', enemies: 1, damage: 1, lead: 0.5 },
-      hard: { label: 'HARD', enemies: 1.3, damage: 1.35, lead: 0.85 },
+      easy: { label: 'EASY', enemies: 0.65, damage: 0.6, lead: 0, evade: 0.6 },
+      normal: { label: 'NORMAL', enemies: 1, damage: 1, lead: 0.5, evade: 1 },
+      hard: { label: 'HARD', enemies: 1.3, damage: 1.35, lead: 0.85, evade: 1.35 },
     };
     // Progress is kept in localStorage: the difficulty, the last sector flown, and the loadout each reached sector was entered with.
     const SAVE_KEY = 'radix-beyond-the-void';
@@ -6509,19 +6509,23 @@
       }
       for (const shot of shots) {
         if (shot.kind === 'plasma') {
-          streak(sub(shot.position, mul(shot.velocity, 0.05)), shot.position, 0.8, [1.0, 0.4, 0.95], 1.5);
+          streak(boltTail(shot, 0.05), shot.position, 0.8, [1.0, 0.4, 0.95], 1.5);
           billboard(shot.position, 1.6, [1.0, 0.75, 1.0], 1.4);
           billboard(shot.position, 3.2, [0.9, 0.3, 1.0], 0.35);
           continue;
         }
         const width = 0.45 + (shot.damage - 1) * 0.2;
-        streak(sub(shot.position, mul(shot.velocity, 0.06)), shot.position, width, shot.tint || [0.35, 0.9, 1.0], 1.6);
+        streak(boltTail(shot, 0.06), shot.position, width, shot.tint || [0.35, 0.9, 1.0], 1.6);
         billboard(shot.position, width * 2, [0.8, 1.0, 1.0], 1.2);
       }
       for (const rail of rails) {
         const k = rail.life / 0.22;
-        streak(rail.from, rail.to, 0.35 * k + 0.1, [0.85, 1.0, 1.0], 2.2 * k);
-        streak(rail.from, rail.to, 1.6 * k, [0.3, 0.7, 1.0], 0.7 * k);
+        for (let j = 1; j < rail.path.length; j++) {
+          const a = rail.path[j - 1], b = rail.path[j];
+          if (curve && Math.hypot(...sub(a, b)) > 24) continue;
+          streak(a, b, 0.35 * k + 0.1, [0.85, 1.0, 1.0], 2.2 * k);
+          streak(a, b, 1.6 * k, [0.3, 0.7, 1.0], 0.7 * k);
+        }
         billboard(rail.to, 3 * k, [0.6, 0.9, 1.0], 1.5 * k);
       }
       for (const [group, body, flame] of [[missiles, [1.0, 0.9, 0.7], [1.0, 0.45, 0.15]], [enemyMissiles, [1.0, 0.55, 0.45], [1.0, 0.2, 0.1]]]) {
@@ -6534,16 +6538,16 @@
       }
       for (const shot of enemyShots) {
         if (shot.kind === 'acid') {
-          streak(sub(shot.position, mul(shot.velocity, 0.1)), shot.position, 0.7, [0.6, 1.0, 0.2], 1.5);
+          streak(boltTail(shot, 0.1), shot.position, 0.7, [0.6, 1.0, 0.2], 1.5);
           billboard(shot.position, 1.4, [0.85, 1.0, 0.5], 1.2);
           continue;
         }
         if (shot.kind === 'lance') {
-          streak(sub(shot.position, mul(shot.velocity, 0.08)), shot.position, 0.7, [1.0, 0.2, 0.35], 2);
+          streak(boltTail(shot, 0.08), shot.position, 0.7, [1.0, 0.2, 0.35], 2);
           billboard(shot.position, 1.6, [1.0, 0.6, 0.7], 1.4);
           continue;
         }
-        streak(sub(shot.position, mul(shot.velocity, 0.12)), shot.position, 0.5, [1.0, 0.45, 0.2], 1.6);
+        streak(boltTail(shot, 0.12), shot.position, 0.5, [1.0, 0.45, 0.2], 1.6);
         billboard(shot.position, 1.1, [1.0, 0.8, 0.5], 1.2);
       }
       for (const explosion of explosions) {
@@ -6589,6 +6593,35 @@
       if (!curve || dist < 0.001) return p;
       const radius = 1 / curve, r = radius + p[1] - FLOOR, a = Math.min(dist * curve, 3.1), along = r * Math.sin(a) / dist;
       return [eye[0] + dx * along, FLOOR - radius + r * Math.cos(a), eye[2] + dz * along];
+    }
+    // The reverse: the world point that appears at `q`, seen from `eye`.
+    function unbend(q, eye) {
+      if (curve < 0) {
+        const radius = -1 / curve, dx = q[0] - eye[0], below = FLOOR + radius - q[1];
+        return [eye[0] + Math.atan2(dx, below) * radius, FLOOR + radius - Math.hypot(dx, below), q[2]];
+      }
+      const dx = q[0] - eye[0], dz = q[2] - eye[2], across = Math.hypot(dx, dz);
+      if (!curve || across < 0.001) return q;
+      const radius = 1 / curve, up = q[1] - FLOOR + radius, along = Math.atan2(across, up) * radius / across;
+      return [eye[0] + dx * along, FLOOR - radius + Math.hypot(across, up), eye[2] + dz * along];
+    }
+    // On a moon or in a cylinder, bolts fly straight as seen from where they were fired, so they go where they were aimed
+    // on screen instead of following the ground's curve. In world terms they climb away from a moon and sink toward a
+    // cylinder's floor, and one that passes a cylinder's axis comes out half way round the world.
+    const straighten = (bolt) => curve ? Object.assign(bolt, { eye: bolt.position.slice(), seen: bolt.position.slice() }) : bolt;
+    // Moves a bolt on and returns where to sweep for hits from: not across the jump at a cylinder's axis.
+    function advanceBolt(bolt, dt) {
+      const previous = bolt.position;
+      if (!bolt.eye) { bolt.position = add(previous, mul(bolt.velocity, dt)); return previous; }
+      bolt.seen = add(bolt.seen, mul(bolt.velocity, dt));
+      bolt.position = unbend(bolt.seen, bolt.eye);
+      return Math.hypot(...sub(bolt.position, previous)) > 3 * dt * Math.hypot(...bolt.velocity) ? bolt.position : previous;
+    }
+    // Where a bolt was `t` seconds ago, for drawing its tail.
+    function boltTail(bolt, t) {
+      if (!bolt.eye) return sub(bolt.position, mul(bolt.velocity, t));
+      const tail = unbend(sub(bolt.seen, mul(bolt.velocity, t)), bolt.eye);
+      return Math.hypot(...sub(tail, bolt.position)) > 2 * t * Math.hypot(...bolt.velocity) ? bolt.position : tail;
     }
     // Returns a test for whether a sphere can show on screen, so objects behind or beside the camera skip their draw calls.
     function inView(camera) {
@@ -7068,7 +7101,10 @@
       const t = Math.hypot(...sub(ship.position, from)) / speed;
       return normalize(sub(add(ship.position, mul(shipVelocity, t * DIFFICULTIES[save.difficulty].lead)), from));
     };
-    const fireBolt = (from, direction, speed, amount, extra) => enemyShots.push({ position: from, velocity: mul(direction, speed), life: 4, damage: amount, ...extra });
+    const fireBolt = (from, direction, speed, amount, extra) => {
+      if (curve) { const reach = Math.hypot(...sub(ship.position, from)); direction = normalize(sub(bend(add(from, mul(direction, reach)), from), from)); }
+      enemyShots.push(straighten({ position: from, velocity: mul(direction, speed), life: 4, damage: amount, ...extra }));
+    };
     const ELITE_EYE = [1.0, 0.82, 0.25];
     const CRYSTALLINE = { core: [0.7, 1.3, 1.2], herald: [1.2, 0.8, 1.4], node: [1.1, 0.9, 1.4] };
     const SPINNERS = { sentinel: 0.45, pylon: 1.2, aegis: 1.6, mine: 2.4, herald: 0.3, node: 1.8, core: 0.8, overseer: 0.35, egg: 0.5 };
@@ -7086,15 +7122,32 @@
       for (const other of enemies)
         if (!other.active && other.hp > 0 && other.type !== 'hunter' && other.type !== 'mite' && Math.hypot(...sub(other.position, enemy.position)) < 35) other.active = true;
     }
-    function moveByType(enemy, toPlayer, distance, visible, dt) {
+    // How hard each type jinks when the ship lines it up and fires, or hits it: a kick across the ship's view, mostly away
+    // from the reticle, that its steering then eases off.
+    const EVASION = { drone: 20, phantom: 20, skimmer: 26, striker: 16, hunter: 12, warden: 9 };
+    function evade(enemy, distance, sight, dt) {
+      enemy.jinkReady = (enemy.jinkReady ?? range(0.3, 1)) - dt;
+      if (enemy.jinkReady > 0 || distance > 140) return;
+      const seen = sub(curve ? bend(enemy.position, ship.position) : enemy.position, ship.position);
+      const along = dot(seen, sight.forward), across = sub(seen, mul(sight.forward, along));
+      const lined = along > 0 && Math.hypot(...across) < ENEMY_TYPES[enemy.type].radius + 3 && time - lastFired < 0.6;
+      if (!lined && enemy.flash < 0.6) return;
+      const away = (dot(across, sight.right) >= 0 ? 1 : -1) * (random() < 0.3 ? -1 : 1);
+      let kick = normalize(add(mul(sight.right, away), mul(sight.up, range(-0.6, 0.6))));
+      if (!freeAt(...add(enemy.position, mul(kick, 6)), 2)) kick = mul(kick, -1);
+      enemy.velocity = add(enemy.velocity, mul(kick, EVASION[enemy.type]));
+      enemy.jinkReady = range(0.8, 1.8) / DIFFICULTIES[save.difficulty].evade;
+    }
+    function moveByType(enemy, toPlayer, distance, visible, dt, sight) {
       const aim = mul(toPlayer, 1 / distance), flat = Math.hypot(toPlayer[0], toPlayer[2]) || 1, side = [toPlayer[2] / flat, 0, -toPlayer[0] / flat];
       const home = sub(enemy.base, enemy.position), away = Math.hypot(...home);
       const tether = (wanted, reach) => away > reach ? add(wanted, mul(home, 10 / away)) : wanted;
+      if (EVASION[enemy.type] && enemy.active && visible) evade(enemy, distance, sight, dt);
       switch (enemy.type) {
         case 'hunter': case 'mite': {
           if (!enemy.active) return bob(enemy, 1.3, 1.1);
           // Hunters and mites steer straight for the ship with a slight weave.
-          const speed = enemy.type === 'mite' ? 21 : 17, weave = mul(side, Math.sin(time * 3 + enemy.phase) * speed * 0.25);
+          const speed = enemy.type === 'mite' ? 21 : 17, weave = mul(side, Math.sin(time * 3 + enemy.phase) * speed * 0.4);
           return drive(enemy, add(mul(aim, speed), weave), dt, 1.8, enemy.type === 'mite' ? 0.9 : 1.4);
         }
         case 'drone': case 'phantom': {
@@ -7105,16 +7158,18 @@
             const station = add(lead, add(mul(across, enemy.slot * 9), add(mul(toShip, 4), [0, 2, 0])));
             return drive(enemy, capLength(mul(sub(station, enemy.position), 2.5), 16), dt, 3, 2.2);
           }
-          // Awake drones hold a middle distance and sidestep, switching sides now and then, without straying far from home.
-          if ((enemy.dodge -= dt) <= 0) { enemy.side = random() < 0.5 ? -1 : 1; enemy.dodge = range(1.2, 2.8); }
-          const wanted = visible ? add(mul(side, enemy.side * 7), mul(aim, distance > 55 ? 8 : distance < 22 ? -8 : 0)) : mul(home, 0.4);
-          if (visible) wanted[1] += clamp(toPlayer[1] * 0.3, -3, 3);
-          return drive(enemy, capLength(tether(wanted, 40), 12), dt, 2, 2.2);
+          // Awake drones hold a middle distance and strafe, switching sides often and bobbing up and down, without straying
+          // far from home.
+          if ((enemy.dodge -= dt) <= 0) { enemy.side = random() < 0.5 ? -1 : 1; enemy.dodge = range(0.8, 2); }
+          const wanted = visible ? add(mul(side, enemy.side * 11), mul(aim, distance > 55 ? 8 : distance < 22 ? -8 : 0)) : mul(home, 0.4);
+          if (visible) wanted[1] += clamp(toPlayer[1] * 0.3, -3, 3) + Math.sin(time * 1.3 + enemy.phase) * 3;
+          return drive(enemy, capLength(tether(wanted, 40), 15), dt, 2.4, 2.2);
         }
         case 'warden': {
           if (!enemy.active || !visible) return drive(enemy, capLength(mul(home, 0.5), 4), dt, 1, 4);
-          // Wardens grind forward to about 35 units, swaying side to side.
-          return drive(enemy, tether(add(mul(aim, distance > 35 ? 4 : -2), mul(side, Math.sin(time * 0.6 + enemy.phase) * 3)), 60), dt, 1, 4);
+          // Wardens grind forward to about 35 units, swaying side to side and a little up and down.
+          const sway = add(mul(side, Math.sin(time * 0.8 + enemy.phase) * 6), [0, Math.sin(time * 0.5 + enemy.phase) * 1.5, 0]);
+          return drive(enemy, tether(add(mul(aim, distance > 35 ? 4 : -2), sway), 60), dt, 1.2, 4);
         }
         case 'skimmer': {
           if (!enemy.active) return bob(enemy, 2, 1.4);
@@ -7126,7 +7181,16 @@
         }
         case 'brood':
           if (!enemy.active || !visible) return drive(enemy, capLength(mul(home, 0.4), 3), dt, 1, 4);
-          return drive(enemy, tether(mul(aim, distance > 30 ? 3 : -1.5), 50), dt, 1, 4);
+          return drive(enemy, tether(add(mul(aim, distance > 30 ? 3 : -1.5), mul(side, Math.sin(time * 0.5 + enemy.phase) * 3)), 50), dt, 1, 4);
+        case 'striker': {
+          if (!enemy.active) return bob(enemy, 1.3, 1.1);
+          if (!visible) return drive(enemy, capLength(mul(home, 0.5), 6), dt, 1.5, 2.6);
+          // Strikers hang back at about 45 units and strafe across the ship's view, switching sides now and then.
+          if ((enemy.dodge -= dt) <= 0) { enemy.side = random() < 0.5 ? -1 : 1; enemy.dodge = range(1.5, 3); }
+          const wanted = add(mul(side, enemy.side * 9), mul(aim, distance > 60 ? 6 : distance < 35 ? -6 : 0));
+          wanted[1] += clamp(toPlayer[1] * 0.25, -2.5, 2.5) + Math.sin(time * 1.1 + enemy.phase) * 2.5;
+          return drive(enemy, capLength(tether(wanted, 35), 12), dt, 1.6, 2.6);
+        }
         case 'miner': {
           // Miners sweep back and forth along whichever floor axis has room.
           if (enemy.patrol === undefined) {
@@ -7229,6 +7293,7 @@
           .sort((a, b) => gap(a) - gap(b)).slice(0, 3);
         for (const ally of aegis.links) ally.shieldedBy = aegis;
       }
+      const sight = basis(ship.yaw, ship.pitch, ship.roll);
       for (const enemy of enemies) {
         enemy.flash = Math.max(0, enemy.flash - dt * 5);
         if (enemy.hp <= 0) continue;
@@ -7236,7 +7301,7 @@
         let toPlayer = sub(ship.position, enemy.position), distance = Math.hypot(...toPlayer) || 0.01;
         const visible = distance < kind.sight && lineOfSight(enemy.position);
         if (visible && !enemy.active) alert(enemy);
-        moveByType(enemy, toPlayer, distance, visible, dt);
+        moveByType(enemy, toPlayer, distance, visible, dt, sight);
         toPlayer = sub(ship.position, enemy.position); distance = Math.hypot(...toPlayer) || 0.01;
         enemy.age += dt;
         const facing = Math.atan2(toPlayer[0], toPlayer[2]) - enemy.yaw;
@@ -7433,21 +7498,26 @@
     }
     // The lance's rail: an instant beam out to the first wall that hurts everything along it.
     function fireRail(view, amount) {
-      const from = add(ship.position, mul(view.forward, 1.5));
+      // Like the bolts, the beam runs straight as seen, so on a curved world it bends in world terms: it is swept as a path.
+      const along = (reach) => { const p = add(ship.position, mul(view.forward, reach)); return curve ? unbend(p, ship.position) : p; };
+      const from = along(1.5);
       let reach = 1.5;
-      while (reach < 260) { const p = add(ship.position, mul(view.forward, reach)); if (!freeAt(...p) || insideGirder(p)) break; reach += 0.8; }
-      const to = add(ship.position, mul(view.forward, reach));
-      rails.push({ from, to, life: 0.22 });
+      while (reach < 260) { const p = along(reach); if (!freeAt(...p) || insideGirder(p)) break; reach += 0.8; }
+      const to = along(reach), path = [from];
+      if (curve) for (let r = 9.5; r < reach; r += 8) path.push(along(r));
+      path.push(to);
+      const struck = (center, radius) => path.some((p, k) => k > 0 && (!curve || Math.hypot(...sub(p, path[k - 1])) < 24) && segmentHitsSphere(path[k - 1], p, center, radius));
+      rails.push({ path, to, life: 0.22 });
       for (const enemy of enemies)
-        if (enemy.hp > 0 && segmentHitsSphere(from, to, enemy.position, ENEMY_TYPES[enemy.type].radius + 0.4)) { sparks(enemy.position, 10, [0.7, 0.9, 1.0], 16); hurtEnemy(enemy, amount); }
-      for (const barrel of barrels) if (!barrel.exploded && segmentHitsSphere(from, to, barrel.position, 2.3)) explodeBarrel(barrel);
+        if (enemy.hp > 0 && struck(enemy.position, ENEMY_TYPES[enemy.type].radius + 0.4)) { sparks(enemy.position, 10, [0.7, 0.9, 1.0], 16); hurtEnemy(enemy, amount); }
+      for (const barrel of barrels) if (!barrel.exploded && struck(barrel.position, 2.3)) explodeBarrel(barrel);
       for (let m = enemyMissiles.length - 1; m >= 0; m--) {
-        if (!segmentHitsSphere(from, to, enemyMissiles[m].position, 1.6)) continue;
+        if (!struck(enemyMissiles[m].position, 1.6)) continue;
         explosions.push({ position: enemyMissiles[m].position.slice(), life: 0.65, scale: 0.45 });
         enemyMissiles.splice(m, 1);
       }
       for (const gate of gates) for (const lock of gate.locks) {
-        if (lock.hp <= 0 || !segmentHitsSphere(from, to, lock.position, 1.5)) continue;
+        if (lock.hp <= 0 || !struck(lock.position, 1.5)) continue;
         lock.hp -= amount; lock.flash = 1;
         if (lock.hp <= 0) breakLock(gate, lock);
       }
@@ -7548,9 +7618,10 @@
         for (const [offset, angle, amount, kind] of weapon.bolts) {
           // Side barrels angle in slightly so their bolts cross near the reticle; fanned barrels angle outward.
           const direction = normalize(add(mul(view.forward, 60), mul(view.right, angle ? angle * 60 : -offset)));
-          shots.push({ position: add(add(ship.position, mul(view.forward, 1.5)), mul(view.right, offset)), velocity: mul(direction, kind === 'plasma' ? 120 : 140),
-            life: 1.8, damage: amount, kind, pierce: kind === 'plasma' ? 2 : 0, tint: weapon.tint });
+          shots.push(straighten({ position: add(add(ship.position, mul(view.forward, 1.5)), mul(view.right, offset)), velocity: mul(direction, kind === 'plasma' ? 120 : 140),
+            life: 1.8, damage: amount, kind, pierce: kind === 'plasma' ? 2 : 0, tint: weapon.tint }));
         }
+        lastFired = time;
         if (weapon.rail && ++railCount % weapon.rail.every === 0) fireRail(view, weapon.rail.damage);
         fireCooldown = weapon.cooldown;
         muzzleTimer = 0.12;
@@ -7560,8 +7631,7 @@
       updateEnemies(dt);
       updateMissiles(dt, view);
       for (let i = shots.length - 1; i >= 0; i--) {
-        const shot = shots[i], previous = shot.position;
-        shot.position = add(shot.position, mul(shot.velocity, dt));
+        const shot = shots[i], previous = advanceBolt(shot, dt);
         shot.life -= dt;
         let hit = false;
         for (const enemy of enemies) {
@@ -7608,8 +7678,8 @@
         if (hit || shot.life <= 0) shots.splice(i, 1);
       }
       for (let i = enemyShots.length - 1; i >= 0; i--) {
-        const shot = enemyShots[i], previous = shot.position;
-        shot.position = add(shot.position,mul(shot.velocity,dt)); shot.life -= dt;
+        const shot = enemyShots[i], previous = advanceBolt(shot, dt);
+        shot.life -= dt;
         if (segmentHitsSphere(previous,shot.position,ship.position,1.5)) {
           damage(shot.damage,'HOSTILE FIRE'); enemyShots.splice(i,1);
         } else if (shot.life <= 0 || !freeAt(...shot.position) || insideGirder(shot.position)) {
@@ -7806,7 +7876,7 @@
       { style: 'position:fixed;left:8px;bottom:8px;z-index:99;font:12px monospace;color:#9fe;background:#000a;padding:4px 6px;white-space:pre;pointer-events:none' });
     // ?debug exposes the game state on window.radix, for testing sectors from the browser console.
     if (new URLSearchParams(location.search).has('debug'))
-      window.radix = { ship, enemies, barrels, pickups, gates, addEnemy, openGate, hurtEnemy, resetGame, insideGirder, startSector, cells: { open, floorY, ceilY, roofY, underY, cellIndex }, get level() { return level; }, set health(v) { health = v; }, get firing() { return mouseFiring; }, get boosting() { return boostFrom !== null; }, get objective() { return objectiveIndex; }, get mapOpen() { return mapOpen; }, set mapOpen(v) { mapOpen = v; } };
+      window.radix = { ship, enemies, shots, enemyShots, bend, unbend, barrels, pickups, gates, addEnemy, openGate, hurtEnemy, resetGame, insideGirder, startSector, cells: { open, floorY, ceilY, roofY, underY, cellIndex }, get level() { return level; }, set health(v) { health = v; }, get firing() { return mouseFiring; }, set firing(v) { mouseFiring = v; }, get boosting() { return boostFrom !== null; }, get objective() { return objectiveIndex; }, get mapOpen() { return mapOpen; }, set mapOpen(v) { mapOpen = v; } };
     let perfSums = [0, 0, 0, 0], perfFrames = 0, perfStart = 0;
     const perfParts = { combat: 0, reveal: 0, music: 0 }, slowFactor = Number(new URLSearchParams(location.search).get('slow')) || 1;
     function perfReport(parts) {

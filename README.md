@@ -69,10 +69,10 @@ Press Tab to show or hide the map of the current sector. Rooms appear as they co
 
 ### Enemies
 
-- **Drones** (red) hover until they see you, then hold a middle distance and sidestep while firing single bolts.
+- **Drones** (red) hover until they see you, then hold a middle distance and strafe from side to side, bobbing up and down, while firing single bolts.
 - **Hunters** (amber, dart-shaped) are fragile, but once they see you they weave in and ram.
-- **Wardens** (violet, large) take eight hits, grind forward and fire three-bolt spreads.
-- **Strikers** (teal, wide-winged) launch slow homing missiles. A blinking MISSILE WARNING shows when one is close, and you can shoot incoming missiles down.
+- **Wardens** (violet, large) take eight hits, grind forward swaying from side to side and fire three-bolt spreads.
+- **Strikers** (teal, wide-winged) hang back and strafe across your view, launching slow homing missiles. A blinking MISSILE WARNING shows when one is close, and you can shoot incoming missiles down.
 - **Sentries** (yellow) are turrets mounted on striped pylons that fire three-shot bursts.
 - **Lancers** (crimson needles) perch high and paint you with a red aiming beam that trails your ship for about a second, then fire a fast, heavy bolt down it. Keep moving.
 - **Aegis** (blue stars) link to up to three allies with blue beams; linked enemies glow blue and take no damage until the aegis dies.
@@ -81,13 +81,13 @@ Press Tab to show or hide the map of the current sector. Rooms appear as they co
 - **Phantoms** (pale blue, wide-winged) stay cloaked as a faint shimmer, invisible on radar and impossible to lock on to, until they fire a three-shot burst, get hit or come within close range.
 - **Miners** (orange boxes) patrol back and forth laying mines. **Mines** drift toward a nearby ship, arm after a second and blow up when you get close; shooting one sets it off, which can catch other enemies.
 
-The first time you meet each of the tougher types, a one-line tip appears; types you have met are remembered in your save. A hostile that spots you wakes the others close to it. From sector 8 on, some wardens fly with two escort drones that hold formation either side of them, on the side facing you, until the warden dies. Big enemies sometimes leave a repair or missile crystal behind. From sector 6 on, some enemies are **elites**: gold-eyed and gold-tinted, with nearly twice the hull, and they fire a quarter faster. They grow more common in later sectors.
+Drones, hunters, wardens, strikers, skimmers and phantoms jink sideways when you line one up and fire, or when you hit it, kicking out across your view and mostly away from the reticle; they jink less often on Easy and more often on Hard. The first time you meet each of the tougher types, a one-line tip appears; types you have met are remembered in your save. A hostile that spots you wakes the others close to it. From sector 8 on, some wardens fly with two escort drones that hold formation either side of them, on the side facing you, until the warden dies. Big enemies sometimes leave a repair or missile crystal behind. From sector 6 on, some enemies are **elites**: gold-eyed and gold-tinted, with nearly twice the hull, and they fire a quarter faster. They grow more common in later sectors.
 
 ### Arsenal
 
 Pick up a green crystal to repair 35% of the hull. A pink crystal adds six seeker missiles (up to 24).
 
-An amber crystal upgrades the neutron cannon one tier. Amber crystals collected at the top tier repair 15% of the hull instead. The menu lists every tier you have found.
+An amber crystal upgrades the neutron cannon one tier. Amber crystals collected at the top tier repair 15% of the hull instead. The menu lists every tier you have found. On the curved sectors, the moons and the cylinders, bolts and the rail fly straight as you see them, so they go where the reticle points instead of following the ground's curve.
 
 | Tier | Name | What it fires |
 | --- | --- | --- |
