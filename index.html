@@ -20,6 +20,8 @@
     .stats { text-align: right; color: #b1ecf8; font-size: 12px; line-height: 1.7; letter-spacing: .13em; }
     .stats strong { color: white; }
     .mission { color: #f5b76b; font-size: 11px; letter-spacing: .2em; text-align: right; }
+    .objective { color: #ffe066; margin-top: 7px; letter-spacing: .14em; text-shadow: 0 0 8px #ffd23a66; }
+    .objective:empty { display: none; }
     .cockpit { position: absolute; left: 0; right: 0; bottom: 0; height: 206px; padding: 15px 28px 38px; display: grid; grid-template-columns: minmax(180px,1fr) 250px minmax(180px,1fr); gap: 20px; background: linear-gradient(#28374355,#0d172133 25%,#101d2866 75%,#050a10cc); border-top: 5px solid #697d88aa; box-shadow: inset 0 1px #b5c3c666; }
     .panel { background: #08131c88; border: 3px ridge #5a6d77aa; box-shadow: inset 0 0 20px #02090f88; padding: 10px 14px; min-width: 0; text-shadow: 0 0 3px #000, 0 0 8px #000; }
     .panel-title { color: #f0a65c; font-size: 11px; letter-spacing: .2em; margin-bottom: 8px; }
@@ -132,7 +134,7 @@
   <div class="hud" aria-hidden="true">
     <div class="scanlines"></div>
     <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
-    <div class="top"><div class="brand">RADIX <small>BEYOND THE VOID / FLIGHT TEST</small></div><div class="mission"><span id="levelText">THETA-2</span> // <span id="zoneText">LAUNCH BAY</span></div></div>
+    <div class="top"><div class="brand">RADIX <small>BEYOND THE VOID / FLIGHT TEST</small></div><div class="mission"><span id="levelText">THETA-2</span> // <span id="zoneText">LAUNCH BAY</span><div class="objective" id="objectiveText"></div></div></div>
     <div class="damage-flash" id="damageFlash"></div>
     <div class="shield-flash" id="shieldFlash"></div>
     <div class="warning" id="warningText">MISSILE WARNING</div>
@@ -225,7 +227,7 @@
     const barrelText = document.getElementById('barrelText');
     const killText = document.getElementById('killText');
     const musicText = document.getElementById('musicText');
-    const zoneText = document.getElementById('zoneText');
+    const zoneText = document.getElementById('zoneText'), objectiveText = document.getElementById('objectiveText');
     const healthText = document.getElementById('healthText');
     const healthBar = document.getElementById('healthBar');
     const shieldText = document.getElementById('shieldText');
@@ -272,8 +274,9 @@
     };
 
     // Each level is a grid of 4-unit cells carved out of solid ground.
-    //   rooms:  open space [x0, z0, x1, z1, floor material, floor height, ceiling height, side texture]; no ceiling means open sky,
-    //           and a side texture dresses the faces that rise from lower neighbours up to this floor (crates, ledges, ice shelves)
+    //   rooms:  open space [x0, z0, x1, z1, floor material, floor height, ceiling height, side texture, roof height, roof material];
+    //           no ceiling means open sky, and a side texture dresses the faces that rise from lower neighbours up to this floor
+    //           (crates, ledges, ice shelves). A roof makes a building or bridge: covered below the ceiling, open sky above the roof.
     //   stairs: rooms whose floor climbs [x0, z0, x1, z1, material, height at x0/z0 side, height at x1/z1 side, axis, headroom]
     //   blocks: solid pillars put back [x0, z0, x1, z1, wall kind]
     //   girders: beams [x0, y0, z0, x1, y1, z1] to fly over, under or between
@@ -289,12 +292,28 @@
     //     boss gates open when the sector's boss is destroyed; core gates when every data core in the sector is;
     //     cracked walls only give way to missiles, plasma and the rail.
     //   brief: an objective shown a few seconds into the sector
+    //   objectives: goals completed in order, each { text, kind } where kind is 'reach' (fly within `radius` of `at`),
+    //     'destroy' (kill every enemy in `targets`, given as [type, x, y, z]), 'gate' (open gates[`gate`]) or 'exit' (fly
+    //     through the exit gate, which stays locked until every goal before it is done)
+    //   moon: { radius } wraps the sector around a small moon with no walls at its edge, airless sky and open ground beyond
     //   walls: optional weighted wall-texture variants for the lower and upper bands
     //   vents: floor material whose updraft lifts the ship; lasers: timed beam grids [x0, z0, x1, z1, bottom, top, period, offset]
     //   music: the sector's track
-    const FLOOR_MATERIALS = ['floorPlate', 'floorGrate', 'floorPad', 'floorFoundry', 'floorSludge', 'floorLava', 'floorIce', 'floorHive', 'floorWater', 'floorVent', 'floorVoid'];
-    const PLATE = 0, GRATE = 1, PAD = 2, SLAG = 3, SLUDGE = 4, LAVA = 5, ICE = 6, HIVE = 7, WATER = 8, VENT = 9, VOID = 10;
+    const FLOOR_MATERIALS = ['floorPlate', 'floorGrate', 'floorPad', 'floorFoundry', 'floorSludge', 'floorLava', 'floorIce', 'floorHive', 'floorWater', 'floorVent', 'floorVoid', 'floorMoon'];
+    const PLATE = 0, GRATE = 1, PAD = 2, SLAG = 3, SLUDGE = 4, LAVA = 5, ICE = 6, HIVE = 7, WATER = 8, VENT = 9, VOID = 10, MOON = 11;
     const BULKHEAD = 1, COLUMN = 2, REACTOR = 3, CRYSTAL = 4, SKY = undefined;
+    // Scatters boulders [x0, z0, x1, z1, MOON, height, SKY, 'wallMoon'] over a level's open ground, away from `clear` areas.
+    function moonRocks(count, clear, salt) {
+      const rocks = [];
+      for (let k = 0; rocks.length < count && k < count * 20; k++) {
+        const w = 4 + Math.floor(hashInt(k, 1, salt) * 3) * 4, d = 4 + Math.floor(hashInt(k, 2, salt) * 3) * 4;
+        const x = -248 + Math.floor(hashInt(k, 3, salt) * (496 - w) / 4) * 4, z = -40 + Math.floor(hashInt(k, 4, salt) * (784 - d) / 4) * 4;
+        const box = [x - 4, z - 4, x + w + 4, z + d + 4];
+        if ([...clear, ...rocks].some(([a, b, c, e]) => box[0] < c && box[2] > a && box[1] < e && box[3] > b)) continue;
+        rocks.push([x, z, x + w, z + d, MOON, BASE + 2 + Math.round(hashInt(k, 5, salt) * 6), SKY, 'wallMoon']);
+      }
+      return rocks;
+    }
     const LEVELS = [
       {
         name: 'DELTA-9', title: 'RELAY STATION', music: 'relay', start: [0, -4, 0], yaw: 0, exit: [0, 16, 680, true],
@@ -889,6 +908,82 @@
         ],
       },
       {
+        // A shepherd moon of Sigma-4, two kilometres across: the sector wraps around its curve with open ground and no walls,
+        // and its goals are taken in order before the extraction gate opens.
+        name: 'SIGMA-4B', title: 'SHEPHERD MOON', music: 'mesa', top: 55, start: [0, -4, -20], yaw: 0, exit: [0, 0, 676, true],
+        moon: { radius: 1000 }, roof: 'floorPlate',
+        sky: { zenith: [0.0, 0.0, 0.012], fog: [0.05, 0.05, 0.06], sun: [1.05, 1.0, 0.92], sunDir: [0.55, 0.32, 0.55] },
+        walls: { lower: [['wallTech', 0.5], ['wallComputer', 0.3], ['wallLower', 0.2]], upper: [['wallTech', 0.7], ['wallUpper', 0.3]] },
+        rooms: [
+          [-256, -48, 256, 752, MOON, BASE, SKY, 'wallMoon'],
+          // Landing site.
+          [-16, -40, 16, -8, PAD, BASE + 1, SKY, 'wallTech'],
+          // Terraced crater west of the landing site.
+          [-164, 20, -76, 100, MOON, BASE - 4, SKY, 'wallMoon'], [-148, 36, -92, 84, MOON, BASE - 9, SKY, 'wallMoon'], [-128, 52, -112, 68, MOON, BASE - 13, SKY, 'wallMoon'],
+          // The tanker crater: three terraces down to the wreck.
+          [76, 116, 204, 244, MOON, BASE - 5, SKY, 'wallMoon'], [92, 132, 188, 228, MOON, BASE - 11, SKY, 'wallMoon'], [112, 152, 168, 208, MOON, BASE - 17, SKY, 'wallMoon'],
+          [124, 172, 156, 184, PLATE, BASE - 13, SKY, 'wallContainer'], [132, 164, 144, 172, PLATE, BASE - 9, SKY, 'wallContainerB'], [140, 184, 152, 196, PLATE, BASE - 15, SKY, 'wallContainer'],
+          // The comms mesa, with a ramp up its south face and four antenna masts.
+          [-216, 176, -104, 308, MOON, BASE + 16, SKY, 'wallMoon'], [-196, 196, -124, 288, PAD, BASE + 17, SKY, 'wallTech'],
+          [-200, 212, -196, 216, PLATE, BASE + 44, SKY, 'wallTech'], [-124, 212, -120, 216, PLATE, BASE + 40, SKY, 'wallTech'],
+          [-200, 268, -196, 272, PLATE, BASE + 38, SKY, 'wallTech'], [-124, 268, -120, 272, PLATE, BASE + 46, SKY, 'wallTech'],
+          [-164, 236, -156, 244, PLATE, BASE + 30, SKY, 'wallTech'],
+          // Twin ridges with a natural arch bridging the canyon between them.
+          [-72, 256, -40, 404, MOON, BASE + 14, SKY, 'wallMoon'], [-64, 280, -48, 380, MOON, BASE + 24, SKY, 'wallMoon'],
+          [40, 256, 72, 404, MOON, BASE + 14, SKY, 'wallMoon'], [48, 300, 64, 372, MOON, BASE + 22, SKY, 'wallMoon'],
+          [-40, 324, 40, 336, MOON, BASE, BASE + 10, 'wallMoon', BASE + 14, 'floorMoon'],
+          // East bunkers: two roofed huts with open doors, holding supplies.
+          [144, 316, 180, 320, PLATE, BASE + 12, SKY, 'wallTech'], [144, 344, 180, 348, PLATE, BASE + 12, SKY, 'wallTech'],
+          [176, 320, 180, 344, PLATE, BASE + 12, SKY, 'wallTech'], [144, 320, 148, 328, PLATE, BASE + 12, SKY, 'wallTech'], [144, 336, 148, 344, PLATE, BASE + 12, SKY, 'wallTech'],
+          [148, 320, 176, 344, PLATE, BASE, BASE + 10, null, BASE + 12], [144, 328, 148, 336, PLATE, BASE, BASE + 8, null, BASE + 12],
+          [196, 360, 224, 364, PLATE, BASE + 12, SKY, 'wallTech'], [196, 384, 224, 388, PLATE, BASE + 12, SKY, 'wallTech'], [220, 364, 224, 384, PLATE, BASE + 12, SKY, 'wallTech'],
+          [196, 364, 220, 384, PLATE, BASE, BASE + 10, null, BASE + 12],
+          // The dome: an outer wall, a roofed hangar behind a chained blast door, and three core rooms off it.
+          [-72, 416, 72, 420, PLATE, BASE + 22, SKY, 'wallTech'], [-72, 556, 72, 560, PLATE, BASE + 22, SKY, 'wallTech'],
+          [-72, 420, -68, 556, PLATE, BASE + 22, SKY, 'wallTech'], [68, 420, 72, 556, PLATE, BASE + 22, SKY, 'wallTech'],
+          [-68, 420, 68, 556, GRATE, BASE, BASE + 18, null, BASE + 22],
+          [-12, 416, 12, 420, PLATE, BASE, BASE + 14, null, BASE + 22],
+          [-68, 488, -20, 492, PLATE, BASE + 22, SKY, 'wallTech'], [20, 488, 68, 492, PLATE, BASE + 22, SKY, 'wallTech'],
+          [-60, 488, -44, 492, PLATE, BASE, BASE + 12, null, BASE + 22], [44, 488, 60, 492, PLATE, BASE, BASE + 12, null, BASE + 22],
+          [-24, 492, -20, 556, PLATE, BASE + 22, SKY, 'wallTech'], [20, 492, 24, 556, PLATE, BASE + 22, SKY, 'wallTech'],
+          [-20, 488, 20, 492, PLATE, BASE, BASE + 12, null, BASE + 22],
+          [-52, 516, -40, 528, PAD, BASE + 2, BASE + 18, 'wallTech', BASE + 22], [-6, 516, 6, 528, PAD, BASE + 2, BASE + 18, 'wallTech', BASE + 22], [40, 516, 52, 528, PAD, BASE + 2, BASE + 18, 'wallTech', BASE + 22],
+          // The far side: a crater chain and the extraction pad.
+          [-200, 600, -120, 680, MOON, BASE - 6, SKY, 'wallMoon'], [-184, 616, -136, 664, MOON, BASE - 12, SKY, 'wallMoon'],
+          [120, 584, 216, 664, MOON, BASE - 4, SKY, 'wallMoon'], [140, 604, 196, 644, MOON, BASE - 10, SKY, 'wallMoon'],
+          [-32, 644, 32, 708, PAD, BASE + 2, SKY, 'wallTech'],
+          ...moonRocks(70, [[-48, -48, 48, 48], [-172, 12, -68, 108], [68, 108, 212, 252], [-224, 168, -96, 316], [-80, 248, 80, 412],
+            [136, 308, 232, 396], [-80, 408, 80, 568], [-208, 592, -112, 688], [112, 576, 224, 672], [-40, 636, 40, 716]], 41),
+        ],
+        stairs: [[-176, 152, -144, 176, MOON, BASE, BASE + 16, 'z']],
+        blocks: [],
+        girders: [[-196, 24, 212, -124, 26, 216]],
+        gates: [[-12, 416, 12, 420, 'south', 'chain']],
+        extras: { barrels: [[132, 200], [120, 176], [160, 196], [150, 160]] },
+        objectives: [
+          { kind: 'reach', text: 'INVESTIGATE THE DOWNED TANKER', at: [140, BASE - 6, 180], radius: 26 },
+          { kind: 'destroy', text: 'DESTROY THE COMMS MESA TURRETS', targets: [['sentry', -180, BASE + 20.4, 224], ['sentry', -140, BASE + 20.4, 224], ['sentry', -180, BASE + 20.4, 260], ['sentry', -140, BASE + 20.4, 260]] },
+          { kind: 'gate', text: 'SHOOT THE LOCKS ON THE DOME BLAST DOOR', gate: 0 },
+          { kind: 'destroy', text: 'DESTROY THE DOME POWER CORES', targets: [['core', -46, BASE + 9, 522], ['core', 0, BASE + 9, 522], ['core', 46, BASE + 9, 522]] },
+          { kind: 'exit', text: 'REACH THE EXTRACTION GATE' },
+        ],
+        zones: [
+          { name: 'LANDING SITE', area: [-48, -48, 48, 48], barrels: 2 },
+          { name: 'WEST CRATER', area: [-172, 12, -68, 108], drones: 2, hunters: 1, health: 1 },
+          { name: 'TANKER CRATER', area: [68, 108, 212, 252], barrels: 6, drones: 2, skimmers: 2, missile: 1 },
+          { name: 'COMMS MESA', area: [-224, 168, -96, 316], drones: 2, lancers: 1, health: 1, high: true },
+          { name: 'TWIN RIDGES', area: [-80, 248, 80, 412], hunters: 2, skimmers: 2, high: true },
+          { name: 'EAST BUNKERS', area: [136, 308, 232, 396], health: 1, weapon: 1, drones: 1 },
+          { name: 'DOME HANGAR', area: [-68, 420, 68, 488], drones: 3, hunters: 1, health: 1 },
+          { name: 'WEST CORE ROOM', area: [-68, 492, -24, 556], drones: 1, wardens: 1 },
+          { name: 'CENTER CORE ROOM', area: [-20, 492, 20, 556], drones: 2 },
+          { name: 'EAST CORE ROOM', area: [24, 492, 68, 556], hunters: 1, missile: 1 },
+          { name: 'EXTRACTION PAD', area: [-40, 636, 40, 716], barrels: 2 },
+          { name: 'GREY PLAIN', area: [-256, -48, 256, 412], drones: 5, skimmers: 2, strikers: 1, health: 1, high: true },
+          { name: 'FAR SIDE', area: [-256, 568, 256, 752], drones: 4, skimmers: 2, strikers: 1, wardens: 1, missile: 1, health: 1, high: true },
+        ],
+      },
+      {
         name: 'OMEGA', title: 'CORE BREACH', music: 'omega', top: 49, start: [0, -4, 0], yaw: 0, exit: [0, 36, 728, true],
         brief: 'THE OMEGA SENTINEL GUARDS THE CROWN HALL',
         sky: { zenith: [0.06, 0.02, 0.1], fog: [0.24, 0.16, 0.27], sun: [0.85, 0.5, 0.78], sunDir: [-0.5, 0.4, 0.6] },
@@ -1303,6 +1398,7 @@
       'HIVE WARRENS': [[-0.3, 0.6, 0.75], [0.5, 0.34, 0.1], [0.9, 0.72, 0.32], 0.18],
       'TETHER ANCHOR': [[0.3, 0.45, 0.85], [0.3, 0.45, 0.7], [0.82, 0.9, 1.0], 0.3],
       'REFINERY TERRACES': [[-0.5, 0.35, -0.8], [0.5, 0.3, 0.18], [0.85, 0.62, 0.4], 0.2],
+      'SHEPHERD MOON': [[-0.35, 0.42, 0.84], [0.5, 0.3, 0.18], [0.85, 0.62, 0.4], 0.36],
       'CORE BREACH': [[0.4, 0.4, 0.82], [0.34, 0.14, 0.4], [0.76, 0.46, 0.82], 0.2],
       'ABYSS SHAFT': [[0.1, 0.92, 0.38], [0.24, 0.12, 0.36], [0.6, 0.4, 0.85], 0.1],
       'CRYSTAL CANYON': [[-0.5, 0.4, 0.77], [0.4, 0.55, 0.7], [0.85, 0.95, 1.0], 0.28],
@@ -1323,18 +1419,25 @@
       def.top = (def.top || TOP) * WORLD_SCALE;
       def.lasers = (def.lasers || []).map(row => row.map((v, k) => k < 6 ? v * WORLD_SCALE : v));
       def.exit = def.exit.map(v => typeof v === 'number' ? v * WORLD_SCALE : v);
-      def.rooms = scale(def.rooms, [4, 7]);
+      def.rooms = scale(def.rooms, [4, 7, 9]);
       def.stairs = scale(def.stairs || [], [4]);
       def.blocks = scale(def.blocks, [4]);
       def.girders = scale(def.girders);
       def.gates = scale(def.gates || []);
       if (def.extras) def.extras = { barrels: scale(def.extras.barrels || []), enemies: scale(def.extras.enemies || []) };
       for (const zone of def.zones) zone.area = zone.area.map(v => v * WORLD_SCALE);
+      for (const goal of def.objectives || []) {
+        if (goal.at) goal.at = goal.at.map(v => v * WORLD_SCALE);
+        if (goal.radius) goal.radius *= WORLD_SCALE;
+        if (goal.targets) goal.targets = scale(goal.targets);
+      }
     }
     for (const def of LEVELS) scaleLevel(def);
 
     const open = new Uint8Array(GRID_W * GRID_D), solidKind = new Uint8Array(GRID_W * GRID_D);
     const floorY = new Float32Array(GRID_W * GRID_D), ceilY = new Float32Array(GRID_W * GRID_D), sealed = new Uint8Array(GRID_W * GRID_D);
+    // A roofed cell is covered up to its ceiling, solid from there to its roof, and open sky above the roof.
+    const roofY = new Float32Array(GRID_W * GRID_D), roofOf = new Array(GRID_W * GRID_D).fill(null);
     const sideOf = new Array(GRID_W * GRID_D).fill(null);
     let level = LEVELS[0], levelIndex = 0;
     const gates = [];
@@ -1343,9 +1446,9 @@
         for (let gx = (x0 - GRID_X0) / CELL; gx < (x1 - GRID_X0) / CELL; gx++) fill(gz * GRID_W + gx, GRID_X0 + gx * CELL, GRID_Z0 + gz * CELL);
     };
     function carve(def) {
-      open.fill(0); solidKind.fill(BULKHEAD); floorY.fill(FLOOR); ceilY.fill(WALL_TOP); sideOf.fill(null);
-      for (const [x0, z0, x1, z1, material, floor = FLOOR, ceil = WALL_TOP, side = null] of def.rooms)
-        fillCells([x0, z0, x1, z1], i => { open[i] = 1 + material; floorY[i] = floor; ceilY[i] = ceil; sideOf[i] = side; });
+      open.fill(0); solidKind.fill(BULKHEAD); floorY.fill(FLOOR); ceilY.fill(WALL_TOP); sideOf.fill(null); roofY.fill(Infinity);
+      for (const [x0, z0, x1, z1, material, floor = FLOOR, ceil = WALL_TOP, side = null, roof = Infinity, roofMaterial = null] of def.rooms)
+        fillCells([x0, z0, x1, z1], i => { open[i] = 1 + material; floorY[i] = floor; ceilY[i] = ceil; sideOf[i] = side; roofY[i] = roof; roofOf[i] = roofMaterial; });
       for (const [x0, z0, x1, z1, material, from, to, axis, headroom] of def.stairs || []) {
         const span = axis === 'x' ? x1 - x0 : z1 - z0;
         fillCells([x0, z0, x1, z1], (i, x, z) => {
@@ -1367,9 +1470,15 @@
     const hazardAt = (x, z) => { const i = cellIndex(x, z); return i >= 0 && (open[i] === 1 + SLUDGE || open[i] === 1 + LAVA) ? open[i] - 1 : 0; };
     const isOpen = (x, z) => cellIndex(x, z) >= 0;
     const ventAt = (x, z, y) => { const i = cellIndex(x, z); return i >= 0 && open[i] === 1 + VENT && y < floorY[i] + 45; };
-    const floorAt = (x, z) => { const i = cellIndex(x, z); return i < 0 ? WALL_TOP : floorY[i]; };
-    const coveredAt = (x, z) => { const i = cellIndex(x, z); return i >= 0 && ceilY[i] < WALL_TOP; };
-    const freeAt = (x, y, z, pad = 0) => { const i = cellIndex(x, z); return i >= 0 && y >= floorY[i] + pad && y <= ceilY[i] - pad; };
+    const floorAt = (x, z, y = -Infinity) => { const i = cellIndex(x, z); return i < 0 ? WALL_TOP : y >= roofY[i] ? roofY[i] : floorY[i]; };
+    const coveredAt = (x, z, y = -Infinity) => { const i = cellIndex(x, z); return i >= 0 && ceilY[i] < WALL_TOP && y < roofY[i]; };
+    // Closed gates seal the room below a roof but not the sky above it.
+    const freeAt = (x, y, z, pad = 0) => {
+      const gx = Math.floor((x - GRID_X0) / CELL), gz = Math.floor((z - GRID_Z0) / CELL), i = gz * GRID_W + gx;
+      if (!cellAt(gx, gz)) return false;
+      if (y >= roofY[i] + pad && y <= WALL_TOP - pad) return true;
+      return !sealed[i] && y >= floorY[i] + pad && y <= ceilY[i] - pad;
+    };
     function walkable(x, z, margin = 0) {
       if (!isOpen(x, z)) return false;
       return margin === 0 || (isOpen(x - margin, z - margin) && isOpen(x + margin, z - margin) &&
@@ -1441,12 +1550,50 @@
     };
     // Mites, mines and boss reinforcements join mid-fight; they don't count toward the sector's hostile tally.
     const summon = (type, position, owner) => Object.assign(addEnemy(type, ...position), { active: true, summoned: true, owner, cooldown: 0.4 });
-    let hostileTotal = 0;
+    let hostileTotal = 0, objectives = [], objectiveIndex = 0, lockedHint = 0;
+    // The exit opens once every goal before the 'exit' one is done (or straight away in sectors without objectives).
+    const exitOpen = () => objectiveIndex >= objectives.length || objectives[objectiveIndex].kind === 'exit';
+    // Where the current goal is: its point, the nearest of its targets still alive, its gate, or the exit.
+    function objectiveSpot() {
+      const goal = objectives[objectiveIndex];
+      if (!goal) return null;
+      if (goal.kind === 'reach') return goal.at;
+      if (goal.kind === 'gate') { const gate = gates[goal.gate]; return [(gate.x0 + gate.x1) / 2, (gate.door.y0 + gate.door.y1) / 2, (gate.z0 + gate.z1) / 2]; }
+      if (goal.kind === 'exit') return exitCenter();
+      let best = null, bestGap = Infinity;
+      for (const enemy of goal.enemies) {
+        if (enemy.hp <= 0) continue;
+        const gap = Math.hypot(...sub(enemy.position, ship.position));
+        if (gap < bestGap) { best = enemy.position; bestGap = gap; }
+      }
+      return best;
+    }
+    function objectiveLabel() {
+      const goal = objectives[objectiveIndex];
+      if (!goal) return '';
+      const left = goal.enemies.filter(e => e.hp > 0).length, spot = objectiveSpot();
+      return `OBJECTIVE ${objectiveIndex + 1}/${objectives.length} // ${goal.text}${goal.kind === 'destroy' && goal.enemies.length > 1 ? ` (${left} LEFT)` : ''}` +
+        (spot ? ` // ${Math.round(Math.hypot(...sub(spot, ship.position)))} M` : '');
+    }
+    function updateObjectives() {
+      const goal = objectives[objectiveIndex];
+      if (!goal) return;
+      const done = goal.kind === 'reach' ? Math.hypot(...sub(goal.at, ship.position)) < goal.radius
+        : goal.kind === 'destroy' ? goal.enemies.every(e => e.hp <= 0)
+        : goal.kind === 'gate' ? gates[goal.gate].opening : false;
+      if (!done) return;
+      objectiveIndex++;
+      const next = objectives[objectiveIndex];
+      notice(next ? `OBJECTIVE COMPLETE // NEXT: ${next.text}` : 'ALL OBJECTIVES COMPLETE', 4);
+      playPickup('weapon');
+    }
     function spawnLevel(def) {
       barrels.length = 0; enemies.length = 0; pickups.length = 0;
       seed = 0x5eed + levelIndex * 7919;
       for (const [x, z] of def.extras?.barrels || []) addBarrel(x, z);
       for (const [type, x, y, z] of def.extras?.enemies || []) addEnemy(type, x, y, z);
+      objectiveIndex = 0;
+      objectives = (def.objectives || []).map(goal => ({ ...goal, enemies: (goal.targets || []).map(([type, x, y, z]) => addEnemy(type, x, y, z)) }));
       const fromStart = (x, z) => Math.hypot(x - def.start[0], z - def.start[2]);
       for (const zone of def.zones) {
         const [x0, z0, x1, z1] = zone.area;
@@ -2279,6 +2426,36 @@
         }
         scratches(p, 60, 0.15);
       }, { grime: 0.15, rust: 0, wear: 0.05 });
+      // Moon regolith: grey dust pocked with overlapping craters, each a dished floor inside a raised rim.
+      const crater = (p, x, y, r) => {
+        for (const ox of [-p.w, 0, p.w]) for (const oy of [-p.h, 0, p.h]) {
+          const cx = x + ox, cy = y + oy;
+          if (cx + r * 1.4 < 0 || cx - r * 1.4 > p.w || cy + r * 1.4 < 0 || cy - r * 1.4 > p.h) continue;
+          const dish = p.b.createRadialGradient(cx, cy, 0, cx, cy, r * 1.35);
+          dish.addColorStop(0, gray(0.34)); dish.addColorStop(0.62, gray(0.44)); dish.addColorStop(0.74, gray(0.7)); dish.addColorStop(1, 'rgba(128,128,128,0)');
+          p.b.fillStyle = dish; p.b.beginPath(); p.b.arc(cx, cy, r * 1.35, 0, Math.PI * 2); p.b.fill();
+          const shade = p.c.createRadialGradient(cx - r * 0.25, cy - r * 0.25, 0, cx, cy, r * 1.3);
+          shade.addColorStop(0, 'rgba(30,30,32,0.35)'); shade.addColorStop(0.7, 'rgba(40,40,42,0.2)'); shade.addColorStop(0.78, 'rgba(210,210,205,0.28)'); shade.addColorStop(1, 'rgba(200,200,200,0)');
+          p.c.fillStyle = shade; p.c.beginPath(); p.c.arc(cx, cy, r * 1.3, 0, Math.PI * 2); p.c.fill();
+        }
+      };
+      make('floorMoon', 512, 512, '#55575a', p => {
+        for (let i = 0; i < 26; i++) stain(p, rnd() * 512, rnd() * 512, between(40, 140), between(30, 110), rnd() > 0.5 ? '120,120,118' : '40,41,44', between(0.15, 0.35));
+        for (let i = 0; i < 5; i++) crater(p, rnd() * 512, rnd() * 512, between(40, 80));
+        for (let i = 0; i < 22; i++) crater(p, rnd() * 512, rnd() * 512, between(8, 30));
+        for (let i = 0; i < 400; i++) fillRect(p, rnd() * 512, rnd() * 512, between(1, 3), between(1, 3), rnd() > 0.5 ? 'rgba(170,170,165,0.5)' : 'rgba(30,30,32,0.5)', between(0.4, 0.62));
+      }, { grime: 0.1, rust: 0, wear: 0, strength: 3 });
+      // Moon cliffs: layered grey strata, cracked and slumped.
+      make('wallMoon', 512, 512, '#3e4043', p => {
+        for (let y = 0; y < 512;) {
+          const h = between(20, 60), shade = Math.round(between(52, 92));
+          plate(p, 0, y, 512, Math.min(h, 512 - y), `rgb(${shade},${shade},${shade + 3})`, 0.48, 0.6, 5);
+          for (let x = between(0, 80); x < 512; x += between(50, 160)) groove(p, x, y + 2, x + between(-14, 14), y + h - 2, 2, 0.3);
+          y += h;
+        }
+        for (let i = 0; i < 6; i++) trace(p, wander(rnd() * 512, rnd() * 512, 12, between(12, 26), 0.9), [[p.c, 'rgba(20,20,22,0.6)', 2.5], [p.b, gray(0.25), 3]]);
+        streaks(p, 26, '20,20,22', 0, 512, 0.3); scratches(p, 60, 0.15);
+      }, { grime: 0.3, rust: 0, wear: 0.1 });
       make('crackedWall', 512, 512, '#27333b', p => {
         bulkPanel(p, 10, 12, 492, 488);
         for (let i = 0; i < 4; i++) trace(p, wander(between(150, 360), between(120, 390), 9, between(20, 34), 1.1),
@@ -2297,14 +2474,25 @@
       uniform mat4 uViewProj;
       uniform mat4 uModel;
       uniform vec2 uScroll;
+      uniform vec3 uCamera;
       out vec3 vPos;
       out vec3 vNormal;
       out vec2 vUv;
       out float vShade;
+      // On a moon the flat world is wrapped onto a sphere under the camera, so the ground falls away to a horizon.
+      uniform float uCurve, uDatum;
+      vec3 bend(vec3 p) {
+        vec2 d = p.xz - uCamera.xz;
+        float dist = length(d);
+        if (uCurve <= 0.0 || dist < 0.001) return p;
+        float radius = 1.0 / uCurve, r = radius + p.y - uDatum, a = min(dist * uCurve, 3.1);
+        vec2 along = d / dist * r * sin(a);
+        return vec3(uCamera.x + along.x, uDatum - radius + r * cos(a), uCamera.z + along.y);
+      }
       void main() {
         vec4 world = uModel * vec4(aPos, 1.0);
         vPos = world.xyz; vNormal = mat3(uModel) * aNormal; vUv = aUv + uScroll; vShade = aShade;
-        gl_Position = uViewProj * world;
+        gl_Position = uViewProj * vec4(bend(world.xyz), 1.0);
       }`;
     // Normal-mapped surfaces: sky/ground ambient, a low sun, the ship's headlight and up to 16 point lights.
     const SURFACE_FS = `#version 300 es
@@ -2316,7 +2504,8 @@
       uniform sampler2D uAlbedo;
       uniform sampler2D uDetail;
       uniform vec3 uCamera, uSunDir, uSunColor, uSkyLight, uGroundLight, uFogColor, uHeadPos, uHeadDir, uTint;
-      uniform float uFlash, uSpecular, uBump, uEmissive, uExposure;
+      uniform float uFlash, uSpecular, uBump, uEmissive, uExposure, uHaze;
+      uniform vec3 uFog;
       uniform int uQuality;
       uniform vec4 uLights[16];
       uniform vec3 uLightColors[16];
@@ -2363,8 +2552,8 @@
         float gloss = uSpecular * (0.3 + dot(albedo, vec3(0.6, 0.9, 0.5)));
         vec3 color = albedo * diffuse + spec * gloss + albedo * detail.a * uEmissive + uFlash * vec3(1.0, 0.82, 0.65);
         float dist = length(uCamera - vPos);
-        float haze = (1.0 - smoothstep(${FLOOR.toFixed(1)}, ${(FLOOR + 9).toFixed(1)}, vPos.y)) * smoothstep(25.0, 180.0, dist) * 0.35;
-        color = mix(color, uFogColor, clamp(smoothstep(75.0, 540.0, dist) * 0.94 + haze, 0.0, 1.0));
+        float haze = (1.0 - smoothstep(${FLOOR.toFixed(1)}, ${(FLOOR + 9).toFixed(1)}, vPos.y)) * smoothstep(25.0, 180.0, dist) * uHaze;
+        color = mix(color, uFogColor, clamp(smoothstep(uFog.x, uFog.y, dist) * uFog.z + haze, 0.0, 1.0));
         vec3 over = max(color - 0.82, 0.0);
         outColor = vec4(min(color, 0.82) + over / (1.0 + over * 2.2), 1.0);
       }`;
@@ -2377,7 +2566,7 @@
       precision highp float;
       in vec2 vNdc;
       uniform vec3 uForward, uRight, uUp, uSunDir, uFogColor, uZenith, uPlanetDir, uPlanetA, uPlanetB;
-      uniform float uPlanetSize;
+      uniform float uPlanetSize, uAirless;
       uniform int uQuality;
       uniform vec2 uSpread;
       uniform float uTime;
@@ -2412,11 +2601,11 @@
           }
         }
         if (h > 0.0) {
-          float cloud = uQuality > 0 ? fbm(dir.xz / (h + 0.15) * 1.1 + vec2(uTime * 0.012, uTime * 0.005)) : 0.0;
+          float cloud = uQuality > 0 && uAirless < 0.5 ? fbm(dir.xz / (h + 0.15) * 1.1 + vec2(uTime * 0.012, uTime * 0.005)) : 0.0;
           float mask = smoothstep(0.5, 0.82, cloud) * smoothstep(0.0, 0.35, h);
           color = mix(color, mix(vec3(0.3, 0.36, 0.44), vec3(0.95, 0.62, 0.42), pow(sun, 4.0) * 0.8), mask * 0.6);
           float star = hash(floor(vec2(atan(dir.z, dir.x), asin(h)) * 220.0));
-          color += vec3(0.8, 0.9, 1.0) * step(0.9975, star) * smoothstep(0.25, 0.7, h) * (1.0 - mask);
+          color += vec3(0.8, 0.9, 1.0) * step(uAirless > 0.5 ? 0.996 : 0.9975, star) * smoothstep(uAirless > 0.5 ? 0.0 : 0.25, uAirless > 0.5 ? 0.08 : 0.7, h) * (1.0 - mask);
         }
         outColor = vec4(color, 1.0);
       }`;
@@ -2429,7 +2618,17 @@
       out vec2 vUv;
       out vec4 vColor;
       out float vFog;
-      void main() { vUv = aUv; vColor = aColor; vFog = smoothstep(60.0, 430.0, distance(aPos, uCamera)); gl_Position = uViewProj * vec4(aPos, 1.0); }`;
+      // On a moon the flat world is wrapped onto a sphere under the camera, so the ground falls away to a horizon.
+      uniform float uCurve, uDatum;
+      vec3 bend(vec3 p) {
+        vec2 d = p.xz - uCamera.xz;
+        float dist = length(d);
+        if (uCurve <= 0.0 || dist < 0.001) return p;
+        float radius = 1.0 / uCurve, r = radius + p.y - uDatum, a = min(dist * uCurve, 3.1);
+        vec2 along = d / dist * r * sin(a);
+        return vec3(uCamera.x + along.x, uDatum - radius + r * cos(a), uCamera.z + along.y);
+      }
+      void main() { vUv = aUv; vColor = aColor; vFog = smoothstep(60.0, 430.0, distance(aPos, uCamera)); gl_Position = uViewProj * vec4(bend(aPos), 1.0); }`;
     // Additive glows; streak quads carry u in [2, 3] so they fade across their width only.
     const SPRITE_FS = `#version 300 es
       precision highp float;
@@ -2510,7 +2709,7 @@
       secretPanel: [0.4, 1, 1.6], crackedWall: [0.4, 1, 2.4], lock: [0.6, 1, 2.6], chain: [0.9, 1, 0.5], floorLava: [0.6, 0.8, 2.4],
       wallIce: [0.8, 1, 1.6], wallHive: [0.5, 1, 2.2], wallBasalt: [0.35, 1, 2.6], wallContainer: [0.45, 1, 1.2], wallContainerB: [0.45, 1, 1.2], wallTech: [0.6, 1, 2.2],
       wallVoid: [0.9, 1, 2.6], crystal: [1.1, 1, 1.5], floorIce: [1.1, 0.8, 1.4], floorHive: [0.5, 1, 2], floorWater: [1.5, 0.5, 1.6],
-      floorVent: [0.5, 1, 2.6], floorVoid: [0.9, 1, 2.4],
+      floorVent: [0.5, 1, 2.6], floorVoid: [0.9, 1, 2.4], floorMoon: [0.2, 1, 1], wallMoon: [0.25, 1, 1],
     };
     const materials = {};
     // Surfaces are painted the first time a sector needs them (painting every one up front took seconds on phones);
@@ -2531,7 +2730,7 @@
     // Surfaces inside tunnels go in their own groups so the sun and sky can be dimmed there.
     const LOWER_VARIANTS = [['wallLower', 0.6], ['wallVent', 0.14], ['wallDoor', 0.12], ['wallPipes', 0.14]];
     const UPPER_VARIANTS = [['wallUpper', 0.68], ['wallWindows', 0.22], ['wallSign', 0.1]];
-    const TEXTURE_HEIGHT = { wallRust: 8, wallIce: 10, wallHive: 10, wallBasalt: 14, wallContainer: 7, wallContainerB: 7, wallTech: 10, wallVoid: 10 };
+    const TEXTURE_HEIGHT = { wallMoon: 16, wallRust: 8, wallIce: 10, wallHive: 10, wallBasalt: 14, wallContainer: 7, wallContainerB: 7, wallTech: 10, wallVoid: 10 };
     const pickVariant = (options, value) => { for (const [name, weight] of options) if ((value -= weight) < 0) return name; return options[0][0]; };
     const radarEdges = [], beacons = [];
     let levelMeshes = [];
@@ -2552,20 +2751,44 @@
         ];
         for (const [normal, corners] of faces) quad(name, covered, corners, normal, corners.map(p => uvOf(p, normal)), [1, 1, 1, 1]);
       };
-      const closed = (gx, gz) => cellAt(gx, gz) === 0 ? 1 : 0;
+      const outsideGrid = (gx, gz) => gx < 0 || gz < 0 || gx >= GRID_W || gz >= GRID_D;
+      const closed = (gx, gz) => cellAt(gx, gz) === 0 && !(def.moon && outsideGrid(gx, gz)) ? 1 : 0;
       const ao = (ix, iz) => 1 - 0.16 * (closed(ix - 1, iz - 1) + closed(ix, iz - 1) + closed(ix - 1, iz) + closed(ix, iz));
+      // Open moon ground merges flat, open 4x4-cell patches into one floor quad, to keep its vertex count down.
+      const PATCH = 4, merged = new Uint8Array(GRID_W * GRID_D);
+      if (def.moon) for (let pz = 0; pz + PATCH <= GRID_D; pz += PATCH) for (let px = 0; px + PATCH <= GRID_W; px += PATCH) {
+        const first = pz * GRID_W + px;
+        let same = !!open[first] && ceilY[first] >= WALL_TOP;
+        for (let dz = -1; dz <= PATCH && same; dz++) for (let dx = -1; dx <= PATCH && same; dx++) {
+          const gx = px + dx, gz = pz + dz, inside = gx >= 0 && gz >= 0 && gx < GRID_W && gz < GRID_D, k = gz * GRID_W + gx;
+          if (!inside) continue;
+          const edge = dx < 0 || dz < 0 || dx === PATCH || dz === PATCH;
+          if (!open[k] || (!edge && (open[k] !== open[first] || floorY[k] !== floorY[first] || ceilY[k] < WALL_TOP))) same = false;
+        }
+        if (!same) continue;
+        for (let dz = 0; dz < PATCH; dz++) for (let dx = 0; dx < PATCH; dx++) merged[(pz + dz) * GRID_W + px + dx] = dz === 0 && dx === 0 ? 2 : 1;
+      }
       for (let gz = 0; gz < GRID_D; gz++) for (let gx = 0; gx < GRID_W; gx++) {
         const material = cellAt(gx, gz);
         if (!material) continue;
         const i = gz * GRID_W + gx, floor = floorY[i], ceil = ceilY[i], covered = ceil < WALL_TOP;
         const x0 = GRID_X0 + gx * CELL, z0 = GRID_Z0 + gz * CELL, x1 = x0 + CELL, z1 = z0 + CELL;
         const corners = [ao(gx, gz), ao(gx + 1, gz), ao(gx + 1, gz + 1), ao(gx, gz + 1)];
-        quad(FLOOR_MATERIALS[material - 1], covered, [[x0, floor, z0], [x1, floor, z0], [x1, floor, z1], [x0, floor, z1]], [0, 1, 0],
+        if (merged[i] === 2) {
+          const mx = x0 + CELL * PATCH, mz = z0 + CELL * PATCH;
+          quad(FLOOR_MATERIALS[material - 1], false, [[x0, floor, z0], [mx, floor, z0], [mx, floor, mz], [x0, floor, mz]], [0, 1, 0],
+            [[x0 / 8, z0 / 8], [mx / 8, z0 / 8], [mx / 8, mz / 8], [x0 / 8, mz / 8]], [1, 1, 1, 1]);
+        } else if (!merged[i]) quad(FLOOR_MATERIALS[material - 1], covered, [[x0, floor, z0], [x1, floor, z0], [x1, floor, z1], [x0, floor, z1]], [0, 1, 0],
           [[x0 / 8, z0 / 8], [x1 / 8, z0 / 8], [x1 / 8, z1 / 8], [x0 / 8, z1 / 8]], corners);
         if (covered) quad('ceiling', true, [[x0, ceil, z1], [x1, ceil, z1], [x1, ceil, z0], [x0, ceil, z0]], [0, -1, 0],
           [[x0 / 8, z1 / 8], [x1 / 8, z1 / 8], [x1 / 8, z0 / 8], [x0 / 8, z0 / 8]], [corners[3], corners[2], corners[1], corners[0]]);
+        const roof = roofY[i];
+        if (roof < WALL_TOP) quad(roofOf[i] || def.roof || 'floorPad', false, [[x0, roof, z0], [x1, roof, z0], [x1, roof, z1], [x0, roof, z1]], [0, 1, 0],
+          [[x0 / 8, z0 / 8], [x1 / 8, z0 / 8], [x1 / 8, z1 / 8], [x0 / 8, z1 / 8]], [1, 1, 1, 1]);
         for (const [dx, dz] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
           const nx = gx + dx, nz = gz + dz, solid = closed(nx, nz), n = nz * GRID_W + nx;
+          // An open level has no wall at its edge: the ground runs on and the edge only stops the ship.
+          if (def.moon && outsideGrid(nx, nz)) continue;
           const normal = [-dx, 0, -dz], right = [dz, 0, -dx];
           const half = CELL / 2, cx = x0 + half + dx * half, cz = z0 + half + dz * half;
           const a = [cx - right[0] * half, cz - right[2] * half], b = [cx + right[0] * half, cz + right[2] * half];
@@ -2610,9 +2833,13 @@
             if (neighborFloor - floor > 3) radarEdges.push([a[0], a[1], b[0], b[1]]);
           }
           if (neighborCeil < ceil - 0.01) {
-            const bottom = Math.max(neighborCeil, floor);
-            band('crown', bottom, Math.min(bottom + 4, ceil), bottom + 4, 4);
-            band(upper, Math.min(bottom + 4, ceil), ceil, ceil, upperSize);
+            // Next to a roofed room the wall only climbs to the roof's edge, like the lintel over a doorway.
+            const bottom = Math.max(neighborCeil, floor), top = Math.min(ceil, roofY[n]);
+            if (roofY[n] < Infinity) band(sideOf[n] || 'crown', bottom, top, top, TEXTURE_HEIGHT[sideOf[n]] || 4);
+            else {
+              band('crown', bottom, Math.min(bottom + 4, ceil), bottom + 4, 4);
+              band(upper, Math.min(bottom + 4, ceil), ceil, ceil, upperSize);
+            }
           }
         }
       }
@@ -2627,6 +2854,19 @@
             [[u0, v0], [u1, v0], [u1, v1], [u0, v1]], [0.7, 0.7, 1, 1]);
         }
       };
+      if (def.moon) {
+        // The rest of the moon: plain ground out past the horizon, in tiles small enough to follow the curve (the reach is a
+        // whole number of tiles, so they line up with the map's edge), and amber marker lights along the edge of the operations area.
+        const TILE = 40, reach = 1400, gx0 = GRID_X0, gz0 = GRID_Z0, gx1 = GRID_X0 + GRID_W * CELL, gz1 = GRID_Z0 + GRID_D * CELL;
+        for (let z = gz0 - reach; z < gz1 + reach; z += TILE) for (let x = gx0 - reach; x < gx1 + reach; x += TILE) {
+          if (x >= gx0 && x + TILE <= gx1 && z >= gz0 && z + TILE <= gz1) continue;
+          const xa = x, za = z, xb = x + TILE, zb = z + TILE;
+          quad('floorMoon', false, [[xa, FLOOR, za], [xb, FLOOR, za], [xb, FLOOR, zb], [xa, FLOOR, zb]], [0, 1, 0],
+            [[xa / 8, za / 8], [xb / 8, za / 8], [xb / 8, zb / 8], [xa / 8, zb / 8]], [1, 1, 1, 1]);
+        }
+        for (let x = gx0 + 20; x < gx1; x += 40) for (const z of [gz0 + 1, gz1 - 1]) beacons.push({ position: [x, floorAt(x, z) + 1.5, z], phase: x * 0.05 });
+        for (let z = gz0 + 20; z < gz1; z += 40) for (const x of [gx0 + 1, gx1 - 1]) beacons.push({ position: [x, floorAt(x, z) + 1.5, z], phase: z * 0.05 });
+      }
       for (let iz = 1; iz < GRID_D; iz++) for (let ix = 1; ix < GRID_W; ix++) {
         const cells = [[ix - 1, iz - 1], [ix, iz - 1], [ix - 1, iz], [ix, iz]];
         const solid = cells.filter(([x, z]) => closed(x, z));
@@ -2777,6 +3017,7 @@
       };
     }
 
+    let cockpitHeight = 0;
     function resize() {
       dpr = window.devicePixelRatio || 1;
       width = window.innerWidth; height = window.innerHeight;
@@ -2786,6 +3027,7 @@
       const pixels = GRAPHICS[graphics].pixels, pixelScale = pixels ? pixels / width : detail;
       world.width = Math.round(width * pixelScale); world.height = Math.round(height * pixelScale);
       world.style.imageRendering = pixels ? 'pixelated' : '';
+      cockpitHeight = cockpitPanel.offsetHeight;
       radar.width = Math.round(118 * dpr); radar.height = Math.round(118 * dpr);
       radarCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
@@ -3329,6 +3571,7 @@
       }
       carve(level); setupGates(level); setupHazards(level); spawnLevel(level);
       radarEdges.length = 0; beacons.length = 0;
+      curve = level.moon ? 1 / level.moon.radius : 0;
       levelMeshes = buildLevel(level);
       ensureMaterials(levelMeshes.map(mesh => mesh.name));
       ship.position = level.start.slice(); ship.yaw = level.yaw; ship.pitch = 0; ship.roll = 0; ship.speed = 8; ship.strafe = [0, 0];
@@ -3355,6 +3598,12 @@
     const SAVE_KEY = 'radix-beyond-the-void';
     const save = (() => { try { return JSON.parse(localStorage.getItem(SAVE_KEY)) || {}; } catch { return {}; } })();
     if (!save.sectors || typeof save.sectors !== 'object') save.sectors = {};
+    // Sector 10, the shepherd moon, was added after saves existed: shift older records for later sectors up by one.
+    if (!save.moon) {
+      const sectors = {};
+      for (const [key, value] of Object.entries(save.sectors)) sectors[Number(key) >= 9 ? Number(key) + 1 : key] = value;
+      save.sectors = sectors; if (save.last >= 9) save.last++; save.moon = 1;
+    }
     if (!DIFFICULTIES[save.difficulty]) save.difficulty = 'normal';
     if (!(save.last >= 0 && save.last < LEVELS.length && save.sectors[save.last])) save.last = 0;
     const writeSave = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch { /* storage may be blocked */ } };
@@ -3448,7 +3697,8 @@
       'The docks are burning, and no swarm will load there again. Under Tau-3\'s surface are the hive warrens where the Choir grow their pilots, ruled by the Hive Queen. Burst her egg sacs, then kill her, and the next generation of Earth-burners is never born.',
       'The Hive Queen is dead and her nest is quiet. A tether anchored on Tau-3 lifts finished fighters up to the orbital yards. Cut it and the yards starve.',
       'The tether is down and Tau-3\'s yards are cut off. Sigma-4\'s refinery terraces are the last supply line feeding the crown world. Burn them and Omega stands alone.',
-      'Sigma-4\'s terraces are in ruins and Omega is cut off. The crown world\'s core is guarded by the Omega Sentinel and its four shield pylons. Bring the Sentinel down; this should end the song.',
+      'The terraces are burning, but their last fuel already went up the line to Sigma-4\'s shepherd moon, a grey rock barely a kilometre across that ships it on to Omega. Its depot sits on open ground under a black sky. Find the tanker that went down, silence the comms mesa, break into the dome and kill its power cores, then get out through the extraction gate.',
+      'The shepherd moon is dark and Omega is cut off. The crown world\'s core is guarded by the Omega Sentinel and its four shield pylons. Bring the Sentinel down; this should end the song.',
       'The Sentinel is dead, but the song did not stop: Omega was never the source. The signal comes from inside the Void, a shroud of dark dust around Nadir\'s inner worlds, and the Requiem is going in. Follow it down the Abyss Shaft, a world hollowed out to its core.',
       'You made it back up the shaft, deeper inside the Void than anyone has been. At the end of a crystal canyon a Void Carrier is docked, one of the ships that carried the swarm to Earth. Take it apart.',
       'The carrier that burned Earth is wreckage. Deeper in, a foundry is building something far bigger than fighters. Climb it and tear it down before it is finished.',
@@ -3466,7 +3716,7 @@
       omega: { name: 'OMEGA', orbit: 0.3, angle: 0.95, color: '#c08cff' },
       void: { name: 'THE VOID', orbit: 0.15, angle: 3.6, color: '#e070ff' },
     };
-    const SECTOR_PLACES = ['delta', 'delta', 'epsilon', 'epsilon', 'epsilon', 'tau', 'tau', 'tau', 'sigma', 'omega', 'void', 'void', 'void', 'void', 'void', 'void'];
+    const SECTOR_PLACES = ['delta', 'delta', 'epsilon', 'epsilon', 'epsilon', 'tau', 'tau', 'tau', 'sigma', 'sigma', 'omega', 'void', 'void', 'void', 'void', 'void', 'void'];
     function drawSystemMap(now) {
       const ratio = window.devicePixelRatio || 1, w = systemMap.clientWidth, h = systemMap.clientHeight;
       if (!w || !h) return;
@@ -3579,7 +3829,7 @@
       checkpoint = { position: ship.position.slice(), yaw: ship.yaw, health: Math.max(health, 60), weapon: weaponLevel, launcher: launcherLevel, missiles: missileAmmo,
         hostiles: hostileTotal, dead: indexesWhere(enemies, e => e.hp <= 0, hostileTotal), barrels: indexesWhere(barrels, b => b.exploded),
         pickups: indexesWhere(pickups, p => p.taken, pickupTotal), gates: indexesWhere(gates, g => g.opening), kills, barrelsDestroyed,
-        explored: explored.slice(), zones: [...visitedZones] };
+        explored: explored.slice(), zones: [...visitedZones], objective: objectiveIndex };
     }
     function resetGame(fromStart) {
       const cp = checkpoint, elapsed = sectorTime;
@@ -3596,7 +3846,7 @@
         gate.opening = true; gate.open = 1; for (const lock of gate.locks) lock.hp = 0;
         fillCells([gate.x0, gate.z0, gate.x1, gate.z1], k => { sealed[k] = 0; });
       }
-      kills = cp.kills; barrelsDestroyed = cp.barrelsDestroyed; sectorTime = elapsed;
+      kills = cp.kills; barrelsDestroyed = cp.barrelsDestroyed; sectorTime = elapsed; objectiveIndex = cp.objective || 0;
       // The map keeps what had been explored by the checkpoint.
       explored.set(cp.explored); for (const zone of cp.zones) visitedZones.add(zone);
       for (let i = 0; i < explored.length; i++) if (explored[i]) paintMapCell(i % GRID_W, Math.floor(i / GRID_W));
@@ -3671,7 +3921,7 @@
     }
     const IDENTITY = modelMatrix([0, 0, 0]), WHITE = [1, 1, 1];
     const PICKUP_COLORS = { health: [0.35, 1.0, 0.55], weapon: [1.0, 0.62, 0.18], missile: [1.0, 0.3, 0.5], launcher: [0.7, 0.45, 1.0] };
-    const exposureAt = (p) => coveredAt(p[0], p[2]) ? 0.3 : 1;
+    const exposureAt = (p) => coveredAt(p[0], p[2], p[1]) ? 0.3 : 1;
     const exitCenter = () => level.exit.slice(0, 3);
     let boundMaterial = null, boundPulse = 0;
     function useMaterial(material, pulse = 1) {
@@ -3699,7 +3949,7 @@
       for (const enemy of enemies) if (enemy.hp > 0 && !enemy.cloaked) { const kind = ENEMY_TYPES[enemy.type]; list.push([enemy.position, 10 * kind.scale, mul(kind.eye, 0.85)]); }
       for (const pickup of pickups) if (!pickup.taken) list.push([pickup.position, 13, PICKUP_COLORS[pickup.type]]);
       for (const gate of gates) for (const lock of gate.locks) if (lock.hp > 0) list.push([lock.position, 9, [1.0, 0.35, 0.15]]);
-      list.push([exitCenter(), 45, [0.3, 1.2, 0.7]]);
+      if (exitOpen()) list.push([exitCenter(), 45, [0.3, 1.2, 0.7]]);
       for (const laser of lasers) if (laserState(laser) === 'on') { const [a, b] = laser.beams[0]; list.push([mul(add(a, b), 0.5), 26, [1.2, 0.2, 0.15]]); }
       const near = list.map(light => [light, dot(sub(light[0], camera.position), sub(light[0], camera.position))])
         .filter(([light, d]) => d < (light[1] + 160) ** 2).sort((a, b) => a[1] - b[1]).slice(0, GRAPHICS[graphics].lights).map(([light]) => light);
@@ -3807,11 +4057,24 @@
         billboard(pickup.position, 4.2, PICKUP_COLORS[pickup.type], 0.3 * pulse);
       }
       const gate = exitCenter(), spansX = level.exit[3];
-      billboard(gate, 8, [0.2, 1.0, 0.6], 0.45);
-      streak(gate, add(gate, [0, 80, 0]), 1.8, [0.3, 1.0, 0.6], 0.45);
-      for (let k = 0; k < 12; k++) {
-        const angle = time * 1.6 + k * Math.PI / 6, r = 4.8 + Math.sin(time * 3 + k) * 0.6;
-        billboard(add(gate, spansX ? [Math.cos(angle) * r, Math.sin(angle) * r, 0] : [0, Math.sin(angle) * r, Math.cos(angle) * r]), 1.1, [0.5, 1.0, 0.75], 0.9);
+      if (exitOpen()) {
+        billboard(gate, 8, [0.2, 1.0, 0.6], 0.45);
+        streak(gate, add(gate, [0, 80, 0]), 1.8, [0.3, 1.0, 0.6], 0.45);
+        for (let k = 0; k < 12; k++) {
+          const angle = time * 1.6 + k * Math.PI / 6, r = 4.8 + Math.sin(time * 3 + k) * 0.6;
+          billboard(add(gate, spansX ? [Math.cos(angle) * r, Math.sin(angle) * r, 0] : [0, Math.sin(angle) * r, Math.cos(angle) * r]), 1.1, [0.5, 1.0, 0.75], 0.9);
+        }
+      } else billboard(gate, 6, [0.5, 0.55, 0.6], 0.12);
+      const goal = objectives[objectiveIndex];
+      if (goal && goal.kind !== 'exit') {
+        const pulse = 0.75 + 0.25 * Math.sin(time * 4);
+        const spots = goal.kind === 'destroy' ? goal.enemies.filter(e => e.hp > 0).map(e => e.position) : [objectiveSpot()];
+        for (const spot of spots) {
+          if (!spot) continue;
+          const foot = [spot[0], floorAt(spot[0], spot[2], spot[1]), spot[2]];
+          streak(foot, add(foot, [0, 90, 0]), 1.4, [1.0, 0.85, 0.25], 0.5 * pulse);
+          billboard(spot, 5, [1.0, 0.85, 0.3], 0.4 * pulse);
+        }
       }
       for (const shot of shots) {
         if (shot.kind === 'plasma') {
@@ -3861,11 +4124,20 @@
       for (const spark of particles) streak(sub(spark.position, mul(spark.velocity, 0.035)), spark.position, 0.12, spark.color, spark.life / spark.maxLife * 2);
       return data;
     }
+    // Where a point appears once a moon's curve is applied (the shaders' bend), seen from `eye`.
+    let curve = 0;
+    function bend(p, eye) {
+      const dx = p[0] - eye[0], dz = p[2] - eye[2], dist = Math.hypot(dx, dz);
+      if (!curve || dist < 0.001) return p;
+      const radius = 1 / curve, r = radius + p[1] - FLOOR, a = Math.min(dist * curve, 3.1), along = r * Math.sin(a) / dist;
+      return [eye[0] + dx * along, FLOOR - radius + r * Math.cos(a), eye[2] + dz * along];
+    }
     // Returns a test for whether a sphere can show on screen, so objects behind or beside the camera skip their draw calls.
     function inView(camera) {
       const focal = focalLength(), spread = Math.hypot(width / 2, height / 2) / focal, slack = Math.sqrt(1 + spread * spread);
       const [cx, cy, cz] = camera.position, [fx, fy, fz] = camera.view.forward;
-      return (p, radius) => {
+      return (point, radius) => {
+        const p = curve ? bend(point, camera.position) : point;
         const dx = p[0] - cx, dy = p[1] - cy, dz = p[2] - cz, along = dx * fx + dy * fy + dz * fz, square = dx * dx + dy * dy + dz * dz;
         if (square < radius * radius) return true;
         const reach = along * spread + radius * slack;
@@ -3884,6 +4156,7 @@
       gl.uniform3fv(s.uFogColor, sky.fog); gl.uniform3fv(s.uZenith, sky.zenith); gl.uniform1f(s.uTime, time);
       const planet = level.planet;
       gl.uniform3fv(s.uPlanetDir, planet.dir); gl.uniform3fv(s.uPlanetA, planet.a); gl.uniform3fv(s.uPlanetB, planet.b); gl.uniform1f(s.uPlanetSize, planet.size); gl.uniform1i(s.uQuality, GRAPHICS[graphics].detail);
+      gl.uniform1f(s.uAirless, level.moon ? 1 : 0);
       gl.bindVertexArray(skyMesh); gl.drawArrays(gl.TRIANGLES, 0, 3);
 
       gl.enable(gl.DEPTH_TEST); gl.depthMask(true);
@@ -3895,7 +4168,9 @@
       gl.uniform3fv(u.uSunColor, sky.sun); gl.uniform3f(u.uSkyLight, 0.46, 0.54, 0.66); gl.uniform3f(u.uGroundLight, 0.17, 0.16, 0.17);
       gl.uniform3fv(u.uFogColor, sky.fog); gl.uniform3fv(u.uHeadPos, camera.position); gl.uniform3fv(u.uHeadDir, camera.view.forward);
       gl.uniform4fv(u.uLights, lights.positions); gl.uniform3fv(u.uLightColors, lights.colors); gl.uniform1i(u.uLightCount, lights.count); gl.uniform1i(u.uQuality, GRAPHICS[graphics].detail);
-      const reactorPulse = 1 + 0.3 * Math.sin(time * 2.2), gatePulse = 1 + 0.35 * Math.sin(time * 5);
+      gl.uniform1f(u.uCurve, curve); gl.uniform1f(u.uDatum, FLOOR);
+      if (level.moon) { gl.uniform3f(u.uFog, 220, 900, 0.75); gl.uniform1f(u.uHaze, 0); } else { gl.uniform3f(u.uFog, 75, 540, 0.94); gl.uniform1f(u.uHaze, 0.35); }
+      const reactorPulse = 1 + 0.3 * Math.sin(time * 2.2), gatePulse = exitOpen() ? 1 + 0.35 * Math.sin(time * 5) : 0.15;
       boundMaterial = null;
       for (const { name, exposure, mesh } of levelMeshes) {
         useMaterial(materials[name], name === 'reactor' ? reactorPulse : name === 'exitFrame' ? gatePulse : 1);
@@ -3954,6 +4229,7 @@
         gl.useProgram(spriteProgram.program);
         gl.uniformMatrix4fv(spriteProgram.uniforms.uViewProj, false, viewProj);
         gl.uniform3fv(spriteProgram.uniforms.uCamera, camera.position);
+        gl.uniform1f(spriteProgram.uniforms.uCurve, curve); gl.uniform1f(spriteProgram.uniforms.uDatum, FLOOR);
         gl.bindVertexArray(spriteMesh.vao); gl.bindBuffer(gl.ARRAY_BUFFER, spriteMesh.buffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(sprites), gl.DYNAMIC_DRAW);
         gl.drawArrays(gl.TRIANGLES, 0, sprites.length / 9);
@@ -4004,7 +4280,22 @@
         r.moveTo(...corners[3]); for (const corner of corners) r.lineTo(...corner);
       }
       r.stroke(); r.restore();
-      if (Math.sin(time * 6) > -0.3) mark(exitCenter(), '#5dffb0', 3.6, true);
+      if (exitOpen() && Math.sin(time * 6) > -0.3) mark(exitCenter(), '#5dffb0', 3.6, true);
+      const spot = objectiveSpot();
+      if (spot && !(objectives[objectiveIndex].kind === 'exit')) {
+        const dx = spot[0] - sx, dz = spot[2] - sz;
+        let right = (cos * dx - sin * dz) * 0.55, ahead = (sin * dx + cos * dz) * 0.55;
+        const reach = Math.hypot(right, ahead), angle = Math.atan2(right, ahead);
+        r.fillStyle = '#ffe066';
+        if (reach > 44) {
+          right *= 47 / reach; ahead *= 47 / reach;
+          const px = cx + right, py = cy - ahead, ux = Math.sin(angle), uy = -Math.cos(angle);
+          r.beginPath(); r.moveTo(px + ux * 6, py + uy * 6); r.lineTo(px - ux * 3 - uy * 5, py - uy * 3 + ux * 5); r.lineTo(px - ux * 3 + uy * 5, py - uy * 3 - ux * 5); r.closePath(); r.fill();
+        } else {
+          const px = cx + right, py = cy - ahead;
+          r.beginPath(); r.moveTo(px, py - 5); r.lineTo(px + 4, py); r.lineTo(px, py + 5); r.lineTo(px - 4, py); r.closePath(); r.fill();
+        }
+      }
       r.fillStyle = '#bcf8e8'; r.beginPath(); r.moveTo(cx,cy-5); r.lineTo(cx-4,cy+4); r.lineTo(cx+4,cy+4); r.closePath(); r.fill();
     }
     function drawReticle() {
@@ -4091,7 +4382,7 @@
     }
     function drawMap() {
       if (!mapOpen) return;
-      const left = 20, right = width - 20, top = touchMode ? 96 : 60, bottom = Math.max(top + 120, height - cockpitPanel.offsetHeight - 16);
+      const left = 20, right = width - 20, top = touchMode ? 96 : 60, bottom = Math.max(top + 120, height - cockpitHeight - 16);
       ctx.fillStyle = 'rgba(2,8,14,0.88)'; ctx.fillRect(left, top, right - left, bottom - top);
       ctx.strokeStyle = '#3f7f90'; ctx.lineWidth = 1; ctx.strokeRect(left + 0.5, top + 0.5, right - left - 1, bottom - top - 1);
       const [gx0, gz0, gx1, gz1] = mapBounds, cols = gx1 - gx0 + 1, rows = gz1 - gz0 + 1;
@@ -4123,13 +4414,32 @@
         ctx.beginPath(); ctx.moveTo(cx, cy - 6); ctx.lineTo(cx + 4.5, cy); ctx.lineTo(cx, cy + 6); ctx.lineTo(cx - 4.5, cy); ctx.closePath(); ctx.fill();
       }
       const [ex, ey] = toScreen(level.exit[0], level.exit[2]);
-      if (Math.sin(time * 6) > -0.3) { ctx.fillStyle = '#5dffb0'; ctx.beginPath(); ctx.arc(ex, ey, 4.5, 0, Math.PI * 2); ctx.fill(); }
+      if (!exitOpen()) { ctx.strokeStyle = '#6d7c84'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(ex, ey, 4.5, 0, Math.PI * 2); ctx.stroke(); }
+      else if (Math.sin(time * 6) > -0.3) { ctx.fillStyle = '#5dffb0'; ctx.beginPath(); ctx.arc(ex, ey, 4.5, 0, Math.PI * 2); ctx.fill(); }
+      const goal = objectives[objectiveIndex], spot = objectiveSpot();
+      if (goal) {
+        ctx.fillStyle = '#ffe066';
+        for (const enemy of goal.enemies) {
+          if (enemy.hp <= 0) continue;
+          const [tx, ty] = toScreen(enemy.position[0], enemy.position[2]);
+          ctx.beginPath(); ctx.moveTo(tx, ty - 5); ctx.lineTo(tx + 4, ty); ctx.lineTo(tx, ty + 5); ctx.lineTo(tx - 4, ty); ctx.closePath(); ctx.fill();
+        }
+      }
+      if (spot) {
+        // A down-pointing arrow bobbing over the goal, with a ring on the spot itself.
+        const [gx, gy] = toScreen(spot[0], spot[2]), bob = Math.sin(time * 5) * 4, tip = gy - 9 + bob;
+        ctx.strokeStyle = '#ffe066'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(gx, gy, 6 + (Math.sin(time * 4) + 1) * 2, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = '#ffe066'; ctx.beginPath();
+        ctx.moveTo(gx, tip); ctx.lineTo(gx - 9, tip - 12); ctx.lineTo(gx - 3.5, tip - 12); ctx.lineTo(gx - 3.5, tip - 24);
+        ctx.lineTo(gx + 3.5, tip - 24); ctx.lineTo(gx + 3.5, tip - 12); ctx.lineTo(gx + 9, tip - 12); ctx.closePath(); ctx.fill();
+        ctx.textAlign = 'center'; ctx.fillText(`OBJECTIVE ${objectiveIndex + 1}`, gx, tip - 30);
+      }
       const [px, py] = toScreen(ship.position[0], ship.position[2]), fx = Math.sin(ship.yaw), fy = -Math.cos(ship.yaw);
       ctx.fillStyle = '#ffffff'; ctx.beginPath();
       ctx.moveTo(px + fx * 8, py + fy * 8); ctx.lineTo(px - fx * 5 - fy * 5, py - fy * 5 + fx * 5); ctx.lineTo(px - fx * 5 + fy * 5, py - fy * 5 - fx * 5);
       ctx.closePath(); ctx.fill();
       ctx.textAlign = 'left'; ctx.fillStyle = '#65e9ff'; ctx.fillText(`MAP // SECTOR ${levelIndex + 1} // ${level.name} ${level.title}`, left + 14, top + 20);
-      ctx.textAlign = 'right'; ctx.fillStyle = '#8a9ca6'; ctx.fillText(`ORANGE: CLOSED GATE   GREEN: EXIT${cores.length ? `   TEAL: DATA CORE (${cores.length} LEFT)` : ''}   TAB: CLOSE`, right - 14, top + 20);
+      ctx.textAlign = 'right'; ctx.fillStyle = '#8a9ca6'; ctx.fillText(`${objectives.length ? 'YELLOW: OBJECTIVE   ' : ''}ORANGE: CLOSED GATE   GREEN: EXIT${exitOpen() ? '' : ' (LOCKED)'}${cores.length ? `   TEAL: DATA CORE (${cores.length} LEFT)` : ''}   TAB: CLOSE`, right - 14, top + 20);
     }
     function hurtEnemy(enemy, amount) {
       if (enemy.hp <= 0) return;
@@ -4186,7 +4496,7 @@
     function drawTargets() {
       const camera = cameraForShip(), view = camera.view, focal = focalLength();
       const square = (enemy, color, label, progress) => {
-        const delta = sub(enemy.position, camera.position), depth = dot(delta, view.forward);
+        const delta = sub(bend(enemy.position, camera.position), camera.position), depth = dot(delta, view.forward);
         if (depth < 1) return;
         const x = width / 2 + dot(delta, view.right) * focal / depth, y = height / 2 - dot(delta, view.up) * focal / depth;
         const size = clamp(ENEMY_TYPES[enemy.type].radius * 1.7 * focal / depth, 16, 140) * (1 + (1 - progress) * 1.5);
@@ -4747,7 +5057,7 @@
         if (spark.life <= 0 || !isOpen(spark.position[0], spark.position[2])) { particles.splice(i, 1); continue; }
         spark.velocity[1] -= 24 * dt;
         spark.position = add(spark.position, mul(spark.velocity, dt));
-        const floor = floorAt(spark.position[0], spark.position[2]);
+        const floor = floorAt(spark.position[0], spark.position[2], spark.position[1]);
         if (spark.position[1] < floor + 0.1) { spark.position[1] = floor + 0.1; spark.velocity = [spark.velocity[0] * 0.6, -spark.velocity[1] * 0.35, spark.velocity[2] * 0.6]; }
       }
     }
@@ -4866,7 +5176,9 @@
         else { health = Math.min(100, health + 15); notice('CANNON AT MAXIMUM // HULL +15', 1.6); }
         noteArsenal();
       }
-      if (Math.hypot(...sub(exitCenter(), ship.position)) < 7) {
+      const atExit = Math.hypot(...sub(exitCenter(), ship.position)) < 7;
+      if (atExit && !exitOpen() && time > lockedHint) { notice(`EXIT LOCKED // ${objectives[objectiveIndex].text}`, 2.5); lockedHint = time + 3; }
+      if (atExit && exitOpen()) {
         // A results line while the warp pulls the ship in: hostiles, secrets found and the sector time, kept as a best time.
         const secrets = gates.filter(g => g.kind === 'secret' || g.kind === 'cracked'), found = secrets.filter(g => g.opening).length;
         const clock = `${Math.floor(sectorTime / 60)}:${String(Math.floor(sectorTime % 60)).padStart(2, '0')}`;
@@ -4876,16 +5188,25 @@
         notice(`SECTOR CLEAR // ${kills}/${hostileTotal} HOSTILES // ${found}/${secrets.length} SECRETS // ${clock}${best ? ' BEST' : ''}`, WARP_TIME + 0.5);
       }
     }
+    // The HUD is rewritten only when a value actually changes, since each DOM change costs the browser a restyle and repaint.
+    function setText(element, value) { if (element.textContent !== value) element.textContent = value; }
+    const shown = new WeakMap();
+    function setStyle(element, property, value) {
+      let last = shown.get(element);
+      if (!last) shown.set(element, last = {});
+      if (last[property] !== value) { last[property] = value; element.style[property] = value; }
+    }
+    let hudTimer = 0;
     function update(dt) {
       warpGlow = warpTimer > 0 ? 1 - warpTimer / WARP_TIME : Math.max(0, warpGlow - dt * 1.4);
-      warpFlash.style.opacity = String(warpGlow);
+      setStyle(warpFlash, 'opacity', warpGlow.toFixed(2));
       if (destroyed && !paused) { time += dt; updateEffects(dt); }
       if (paused || destroyed || finished) return;
       time += dt;
       if (warpTimer === 0) sectorTime += dt;
       if (briefTimer > 0 && (briefTimer -= dt) <= 0) notice(level.brief, 4);
       noticeTimer = Math.max(0, noticeTimer - dt);
-      statusText.style.opacity = String(clamp(Math.max(hitTimer * 3, noticeTimer * 2), 0, 1));
+      setStyle(statusText, 'opacity', String(clamp(Math.max(hitTimer * 3, noticeTimer * 2), 0, 1)));
       if (warpTimer > 0) {
         // The gate pulls the ship in while the screen whites out, then the next sector loads.
         warpTimer = Math.max(0, warpTimer - dt);
@@ -4919,18 +5240,20 @@
       const fits = (p) => shipFits(p) && !insideGirder(p, 0.8);
       if (!fits(ship.position)) {
         // Slide along whatever was hit: keep the horizontal move, or else the vertical one.
-        const [x, y, z] = ship.position, girder = insideGirder(ship.position, 0.8), covered = coveredAt(x, z);
-        const label = girder ? 'GIRDER IMPACT' : !walkable(x, z, 0.7) ? 'WALL IMPACT' : y > WALL_TOP - 1.5 && !covered ? 'ALTITUDE LIMIT'
+        const [x, y, z] = ship.position, girder = insideGirder(ship.position, 0.8), covered = coveredAt(x, z, y);
+        const outside = level.moon && (x < GRID_X0 + 2 || z < GRID_Z0 + 2 || x > GRID_X0 + GRID_W * CELL - 2 || z > GRID_Z0 + GRID_D * CELL - 2);
+        const label = girder ? 'GIRDER IMPACT' : outside ? 'OPERATIONS LIMIT' : !walkable(x, z, 0.7) ? 'WALL IMPACT' : y > WALL_TOP - 1.5 && !covered ? 'ALTITUDE LIMIT'
           : covered && y > floorAt(x, z) + 5 ? 'CEILING IMPACT' : 'HULL SCRAPE';
         const slideXZ = [x, previous[1], z], slideUp = [previous[0], y, previous[2]];
         ship.position = fits(slideXZ) ? slideXZ : fits(slideUp) ? slideUp : previous.slice();
         ship.speed *= 0.55; ship.strafe = [ship.strafe[0] * 0.3, ship.strafe[1] * 0.3];
-        if (wallCooldown === 0) { damage(10, label); wallCooldown = 0.9; }
+        if (wallCooldown === 0 && outside) { notice('OPERATIONS LIMIT // TURN BACK', 1.6); wallCooldown = 0.9; }
+        else if (wallCooldown === 0) { damage(10, label); wallCooldown = 0.9; }
       }
       shipVelocity = mul(sub(ship.position, previous), 1 / Math.max(dt, 0.001));
       sludgeCooldown = Math.max(0, sludgeCooldown - dt);
       const hazard = hazardAt(ship.position[0], ship.position[2]);
-      if (hazard && ship.position[1] < floorAt(ship.position[0], ship.position[2]) + 4.5 && sludgeCooldown === 0) {
+      if (hazard && ship.position[1] < floorAt(ship.position[0], ship.position[2], ship.position[1]) + 4.5 && sludgeCooldown === 0) {
         damage(hazard === LAVA ? 7 : 5, hazard === LAVA ? 'MOLTEN SLAG' : 'TOXIC SLUDGE'); sludgeCooldown = 0.6;
       }
       laserCooldown = Math.max(0, laserCooldown - dt);
@@ -4943,50 +5266,68 @@
       shieldGlow = Math.max(0, shieldGlow - dt * 2.5);
       impactTimer = Math.max(0, impactTimer - dt);
       hitTimer = Math.max(0, hitTimer - dt);
+      const c0 = performance.now();
       updateCombat(dt);
-      impactText.style.opacity = String(clamp(impactTimer, 0, 1));
-      damageFlash.style.opacity = shieldOnly ? '0' : String(clamp(impactTimer * 0.55, 0, 0.55));
-      shieldFlash.style.opacity = String(clamp(shieldGlow * 0.8, 0, 0.8));
-      shieldText.textContent = String(Math.floor(shield / SHIELD_MAX * 100));
-      shieldBar.style.width = `${shield / SHIELD_MAX * 100}%`;
-      missileText.textContent = launcherLevel > 1 ? `${missileAmmo} x${LAUNCHERS[launcherLevel - 1].salvo}` : String(missileAmmo);
-      speedText.textContent = ship.speed.toFixed(1);
-      headingText.textContent = String(Math.round((ship.yaw * 180 / Math.PI % 360 + 360) % 360)).padStart(3, '0');
-      altitudeText.textContent = String(Math.round(ship.position[1]));
-      barrelText.textContent = `${barrelsDestroyed} / ${barrels.length}`;
-      killText.textContent = `${kills} / ${hostileTotal}`;
-      cannonText.textContent = WEAPONS[weaponLevel - 1].name;
-      healthText.textContent = String(health);
-      healthBar.style.width = `${health}%`;
-      healthBar.style.background = health > 35 ? '#69e4c2' : '#ff786a';
-      speedBar.style.width = `${ship.speed / 45 * 100}%`;
+      updateObjectives();
+      perfParts.combat += performance.now() - c0;
+      setStyle(impactText, 'opacity', String(clamp(impactTimer, 0, 1)));
+      setStyle(damageFlash, 'opacity', shieldOnly ? '0' : String(clamp(impactTimer * 0.55, 0, 0.55)));
+      setStyle(shieldFlash, 'opacity', String(clamp(shieldGlow * 0.8, 0, 0.8)));
+      // The readouts refresh ten times a second, which reads the same and saves the cockpit a repaint most frames.
+      hudTimer -= dt;
+      if (hudTimer <= 0) {
+        hudTimer = 0.1;
+        setText(shieldText, String(Math.floor(shield / SHIELD_MAX * 100)));
+        setStyle(shieldBar, 'width', `${Math.round(shield / SHIELD_MAX * 200) / 2}%`);
+        setText(missileText, launcherLevel > 1 ? `${missileAmmo} x${LAUNCHERS[launcherLevel - 1].salvo}` : String(missileAmmo));
+        setText(speedText, ship.speed.toFixed(1));
+        setText(headingText, String(Math.round((ship.yaw * 180 / Math.PI % 360 + 360) % 360)).padStart(3, '0'));
+        setText(altitudeText, String(Math.round(ship.position[1])));
+        setText(barrelText, `${barrelsDestroyed} / ${barrels.length}`);
+        setText(killText, `${kills} / ${hostileTotal}`);
+        setText(cannonText, WEAPONS[weaponLevel - 1].name);
+        setText(healthText, String(health));
+        setStyle(healthBar, 'width', `${health}%`);
+        setStyle(healthBar, 'background', health > 35 ? '#69e4c2' : '#ff786a');
+        setStyle(speedBar, 'width', `${Math.round(ship.speed / 45 * 200) / 2}%`);
+        setText(objectiveText, objectiveLabel());
+      }
       const zone = zoneAt(ship.position[0], ship.position[2]);
       if (zone && zoneText.textContent !== zone.name) zoneText.textContent = zone.name;
       if (zone) visitedZones.add(zone.name);
       revealTimer -= dt;
+      const r0 = performance.now();
       if (revealTimer <= 0) { revealMap(); revealTimer = 0.2; }
+      perfParts.reveal += performance.now() - r0;
       const boss = enemies.find(e => ENEMY_TYPES[e.type].boss && !e.summoned), fighting = !!boss && boss.active && boss.hp > 0;
       bossBar.classList.toggle('show', fighting);
       setTrack(fighting ? 'boss' : level.music || 'relay');
       if (fighting) {
         const left = GUARDS[boss.type] ? guardsLeft(boss) : 0, part = GUARDS[boss.type] ? ENEMY_TYPES[GUARDS[boss.type]].name : '';
-        bossName.textContent = ENEMY_TYPES[boss.type].boss;
-        bossMeter.style.width = `${boss.hp / boss.maxHp * 100}%`;
-        bossState.textContent = left ? `SHIELDED // ${left} ${part}${left > 1 ? 'S' : ''} LEFT` : boss.hp <= boss.maxHp * 0.4 ? 'CORE CRITICAL' : GUARDS[boss.type] ? 'SHIELD DOWN' : 'ENGAGED';
+        setText(bossName, ENEMY_TYPES[boss.type].boss);
+        setStyle(bossMeter, 'width', `${boss.hp / boss.maxHp * 100}%`);
+        setText(bossState, left ? `SHIELDED // ${left} ${part}${left > 1 ? 'S' : ''} LEFT` : boss.hp <= boss.maxHp * 0.4 ? 'CORE CRITICAL' : GUARDS[boss.type] ? 'SHIELD DOWN' : 'ENGAGED');
       }
     }
     let fps = 0, flightTime = 0, slowHinted = false;
     // ?perf shows how many milliseconds of CPU each part of the frame takes, averaged over the last second.
     const perfStats = new URLSearchParams(location.search).has('perf') && Object.assign(document.body.appendChild(document.createElement('div')),
       { style: 'position:fixed;left:8px;bottom:8px;z-index:99;font:12px monospace;color:#9fe;background:#000a;padding:4px 6px;white-space:pre;pointer-events:none' });
+    // ?debug exposes the game state on window.radix, for testing sectors from the browser console.
+    if (new URLSearchParams(location.search).has('debug'))
+      window.radix = { ship, enemies, gates, openGate, hurtEnemy, resetGame, set health(v) { health = v; }, get objective() { return objectiveIndex; }, get mapOpen() { return mapOpen; }, set mapOpen(v) { mapOpen = v; } };
     let perfSums = [0, 0, 0, 0], perfFrames = 0, perfStart = 0;
+    const perfParts = { combat: 0, reveal: 0, music: 0 }, slowFactor = Number(new URLSearchParams(location.search).get('slow')) || 1;
     function perfReport(parts) {
       parts.forEach((ms, i) => perfSums[i] += ms); perfFrames++;
       const now = performance.now();
       if (now - perfStart < 1000) return;
       const [logic, world3d, hud, maps] = perfSums.map(ms => (ms / perfFrames).toFixed(2));
-      perfStats.textContent = `${perfFrames} FPS  logic ${logic}  3d ${world3d}  hud ${hud}  map+radar ${maps}  ms`;
-      perfSums = [0, 0, 0, 0]; perfFrames = 0; perfStart = now;
+      const part = (key) => (perfParts[key] / perfFrames).toFixed(2);
+      perfStats.textContent = `${perfFrames} FPS  logic ${logic}  3d ${world3d}  hud ${hud}  map+radar ${maps}  ms
+` +
+        `logic: combat ${part('combat')}  map reveal ${part('reveal')}  music ${part('music')}  ms`;
+      perfSums = [0, 0, 0, 0]; perfFrames = 0; perfStart = now; for (const key in perfParts) perfParts[key] = 0;
     }
     function frame(now) {
       const raw = (now - lastTime) / 1000, dt = clamp(raw, 0, 0.05); lastTime = now;
@@ -4996,8 +5337,10 @@
       }
       const t0 = performance.now();
       update(dt);
+      const m0 = performance.now();
       scheduleMusic();
       const t1 = performance.now();
+      perfParts.music += t1 - m0;
       render();
       const t2 = performance.now();
       ctx.clearRect(0, 0, width, height);
@@ -5008,6 +5351,8 @@
       drawRadar();
       const t4 = performance.now();
       if (perfStats) perfReport([t1 - t0, t2 - t1, t3 - t2, t4 - t3]);
+      // ?slow=N stretches the game's own CPU time N-fold, to feel how a much slower processor would play.
+      if (slowFactor > 1) { const until = t4 + (t4 - t0) * (slowFactor - 1); while (performance.now() < until); }
       if (screenOpen === 'briefing') drawSystemMap(now);
       if (screenOpen === 'intro') soundHint.hidden = !!audioContext && audioContext.state === 'running';
       requestAnimationFrame(frame);

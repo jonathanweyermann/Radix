@@ -59,18 +59,19 @@ The Requiem's survey names Nadir's worlds with Greek letters, outermost first, a
 ### Act IV: The Crown (Sigma-4 and Omega)
 
 9. **Refinery Terraces.** The last supply line to the crown world.
-10. **Core Breach.** The **Omega Sentinel** guards the core that powers Omega's defenses, shielded by four pylons. When it falls, Halvorsen expects the song to stop.
+10. **Shepherd Moon.** The terraces' last fuel already went up to Sigma-4's shepherd moon, a grey rock two kilometres across that ships it on to Omega. Its depot sits on open ground under a black sky: find the tanker that went down, silence the comms mesa, break into the dome and kill its power cores, then get out.
+11. **Core Breach.** The **Omega Sentinel** guards the core that powers Omega's defenses, shielded by four pylons. When it falls, Halvorsen expects the song to stop.
 
 It doesn't. Omega was never the source. The signal threads further in, past the crown world, into the shroud.
 
 ### Act V: Beyond the Void
 
-11. **Abyss Shaft.** The first structure inside the Void is a world hollowed out to its core. The Radix descends a shaft over a hundred units deep, past ledges, crystal spires and laser-guarded tunnels, and rides the updraft back out.
-12. **Crystal Canyon.** At the end of a canyon of ice and crystal the **Void Carrier** is docked. It is one of the carriers that brought the swarm to Earth, and its hull is still scored from the crossing.
-13. **Drift Foundry.** A foundry inside the Void, building something larger than fighters.
-14. **Mirror Archive.** The Choir keep records. Three data cores seal the archive, and destroying them breaks it open. What it shows is the reason the song exists: a catalog of three hundred and twelve silenced worlds. Earth is the latest entry. Every one of them was found the same way: their first radio voices reached Nadir, and the **Herald** heard them, and sang the swarm toward them.
-15. **Ash Mesas.** A dead plain under a red sky. This was a living world once, the three hundred and eleventh. The Choir dragged its corpse inside the Void and built the Herald's listening array across it. Three tuning cores keep the array aimed. Destroy them and the Herald goes deaf to everything but you.
-16. **Heart of the Void.** At the center of the shroud the **Void Herald** waits: a crown of living crystal, guarded by three orbiting nodes, the voice that told the swarm where Earth was. It sings. Make it stop.
+12. **Abyss Shaft.** The first structure inside the Void is a world hollowed out to its core. The Radix descends a shaft over a hundred units deep, past ledges, crystal spires and laser-guarded tunnels, and rides the updraft back out.
+13. **Crystal Canyon.** At the end of a canyon of ice and crystal the **Void Carrier** is docked. It is one of the carriers that brought the swarm to Earth, and its hull is still scored from the crossing.
+14. **Drift Foundry.** A foundry inside the Void, building something larger than fighters.
+15. **Mirror Archive.** The Choir keep records. Three data cores seal the archive, and destroying them breaks it open. What it shows is the reason the song exists: a catalog of three hundred and twelve silenced worlds. Earth is the latest entry. Every one of them was found the same way: their first radio voices reached Nadir, and the **Herald** heard them, and sang the swarm toward them.
+16. **Ash Mesas.** A dead plain under a red sky. This was a living world once, the three hundred and eleventh. The Choir dragged its corpse inside the Void and built the Herald's listening array across it. Three tuning cores keep the array aimed. Destroy them and the Herald goes deaf to everything but you.
+17. **Heart of the Void.** At the center of the shroud the **Void Herald** waits: a crown of living crystal, guarded by three orbiting nodes, the voice that told the swarm where Earth was. It sings. Make it stop.
 
 ## The ending
 
@@ -111,10 +112,11 @@ Then she turns the Requiem toward Sol. There is a root in the ground back there,
 7. **TAU-3 HIVE WARRENS**: The docks are burning, and no swarm will load there again. Under Tau-3's surface are the hive warrens where the Choir grow their pilots, ruled by the Hive Queen. Burst her egg sacs, then kill her, and the next generation of Earth-burners is never born.
 8. **TAU-3 TETHER ANCHOR**: The Hive Queen is dead and her nest is quiet. A tether anchored on Tau-3 lifts finished fighters up to the orbital yards. Cut it and the yards starve.
 9. **SIGMA-4 REFINERY TERRACES**: The tether is down and Tau-3's yards are cut off. Sigma-4's refinery terraces are the last supply line feeding the crown world. Burn them and Omega stands alone.
-10. **OMEGA CORE BREACH**: Sigma-4's terraces are in ruins and Omega is cut off. The crown world's core is guarded by the Omega Sentinel and its four shield pylons. Bring the Sentinel down; this should end the song.
-11. **VOID-1 ABYSS SHAFT**: The Sentinel is dead, but the song did not stop: Omega was never the source. The signal comes from inside the Void, a shroud of dark dust around Nadir's inner worlds, and the Requiem is going in. Follow it down the Abyss Shaft, a world hollowed out to its core.
-12. **VOID-2 CRYSTAL CANYON**: You made it back up the shaft, deeper inside the Void than anyone has been. At the end of a crystal canyon a Void Carrier is docked, one of the ships that carried the swarm to Earth. Take it apart.
-13. **VOID-3 DRIFT FOUNDRY**: The carrier that burned Earth is wreckage. Deeper in, a foundry is building something far bigger than fighters. Climb it and tear it down before it is finished.
-14. **VOID-4 MIRROR ARCHIVE**: The foundry is down, and whatever it was building will never fly. The Mirror Archive holds the Choir's records behind three data cores. Destroy the cores and find out what the song is for.
-15. **VOID-5 ASH MESAS**: The archive listed 312 silenced worlds, and Earth was the latest; every one was found when the Herald heard its first radio voices. The ash plain ahead is world 311, and the Herald's listening array stands on it, aimed by three data cores. Destroy them and the Herald goes deaf to everything but you.
-16. **VOID-6 HEART OF THE VOID**: The array is blind: the Herald can only hear you now. It waits at the heart of the Void, shielded by three orbiting nodes. Silence it, and the swarm loses its voice everywhere.
+10. **SIGMA-4B SHEPHERD MOON**: The terraces are burning, but their last fuel already went up the line to Sigma-4's shepherd moon, a grey rock two kilometres across that ships it on to Omega. Its depot sits on open ground under a black sky. Find the tanker that went down, silence the comms mesa, break into the dome and kill its power cores, then get out through the extraction gate.
+11. **OMEGA CORE BREACH**: The shepherd moon is dark and Omega is cut off. The crown world's core is guarded by the Omega Sentinel and its four shield pylons. Bring the Sentinel down; this should end the song.
+12. **VOID-1 ABYSS SHAFT**: The Sentinel is dead, but the song did not stop: Omega was never the source. The signal comes from inside the Void, a shroud of dark dust around Nadir's inner worlds, and the Requiem is going in. Follow it down the Abyss Shaft, a world hollowed out to its core.
+13. **VOID-2 CRYSTAL CANYON**: You made it back up the shaft, deeper inside the Void than anyone has been. At the end of a crystal canyon a Void Carrier is docked, one of the ships that carried the swarm to Earth. Take it apart.
+14. **VOID-3 DRIFT FOUNDRY**: The carrier that burned Earth is wreckage. Deeper in, a foundry is building something far bigger than fighters. Climb it and tear it down before it is finished.
+15. **VOID-4 MIRROR ARCHIVE**: The foundry is down, and whatever it was building will never fly. The Mirror Archive holds the Choir's records behind three data cores. Destroy the cores and find out what the song is for.
+16. **VOID-5 ASH MESAS**: The archive listed 312 silenced worlds, and Earth was the latest; every one was found when the Herald heard its first radio voices. The ash plain ahead is world 311, and the Herald's listening array stands on it, aimed by three data cores. Destroy them and the Herald goes deaf to everything but you.
+17. **VOID-6 HEART OF THE VOID**: The array is blind: the Herald can only hear you now. It waits at the heart of the Void, shielded by three orbiting nodes. Silence it, and the swarm loses its voice everywhere.
