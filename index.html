@@ -3328,9 +3328,9 @@
     // The sentinel cannot be hurt while any of its shield pylons stand.
     const pylonsLeft = () => enemies.filter(e => e.type === 'pylon' && e.hp > 0).length;
     const barrels = [], enemies = [], pickups = [];
-    // The chance each type carries a shield, and how fast (radians a second) it can swing the shield round to face the ship.
+    // The chance each type carries a shield, and, for those that fly, how much room they need when moving into its cover.
     const SHIELD_BEARERS = { warden: 0.6, sentry: 0.45, striker: 0.4, lancer: 0.4, drone: 0.2 };
-    const SHIELD_TURN = { warden: 0.7, sentry: 0.8, striker: 1, lancer: 0.8, drone: 1.2 };
+    const COVER_PADS = { warden: 4, striker: 2.6, drone: 2.2 };
     const addBarrel = (x, z) => barrels.push({ position: [x, floorAt(x, z) + 1.8, z], floor: floorAt(x, z), radius: 1.7, height: 3.6, hp: 2, exploded: false, spin: range(0, Math.PI * 2), flash: 0 });
     const addEnemy = (type, x, y, z) => {
       const hp = Math.round(ENEMY_TYPES[type].hp * toughness(type));
@@ -3453,7 +3453,7 @@
       const targets = new Set(objectives.flatMap(goal => goal.enemies)), ramp = clamp(levelIndex / 4, 0, 1);
       for (const enemy of enemies)
         if (SHIELD_BEARERS[enemy.type] && !targets.has(enemy) && !enemy.leader && random() < SHIELD_BEARERS[enemy.type] * ramp)
-          Object.assign(enemy, { guard: true, guardDir: [0, 0, 1], guardUp: 0, guardOn: false, guardTimer: range(0.3, 1.2), guardFlash: 0 });
+          Object.assign(enemy, { guard: true, guardDir: [0, 0, 1], guardCenter: enemy.position.slice(), guardUp: 0, guardOn: false, guardTimer: range(0.3, 1.2), guardFlash: 0 });
       hostileTotal = enemies.length; pickupTotal = pickups.length;
     }
     // Gates seal their cells until opened. Chain gates carry two padlocks on the face the player meets,
@@ -7211,16 +7211,20 @@
         enemy.guardOn = !enemy.guardOn;
         enemy.guardTimer = enemy.guardOn ? range(6, 9) : range(2.5, 4);
       }
-      enemy.guardUp = clamp(enemy.guardUp + (enemy.guardOn && engaged ? 3 : -3) * dt, 0, 1);
-      const want = mul(toPlayer, 1 / distance);
-      if (enemy.guardUp === 0) { enemy.guardDir = want; return; }
-      // Swing toward the ship about the axis between them (any level axis when the ship is straight behind).
-      const g = enemy.guardDir, angle = Math.acos(clamp(dot(g, want), -1, 1)), turn = SHIELD_TURN[enemy.type] * dt;
-      if (angle <= turn) { enemy.guardDir = want; return; }
-      let axis = cross(g, want);
-      if (Math.hypot(...axis) < 1e-4) { const flat = Math.abs(g[1]) > 0.9 ? [1, 0, 0] : [0, 1, 0]; axis = cross(g, cross(flat, g)); }
-      const toward = cross(normalize(axis), g);
-      enemy.guardDir = normalize(add(mul(g, Math.cos(turn)), mul(toward, Math.sin(turn))));
+      const r = ENEMY_TYPES[enemy.type].radius;
+      // A new shield is set down a little in front of the bearer, facing the ship, and stays put until it drops.
+      if (enemy.guardOn && enemy.guardUp === 0) {
+        enemy.guardDir = mul(toPlayer, 1 / distance);
+        enemy.guardCenter = add(enemy.position, mul(enemy.guardDir, r + 1.6));
+      }
+      // Once the ship is more than 65 degrees round its edge, or the bearer has been pushed away from it, the shield is no
+      // use: the bearer drops it and sets down a new one soon after.
+      if (enemy.guardOn && enemy.guardUp > 0) {
+        const fromShield = sub(ship.position, enemy.guardCenter);
+        const flanked = dot(fromShield, enemy.guardDir) < Math.hypot(...fromShield) * 0.42;
+        if (flanked || Math.hypot(...sub(enemy.position, enemy.guardCenter)) > r * 2 + 5) { enemy.guardOn = false; enemy.guardTimer = range(1.2, 2); }
+      }
+      enemy.guardUp = clamp(enemy.guardUp + (enemy.guardOn ? 3 : -3) * dt, 0, 1);
     }
     function evade(enemy, distance, sight, dt) {
       enemy.jinkReady = (enemy.jinkReady ?? range(0.3, 1)) - dt;
@@ -7241,6 +7245,11 @@
       const home = sub(enemy.base, enemy.position), away = Math.hypot(...home);
       const tether = (wanted, reach) => away > reach ? add(wanted, mul(home, 10 / away)) : wanted;
       if (EVASION[enemy.type] && enemy.active && visible) evade(enemy, distance, sight, dt);
+      // While its shield is up, a bearer that flies keeps in its cover: straight behind the shield as seen from the ship.
+      if (enemy.guard && enemy.guardUp > 0 && COVER_PADS[enemy.type]) {
+        const spot = add(enemy.guardCenter, mul(normalize(sub(enemy.guardCenter, ship.position)), ENEMY_TYPES[enemy.type].radius + 1.6));
+        return drive(enemy, capLength(mul(sub(spot, enemy.position), 2.5), 12), dt, 3, COVER_PADS[enemy.type]);
+      }
       switch (enemy.type) {
         case 'hunter': case 'mite': {
           if (!enemy.active) return bob(enemy, 1.3, 1.1);
@@ -7592,10 +7601,7 @@
     // A shield bearer's barrier is a one-way disc held in front of it, facing `guardDir`. Anything of the ship's crossing it
     // from the front stops there; the bearer's own bolts, fired from behind it, pass straight out. Returns the bearer and the
     // point where a segment from `a` to `b` would strike a barrier, or null.
-    const guardDisc = (enemy) => {
-      const r = ENEMY_TYPES[enemy.type].radius;
-      return { center: add(enemy.position, mul(enemy.guardDir, r + 1.6)), radius: (r * 1.5 + 2.2) * enemy.guardUp };
-    };
+    const guardDisc = (enemy) => ({ center: enemy.guardCenter, radius: (ENEMY_TYPES[enemy.type].radius * 1.5 + 2.2) * enemy.guardUp });
     function shieldStop(a, b) {
       for (const enemy of enemies) {
         if (!enemy.guard || enemy.hp <= 0 || enemy.guardUp < 0.3) continue;
