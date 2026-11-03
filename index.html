@@ -40,7 +40,7 @@
     body.touch .status { font-size: 12px; letter-spacing: .14em; }
     .shield-flash { position: absolute; inset: 0; background: radial-gradient(transparent 50%,#4fa8ff77); opacity: 0; }
     .warning { position: absolute; top: 22%; left: 50%; transform: translateX(-50%); color: #ff6a5a; font-size: 13px; letter-spacing: .3em; opacity: 0; }
-    .damage-flash { position: absolute; inset: 0; background: radial-gradient(transparent 45%,#ef513d88); opacity: 0; }
+    .damage-flash { position: absolute; inset: 0; background: radial-gradient(#ff301e30, #ff301e44 45%, #e8301ebb); opacity: 0; }
     .warp { position: absolute; inset: 0; background: radial-gradient(#f2fff8, #8dffc8 45%, #1a6a52); opacity: 0; }
     .controls { position: absolute; left: 28px; right: 28px; bottom: 9px; color: #8a9ca6; font-size: 10px; line-height: 1.4; letter-spacing: .05em; text-align: center; white-space: nowrap; overflow: hidden; }
     .controls b { color: #e1faff; font-weight: normal; }
@@ -254,7 +254,7 @@
     const STRAFE_SPEED = 14;
     let width = 0, height = 0, dpr = 1, lastTime = performance.now(), time = 0, paused = false, impactTimer = 0, hitTimer = 0, muzzleTimer = 0, fireCooldown = 0, lastFired = -9, wallCooldown = 0, health = 100, barrelsDestroyed = 0, kills = 0, destroyed = false, mouseFiring = false, audioContext = null, musicBus = null, musicOn = true, musicStep = 0, musicNextTime = 0;
     let musicIn = null, reverbIn = null, delayIn = null, noiseBuffer = null, musicIntensity = 0;
-    let shield = 34, shieldDelay = 0, shieldGlow = 0, shieldOnly = false, missileAmmo = 0, levelMissiles = 0, missileCooldown = 0, missileRequest = false, lockTarget = null, lockTimer = 0;
+    let shield = 34, shieldDelay = 0, shieldGlow = 0, redFlash = 0, trauma = 0, missileAmmo = 0, levelMissiles = 0, missileCooldown = 0, missileRequest = false, lockTarget = null, lockTimer = 0;
     let sludgeCooldown = 0, weaponLevel = 1, levelWeapon = 1, launcherLevel = 1, levelLauncher = 1, railCount = 0, finished = false, warpTimer = 0, warpGlow = 0, noticeTimer = 0;
     let seed = 0x5eed;
     const random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 0x100000000; };
@@ -2288,7 +2288,7 @@
       {
         // The sunless sea: a cavern under the Void's crust, its roof hung with stalactites over a black lake, with glowing crystal
         // stalagmites on the shore and a drowned shrine on an island in the middle.
-        name: 'VOID-1B', title: 'SUNLESS SEA', music: 'sunless', top: 70, width: 256, start: [0, -3, -24], yaw: 0, exit: [0, 0, 730, true], since: 'six',
+        name: 'VOID-1B', title: 'SUNLESS SEA', music: 'sunless', top: 70, width: 256, start: [0, -3, -24], yaw: 0, exit: [0, 0, 730, true], since: 'six', crowd: 3,
         interior: true, ceiling: 'wallBasalt', crown: 'wallBasalt', posts: false, roof: 'floorVoid', tint: [0.95, 0.85, 1.1], fog: [140, 900, 0.8], haze: 0.25,
         sky: { zenith: [0.02, 0.01, 0.04], fog: [0.1, 0.06, 0.16], sun: [0.8, 0.62, 1.05], sunDir: [0.3, 1, 0.25] },
         walls: { lower: [['wallBasalt', 1]], upper: [['wallBasalt', 1]] },
@@ -3382,8 +3382,25 @@
       objectiveIndex = 0;
       objectives = (def.objectives || []).map(goal => ({ ...goal, enemies: (goal.targets || []).map(([type, x, y, z, title]) => Object.assign(addEnemy(type, x, y, z), { title })) }));
       const fromStart = (x, z) => Math.hypot(x - def.start[0], z - def.start[2]);
-      for (const zone of def.zones) {
+      // Open worlds (moons, cylinders, canyons, open space and the sunless sea) give the ship room to outfly anything, so
+      // their open-air zones hold three times the hostiles, spaced apart in three dimensions. Rooms and buildings inside
+      // them keep their counts: a zone is open air when it has an altitude band, or, away from space, when most of it has
+      // at least 45 units of headroom.
+      const crowd = def.crowd ?? (def.moon || def.cylinder || def.canyon || def.space ? 3 : 1);
+      const openAir = (zone) => {
+        if (zone.altitude) return true;
+        if (def.space) return false;
         const [x0, z0, x1, z1] = zone.area;
+        let tall = 0, total = 0;
+        for (let z = z0 + CELL / 2; z < z1; z += CELL * 2) for (let x = x0 + CELL / 2; x < x1; x += CELL * 2) {
+          const i = cellIndex(x, z);
+          if (i < 0 || !open[i]) continue;
+          total++; if (ceilY[i] - floorY[i] >= 45) tall++;
+        }
+        return tall * 2 > total;
+      };
+      for (const zone of def.zones) {
+        const [x0, z0, x1, z1] = zone.area, many = crowd > 1 && openAir(zone) ? crowd : 1;
         const scatter = (count, margin, place) => {
           let placed = 0;
           for (let attempt = 0; attempt < 600 && placed < count; attempt++)
@@ -3400,7 +3417,7 @@
         for (const [type, field] of [['drone', 'drones'], ['hunter', 'hunters'], ['warden', 'wardens'], ['striker', 'strikers'], ['sentry', 'turrets'],
           ['lancer', 'lancers'], ['aegis', 'aegis'], ['brood', 'broods'], ['skimmer', 'skimmers'], ['miner', 'miners'], ['phantom', 'phantoms'], ['warden', 'escorts']]) {
           const margin = type === 'warden' || type === 'brood' ? 6 : 4;
-          scatter(Math.round((zone[field] || 0) * DIFFICULTIES[save.difficulty].enemies), margin, (x, z) => {
+          scatter(Math.round((zone[field] || 0) * many * DIFFICULTIES[save.difficulty].enemies), margin, (x, z) => {
             const i = cellIndex(x, z);
             if (i < 0 || (!zone.altitude && ceilY[i] - floorY[i] < 9)) return false;
             if (type === 'sentry' && (zone.altitude || !flatAt(x, z, 3) || hazardAt(x, z))) return false;
@@ -3409,7 +3426,7 @@
             const y = zone.altitude ? range(...zone.altitude) : type === 'sentry' ? floorY[i] + 3.4 : clamp(floorY[i] + lift, floorY[i] + 3.5, ceilY[i] - 3.5);
             if (zone.altitude && !freeAt(x, y, z, margin)) return false;
             if (!walkable(x, z, margin) || insideGirder([x, y, z], margin + 1) || fromStart(x, z) < 60 ||
-              enemies.some(e => Math.hypot(e.base[0] - x, e.base[2] - z) < 14)) return false;
+              enemies.some(e => many > 1 ? Math.hypot(e.base[0] - x, e.base[1] - y, e.base[2] - z) < 12 : Math.hypot(e.base[0] - x, e.base[2] - z) < 14)) return false;
             const enemy = addEnemy(type, x, y, z);
             // From sector 6 on, some zone spawns are elites: gold-eyed, tougher and quicker to fire.
             if (random() < Math.min(0.25, (levelIndex - 4) * 0.035)) { enemy.elite = true; enemy.hp = enemy.maxHp = Math.ceil(enemy.hp * 1.8); }
@@ -5945,6 +5962,30 @@
       synth(125, 34, 0.5, 0.09, 'sawtooth', at);
       synth(960, 110, 0.18, 0.025, 'square', at);
     }
+    // A shield hit rings and crackles like a struck force field; a hull hit is a heavy thump with a metal crunch and rattle.
+    // Both grow louder with the damage, and hits closer together than 80 ms share one sound.
+    let hitSoundAt = -1;
+    function playShieldHit(amount) {
+      if (!audioContext || audioContext.state !== 'running' || time - hitSoundAt < 0.08) return;
+      hitSoundAt = time;
+      const at = audioContext.currentTime, loud = clamp(0.6 + amount / 30, 0.6, 1.3);
+      synth(1900, 520, 0.22, 0.05 * loud, 'triangle', at);
+      synth(2870, 760, 0.16, 0.02 * loud, 'square', at);
+      synth(240, 120, 0.3, 0.05 * loud, 'sine', at);
+      const crackle = amp(audioContext.destination); envelope(crackle.gain, at, 0.003, 0.09 * loud, 0.2);
+      hiss(at, 0.2, filter('bandpass', 4200, 1.8, crackle, at));
+    }
+    function playHullHit(amount) {
+      if (!audioContext || audioContext.state !== 'running' || time - hitSoundAt < 0.08) return;
+      hitSoundAt = time;
+      const at = audioContext.currentTime, loud = clamp(0.7 + amount / 25, 0.7, 1.5);
+      synth(150, 40, 0.38, 0.16 * loud, 'sine', at);
+      synth(330, 190, 0.22, 0.035 * loud, 'square', at); synth(471, 260, 0.18, 0.025 * loud, 'square', at);
+      const crunch = amp(audioContext.destination); envelope(crunch.gain, at, 0.002, 0.22 * loud, 0.32);
+      hiss(at, 0.32, filter('lowpass', 1400, 0.8, crunch, at));
+      const rattle = amp(audioContext.destination); envelope(rattle.gain, at + 0.03, 0.004, 0.05 * loud, 0.4);
+      hiss(at + 0.03, 0.4, filter('bandpass', 2600, 6, rattle, at));
+    }
 
     function loadLevel(index, startHealth) {
       levelIndex = index; level = LEVELS[index]; WALL_TOP = level.top; wrapCells = !!level.cylinder;
@@ -5964,7 +6005,7 @@
       health = startHealth; levelWeapon = weaponLevel; levelMissiles = missileAmmo; levelLauncher = launcherLevel; rails.length = 0; railCount = 0; shield = SHIELD_MAX; shieldDelay = 0;
       missiles.length = 0; enemyMissiles.length = 0; lockTarget = null; lockTimer = 0;
       barrelsDestroyed = 0; kills = 0; destroyed = false; finished = false; sludgeCooldown = 0; paused = menuOpen || !!screenOpen; mouseFiring = false;
-      impactTimer = 0; hitTimer = 0; muzzleTimer = 0; fireCooldown = 0; wallCooldown = 0; warpTimer = 0;
+      impactTimer = 0; hitTimer = 0; muzzleTimer = 0; fireCooldown = 0; wallCooldown = 0; warpTimer = 0; redFlash = 0; trauma = 0;
       shots.length = 0; enemyShots.length = 0; explosions.length = 0; particles.length = 0;
       gameOverText.classList.remove('show'); pausedText.classList.remove('show');
       bossBlast = null; resetMap(); setTrack(menuOpen || screenOpen ? 'menu' : level.music || 'relay');
@@ -6292,7 +6333,9 @@
       const absorbed = Math.min(shield, amount);
       shield -= absorbed; amount -= absorbed;
       if (absorbed > 0) shieldGlow = 1;
-      shieldOnly = amount === 0;
+      // Every hit shakes the view; one that reaches the hull shakes it harder and turns the screen red.
+      if (amount > 0) { trauma = Math.min(1, trauma + 0.4 + amount / 30); redFlash = Math.max(redFlash, Math.min(1, 0.55 + amount / 40)); playHullHit(amount); }
+      else { trauma = Math.min(1, trauma + 0.3 + absorbed / 50); playShieldHit(absorbed); }
       health = Math.max(0, Math.round(health - amount));
       impactTimer = 1.1; impactText.textContent = label;
       if (health === 0) {
@@ -6329,8 +6372,10 @@
       }
     }
 
+    // Hits shake the view: two quick wobbles per axis, scaled by the square of the trauma so small hits stay small.
     function cameraForShip() {
-      return { view: basis(ship.yaw, ship.pitch, ship.roll), position: ship.position };
+      const shake = trauma * trauma, wobble = (rate, seed) => (Math.sin(time * rate + seed) + 0.5 * Math.sin(time * rate * 1.7 + seed * 2.3)) / 1.5 * shake;
+      return { view: basis(ship.yaw + wobble(37, 1) * 0.045, ship.pitch + wobble(41, 4) * 0.04, ship.roll + wobble(29, 7) * 0.08), position: ship.position };
     }
     function focalLength() { return Math.min(width * 0.75, height * 0.9); }
     function viewProjection(camera) {
@@ -7825,6 +7870,7 @@
       shieldDelay = Math.max(0, shieldDelay - dt);
       if (shieldDelay === 0) shield = Math.min(SHIELD_MAX, shield + SHIELD_MAX * 0.07 * dt);
       shieldGlow = Math.max(0, shieldGlow - dt * 2.5);
+      redFlash = Math.max(0, redFlash - dt * 1.1); trauma = Math.max(0, trauma - dt * 1.4);
       impactTimer = Math.max(0, impactTimer - dt);
       hitTimer = Math.max(0, hitTimer - dt);
       const c0 = performance.now();
@@ -7832,7 +7878,7 @@
       updateObjectives();
       perfParts.combat += performance.now() - c0;
       setStyle(impactText, 'opacity', String(clamp(impactTimer, 0, 1)));
-      setStyle(damageFlash, 'opacity', shieldOnly ? '0' : String(clamp(impactTimer * 0.55, 0, 0.55)));
+      setStyle(damageFlash, 'opacity', String(clamp(redFlash * 0.85, 0, 0.85)));
       setStyle(shieldFlash, 'opacity', String(clamp(shieldGlow * 0.8, 0, 0.8)));
       // The readouts refresh ten times a second, which reads the same and saves the cockpit a repaint most frames.
       hudTimer -= dt;
@@ -7876,7 +7922,7 @@
       { style: 'position:fixed;left:8px;bottom:8px;z-index:99;font:12px monospace;color:#9fe;background:#000a;padding:4px 6px;white-space:pre;pointer-events:none' });
     // ?debug exposes the game state on window.radix, for testing sectors from the browser console.
     if (new URLSearchParams(location.search).has('debug'))
-      window.radix = { ship, enemies, shots, enemyShots, bend, unbend, barrels, pickups, gates, addEnemy, openGate, hurtEnemy, resetGame, insideGirder, startSector, cells: { open, floorY, ceilY, roofY, underY, cellIndex }, get level() { return level; }, set health(v) { health = v; }, get firing() { return mouseFiring; }, set firing(v) { mouseFiring = v; }, get boosting() { return boostFrom !== null; }, get objective() { return objectiveIndex; }, get mapOpen() { return mapOpen; }, set mapOpen(v) { mapOpen = v; } };
+      window.radix = { ship, enemies, shots, enemyShots, bend, unbend, damage, barrels, pickups, gates, addEnemy, openGate, hurtEnemy, resetGame, insideGirder, startSector, cells: { open, floorY, ceilY, roofY, underY, cellIndex }, get level() { return level; }, set health(v) { health = v; }, get firing() { return mouseFiring; }, set firing(v) { mouseFiring = v; }, get boosting() { return boostFrom !== null; }, get objective() { return objectiveIndex; }, get mapOpen() { return mapOpen; }, set mapOpen(v) { mapOpen = v; } };
     let perfSums = [0, 0, 0, 0], perfFrames = 0, perfStart = 0;
     const perfParts = { combat: 0, reveal: 0, music: 0 }, slowFactor = Number(new URLSearchParams(location.search).get('slow')) || 1;
     function perfReport(parts) {
