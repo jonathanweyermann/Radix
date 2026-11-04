@@ -366,6 +366,17 @@
     //     bottom: [centre, rim], roof, under, inner }. Cells carved with the hull's `roof` and `under` heights take a rounded
     //     outline (a superellipse of that power), a domed top and a keeled bottom; rooms inside it are clipped back to walls
     //     where they pass `inner` of the way to the rim, and their ceilings and floors stay clear of the hull.
+    //   rooms can also hold shapes, made with `oval` and `tube`, carved in their place in the list so later entries overwrite
+    //     earlier ones. Their walls follow the true curve, both as drawn and for collisions. Options, in `more`:
+    //     dome (the ceiling rises this far in the middle), head (with a floor of [from, to], a tube that climbs and keeps this
+    //     headroom), side (texture for the faces of a step), power (above 2 squares an oval off), turn (radians), hole (0 to 1,
+    //     a ring), wobble and grain (how far, and over what distance, the edge wanders), raise (changes only the floor of cells
+    //     already open: ledges, mounds, pools) and solid (a round pillar at least three cells across, in wall kind `kind`).
+    //     Put door frames and tubes before the chambers they open into, so that the chamber's curve cuts their ends. Shapes
+    //     work in ordinary sectors, not in open space or a cylinder.
+    //     A shape with a `roof` and the terrain's side texture is a cave or tunnel through the rock.
+    //   roundBlocks: the sector's blocks, up to six cells wide, are drawn as round pillars
+    //   shards: clusters of leaning crystal [x, z, width, height] growing from the ground
     //   space: the sector is open space: stars all round, no ground drawn, and the edges, floor and top of the operations
     //     area marked with lights and stopping the ship without harm. Zones there can spawn at an `altitude: [low, high]`.
     //   cylinder: the sector lines the inside of a spinning cylinder. The map's width is its circumference, wrapping round
@@ -378,8 +389,8 @@
     //   terrain: natural ground for rooms of MOON or GRASS floor with the terrain's `side` texture (default 'wallMoon'):
     //     { lakes: [x, z, radius, depth] basins, water (the lakes' surface height above the room floor), trees (how many),
     //     liquid: what fills the lakes ('floorWater' by default, 'floorLava' burns, 'floorIce' is frozen),
-    //     canyons: [[depth, half width, [x, z], [x, z], ...]] winding channels along each path, terrace (cut slopes into
-    //     ledges this tall),
+    //     canyons: [[depth, half width, [x, z], [x, z, depth], ...]] winding channels along each path, whose points can set a
+    //     depth of their own, toEdge (canyons keep their depth right up to the map's edge), terrace (cut slopes into ledges this tall),
     //     hills (height of the rolling ground),
     //     craters: [x, z, radius, depth], ridges: [x, z0, z1, half width, height], small and boulders (how many small craters
     //     and loose rocks to scatter), clear: areas [x0, z0, x1, z1] kept flat for buildings }. Its floors follow a smooth
@@ -392,6 +403,9 @@
     const BULKHEAD = 1, COLUMN = 2, REACTOR = 3, CRYSTAL = 4, SKY = undefined;
     // A floating module for open space: walls `wall` thick, solid from `under` to `roof`, around a deck open from `floor` to
     // `ceil`; each door [x0, z0, x1, z1, top] cuts a doorway through the walls up to `top`.
+    const inIce = (more) => ({ side: 'wallGlacier', roof: 130, ...more });
+    const oval = (x, z, rx, rz, material, floor = BASE, ceil, more) => ({ at: [x, z], radii: [rx, rz], material, floor, ceil, ...more });
+    const tube = (path, width, material, floor = BASE, ceil, more) => ({ path, width, material, floor, ceil, ...more });
     function podRooms([x0, z0, x1, z1], { floor, ceil, under, roof, side = 'wallTech', material = PLATE, doors = [], wall = 4 }) {
       return [
         [x0, z0, x1, z1, material, roof, SKY, side, undefined, null, under],
@@ -1076,47 +1090,70 @@
         ],
       },
       {
-        name: 'TAU-3', title: 'HIVE WARRENS', music: 'hivemind', music2: 'hive', top: 49, start: [0, -4, 0], yaw: 0, exit: [0, 40, 728, true], tint: [1.06, 1.0, 0.86],
+        // The warrens were grown, not built: every chamber is a rounded cell under a dome, joined by tubes that wander as they
+        // run. Only the gates keep straight frames, and each chamber's curve cuts the end of its frames and tubes.
+        name: 'TAU-3', title: 'HIVE WARRENS', music: 'hivemind', music2: 'hive', top: 80, start: [0, -4, 0], yaw: 0, exit: [0, 40, 728, true], tint: [1.06, 1.0, 0.86],
         sky: { zenith: [0.05, 0.04, 0.02], fog: [0.2, 0.17, 0.1], sun: [0.8, 0.65, 0.4], sunDir: [0.3, 0.6, 0.7] },
-        walls: { lower: [['wallHive', 0.6], ['wallPipes', 0.2], ['wallRust', 0.2]], upper: [['wallHive', 0.7], ['wallRust', 0.3]] },
+        walls: { lower: [['wallHive', 1]], upper: [['wallChitin', 1]] },
+        lit: true, ceiling: 'wallChitin', crown: 'wallChitin', posts: false, props: 0, roundBlocks: true, rockMaterial: 'wallChitin',
         rooms: [
-          [-24, -32, 24, 32, PAD, BASE, 9],
-          [-8, 32, 8, 80, PLATE, BASE, 1],
-          [-56, 80, 56, 160, HIVE, BASE, 19],
-          [-184, 96, -120, 200, PLATE, 3, 19], [-160, 200, -144, 300, PLATE, 3, 15], [-160, 300, -104, 316, PLATE, 3, 15],
-          [56, 112, 120, 128, PLATE, BASE, 1],
-          [120, 88, 200, 168, SLUDGE, BASE, 9], [120, 124, 200, 132, PLATE, -7, 9], [128, 96, 152, 120, PAD, -7, 9], [168, 136, 192, 160, PAD, -7, 9],
-          [176, 168, 192, 300, PLATE, BASE, 1], [104, 300, 192, 316, PLATE, BASE, 1],
-          [-104, 280, 104, 400, HIVE, BASE, 25],
-          [-72, 480, 72, 560, HIVE, 9, 25], [-56, 496, -24, 544, SLUDGE, 9, 25],
-          [-80, 512, -72, 528, PLATE, 9, 19], [-124, 500, -80, 540, PAD, 9, 19],
-          [-8, 560, 8, 600, PLATE, 9, 21],
-          [-40, 600, 40, 672, PAD, 9],
-          [-196, 140, -184, 156, PLATE, 3, 15],
-          [-252, 96, -196, 240, HIVE, -27], [-252, 96, -232, 240, HIVE, BASE, SKY, 'wallHive'], [-216, 180, -196, 240, HIVE, 3, SKY, 'wallHive'],
-          [-240, 120, -220, 140, HIVE, 15, SKY, 'wallHive'], [-232, 160, -216, 176, VENT, -27],
-          [-252, 40, -212, 96, PAD, BASE, 9],
-          [-236, 240, -220, 316, PLATE, 3, 15], [-220, 300, -160, 316, PLATE, 3, 15],
-          [-72, 672, 72, 744, HIVE, 1], [-72, 704, -48, 744, HIVE, 13, SKY, 'wallHive'], [48, 672, 72, 700, HIVE, 25, SKY, 'wallHive'],
-          [-20, 712, 20, 744, PAD, 33, SKY, 'wallHive'],
+          // Gate frames.
+          [176, 156, 192, 180, PLATE, BASE, 1], [88, 300, 124, 316, PLATE, BASE, 1], [-124, 300, -88, 316, PLATE, 3, 15], [-8, 396, 8, 416, PLATE, BASE, 1],
+          [-92, 512, -60, 528, PLATE, 9, 19], [-204, 140, -176, 156, PLATE, 3, 15], [-240, 84, -224, 104, PAD, BASE, 9], [-40, 660, 40, 684, PAD, 9, 25],
+          // Tubes.
+          tube([[0, 28], [6, 56], [0, 84]], 16, HIVE, BASE, -3, { dome: 5 }),
+          tube([[-52, 120], [-88, 116], [-124, 124]], 16, HIVE, [BASE, 3], undefined, { head: 8, dome: 5 }),
+          tube([[-152, 196], [-156, 250], [-150, 296], [-136, 308], [-120, 308]], 16, HIVE, 3, 11, { dome: 5 }),
+          tube([[52, 120], [88, 126], [122, 120]], 16, HIVE, BASE, -3, { dome: 5 }),
+          tube([[184, 176], [178, 240], [186, 292], [170, 308], [120, 308]], 16, HIVE, BASE, -3, { dome: 5 }),
+          tube([[0, 412], [-10, 446], [0, 486]], 16, HIVE, [BASE, 9], undefined, { head: 8, dome: 5 }),
+          tube([[0, 556], [6, 580], [0, 602]], 16, HIVE, 9, 17, { dome: 5 }),
+          tube([[-228, 236], [-228, 300], [-216, 308], [-156, 306]], 16, HIVE, 3, 11, { dome: 5 }),
+          // The hatchery and the brood chamber.
+          oval(0, 0, 26, 34, HIVE, BASE, 7, { dome: 12 }),
+          oval(0, 120, 60, 42, HIVE, BASE, 15, { dome: 26, power: 2.4 }),
+          // The west gallery.
+          oval(-152, 148, 34, 54, HIVE, 3, 17, { dome: 12 }),
+          // The egg vault: a sludge pool with a raised causeway and two egg mounds.
+          oval(158, 124, 46, 42, SLUDGE, BASE, 7, { dome: 16 }),
+          tube([[112, 124], [158, 120], [206, 124]], 8, PLATE, -7, undefined, { raise: true, side: 'wallHive' }),
+          oval(138, 104, 14, 14, PAD, -7, undefined, { raise: true, side: 'wallHive' }), oval(178, 142, 14, 14, PAD, -7, undefined, { raise: true, side: 'wallHive' }),
+          // The nest, under a great dome.
+          oval(0, 340, 110, 58, HIVE, BASE, 21, { dome: 38, power: 2.4 }),
+          // The upper warren and its sludge pool, the royal cache off it through a secret door.
+          oval(0, 520, 70, 42, HIVE, 9, 23, { dome: 18, power: 2.4 }),
+          oval(-40, 520, 16, 22, SLUDGE, 9, undefined, { raise: true }),
+          oval(-104, 520, 22, 20, PAD, 9, 19, { dome: 6 }),
+          // Up through the surface: a ragged breach, then the crown nest open to the sky.
+          oval(0, 630, 44, 34, HIVE, 9, undefined, { wobble: 4, grain: 26, power: 2.3 }),
+          oval(0, 714, 74, 34, HIVE, 1, undefined, { wobble: 3, grain: 34, power: 2.4 }),
+          oval(-66, 736, 24, 26, HIVE, 13, undefined, { raise: true, side: 'wallHive' }), oval(62, 690, 24, 22, HIVE, 25, undefined, { raise: true, side: 'wallHive' }),
+          oval(0, 730, 22, 20, PAD, 33, undefined, { raise: true, side: 'wallHive' }),
+          // The larva pits, open to the sky, with ledges round them and the vault behind a cracked wall.
+          oval(-232, 62, 22, 26, PAD, BASE, 9, { dome: 8 }),
+          oval(-226, 170, 28, 70, HIVE, -27, undefined, { wobble: 3, grain: 30 }),
+          oval(-262, 170, 30, 76, HIVE, BASE, undefined, { raise: true, side: 'wallHive' }), oval(-192, 222, 28, 36, HIVE, 3, undefined, { raise: true, side: 'wallHive' }),
+          oval(-232, 130, 12, 12, HIVE, 15, undefined, { raise: true, side: 'wallHive' }), oval(-226, 168, 8, 8, VENT, -27, undefined, { raise: true }),
         ],
-        stairs: [[-120, 112, -56, 128, PLATE, 3, BASE, 'x', 11], [-8, 400, 8, 480, PLATE, BASE, 9, 'z', 11]],
+        stairs: [],
         blocks: [
-          [-40, 100, -32, 108, COLUMN], [32, 100, 40, 108, COLUMN], [-40, 132, -32, 140, COLUMN], [32, 132, 40, 140, COLUMN],
-          [-168, 120, -160, 128, COLUMN], [-144, 168, -136, 176, COLUMN],
-          [-12, 328, 12, 352, REACTOR], [-72, 300, -64, 308, COLUMN], [64, 300, 72, 308, COLUMN], [-72, 372, -64, 380, COLUMN], [64, 372, 72, 380, COLUMN],
-          [24, 500, 32, 508, COLUMN], [44, 528, 52, 536, COLUMN],
-          [-24, 640, -16, 648, COLUMN], [16, 640, 24, 648, COLUMN],
-          [-48, 692, -40, 700, REACTOR], [40, 700, 48, 708, REACTOR], [-208, 116, -200, 124, REACTOR],
+          [-40, 100, -32, 108, BULKHEAD], [32, 100, 40, 108, BULKHEAD], [-40, 132, -32, 140, BULKHEAD], [32, 132, 40, 140, BULKHEAD],
+          [-168, 120, -160, 128, BULKHEAD], [-144, 168, -136, 176, BULKHEAD],
+          [-12, 328, 12, 352, BULKHEAD], [-72, 300, -64, 308, BULKHEAD], [64, 300, 72, 308, BULKHEAD], [-72, 372, -64, 380, BULKHEAD], [64, 372, 72, 380, BULKHEAD],
+          [24, 500, 32, 508, BULKHEAD], [44, 528, 52, 536, BULKHEAD],
+          [-24, 640, -16, 648, BULKHEAD], [16, 640, 24, 648, BULKHEAD],
+          [-48, 692, -40, 700, BULKHEAD], [40, 700, 48, 708, BULKHEAD], [-216, 128, -208, 136, BULKHEAD],
         ],
-        girders: [[-56, 2, 120, 56, 5, 124], [-104, 6, 312, 104, 9, 316], [-104, 14, 364, 104, 17, 368], [-72, 16, 520, 72, 19, 524],
-          [-252, 25, 196, -196, 28, 200], [-72, 37, 684, 72, 40, 688]],
+        // Clusters of old egg cases cling to the domes.
+        rocks: [[-38, 36, 124, 5], [34, 33, 112, 4, 1], [0, 39, 136, 6, 2], [-70, 48, 330, 7], [66, 50, 352, 6, 1], [-30, 54, 318, 6, 2], [36, 55, 362, 5, 3], [0, 57, 326, 7, 1],
+          [-34, 37, 510, 4], [30, 38, 532, 5, 2], [158, 18, 124, 5, 3], [-152, 26, 150, 4]],
+        girders: [],
         gates: [
           [176, 168, 192, 172, 'south', 'chain'], [104, 300, 108, 316, 'east', 'chain'], [-108, 300, -104, 316, 'west', 'chain'],
           [-8, 400, 8, 404, 'south', 'boss'], [-76, 512, -72, 528, 'east', 'secret'],
           [-196, 140, -192, 156, 'east', 'chain'], [-240, 92, -224, 96, 'north', 'cracked'], [-40, 672, 40, 676, 'south', 'chain'],
         ],
-        lasers: [[-236, 280, -220, 280, 4, 14.3, 3, 0]],
+        lasers: [[-236, 280, -220, 280, 4, 17.3, 3, 0]],
         extras: { enemies: [['queen', 0, 9, 372], ['egg', -88, -5, 336], ['egg', 88, -5, 336], ['egg', -40, -5, 388], ['egg', 40, -5, 388]] },
         brief: 'THE HIVE QUEEN NESTS AT THE HEART OF THE WARRENS',
         zones: [
@@ -2607,41 +2644,57 @@
         ],
       },
       {
-        name: 'VOID-2', title: 'CRYSTAL CANYON', music: 'canyon', music2: 'horizon', top: 65, start: [0, -4, 0], yaw: 0, exit: [0, 4, 728, true], tint: [0.92, 1.0, 1.08],
+        // A real canyon: a sheet of glacier ice standing higher than the sector's top, with the route cut down through it. The
+        // tunnels bore through the ice, a dam of Void plating closes the gorge below the high pass, and the carrier's berth is
+        // the one built thing left, sunk into the head of the canyon.
+        name: 'VOID-2', title: 'CRYSTAL CANYON', music: 'canyon', music2: 'horizon', top: 100, width: 164, start: [0, -4, 0], yaw: 0, exit: [0, 4, 728, true], tint: [0.92, 1.0, 1.08],
         brief: 'A VOID CARRIER IS DOCKED AT THE END OF THE CANYON',
         sky: { zenith: [0.1, 0.2, 0.38], fog: [0.55, 0.66, 0.78], sun: [1.0, 0.95, 0.9], sunDir: [0.4, 0.55, 0.6] },
-        walls: { lower: [['wallIce', 0.7], ['wallTech', 0.3]], upper: [['wallIce', 0.8], ['wallWindows', 0.2]] },
+        walls: { lower: [['wallTech', 1]], upper: [['wallTech', 0.7], ['wallWindows', 0.3]] },
+        roundBlocks: true,
         rooms: [
-          [-24, -32, 24, 24, ICE],
-          [-104, -8, -24, 8, ICE, BASE, 5], [-120, -8, -104, 232, ICE, BASE, 5],
-          [-16, 24, 16, 120, ICE], [-16, 48, -8, 100, ICE, 9, SKY, 'wallIce'], [8, 64, 16, 96, ICE, 1, SKY, 'wallIce'],
-          [16, 96, 120, 128, ICE, -7], [40, 96, 72, 104, ICE, 17, SKY, 'wallIce'],
-          [88, 128, 120, 240, ICE, -3], [112, 160, 120, 216, ICE, 21, SKY, 'wallIce'],
-          [-40, 240, 120, 272, ICE, 1],
-          [-120, 272, 40, 400, ICE, BASE], [-120, 272, -96, 400, ICE, 21, SKY, 'wallIce'], [-96, 364, -64, 400, ICE, 13, SKY, 'wallIce'],
-          [-40, 320, -16, 344, ICE, 5, SKY, 'wallIce'], [16, 284, 40, 300, ICE, 9, SKY, 'wallIce'],
-          [-124, 300, -120, 316, ICE, 21, 33], [-176, 288, -124, 332, ICE, 21, 37],
-          [-56, 448, 56, 512, ICE, 25],
+          [-328, -48, 328, 752, ICE, 124, SKY, 'wallGlacier'],
+          // Gate frames.
+          [-16, 444, 16, 456, PLATE, 26, 45], [-36, -8, -14, 8, PLATE, -16, 0], [142, 176, 160, 192, PLATE, -2, 10], [224, 84, 240, 112, PAD, -16, 1], [-132, 300, -118, 316, PLATE, 21, 33],
+          // The carrier's berth, the exit tunnel and the dock.
+          [-56, 500, 56, 512, PLATE, 26, 45],
           [-88, 512, 88, 640, VOID, -3, 45], [-88, 512, -64, 640, PLATE, 9, 45, 'wallTech'], [64, 512, 88, 640, PLATE, 9, 45, 'wallTech'],
           [-12, 640, 12, 700, PLATE, -3, 11],
           [-32, 700, 32, 748, PAD, -3, 25],
-          [120, 176, 152, 192, ICE, -3, 9],
-          [152, 96, 248, 320, ICE, -27], [152, 96, 248, 128, ICE, BASE, SKY, 'wallIce'], [224, 128, 248, 320, ICE, 13, SKY, 'wallIce'], [152, 256, 200, 320, ICE, 29, SKY, 'wallIce'],
-          [176, 200, 192, 216, VENT, -27], [216, 40, 248, 96, PAD, BASE, 9],
-          [168, 320, 248, 480, ICE, 13], [56, 456, 168, 472, ICE, 25, 37],
+          // Tunnels through the ice.
+          tube([[-40, 0], [-104, 0], [-112, 10], [-112, 232]], 16, ICE, -16, 0, inIce({ dome: 4 })),
+          tube([[-112, 230], [-112, 280], [-101, 302]], 16, ICE, [-16, 21], undefined, inIce({ head: 10, dome: 3 })),
+          tube([[112, 184], [138, 184]], 16, ICE, -2, 7, inIce({ dome: 4 })),
+          tube([[176, 464], [30, 464]], 16, ICE, 26, 34, inIce({ dome: 3 })),
+          // Two caves, and the updraft at the foot of the icefall.
+          oval(-156, 310, 26, 24, ICE, 21, 33, inIce({ dome: 10, wobble: 3 })),
+          oval(232, 62, 22, 26, PAD, -16, 1, inIce({ dome: 6 })),
+          oval(184, 208, 10, 10, VENT, -30, undefined, { raise: true }),
         ],
-        stairs: [[-40, 400, 40, 448, ICE, BASE, 25, 'z'], [-120, 232, -104, 272, ICE, BASE, 21, 'z', 12]],
+        terrain: {
+          side: 'wallGlacier', hills: 10, terrace: 14, cliff: 400, boulders: 140, toEdge: true, craters: [], lakes: [], ridges: [],
+          canyons: [
+            [135, 38, [0, 6], [0, 22]],
+            [135, 30, [0, 20], [4, 84], [36, 112], [84, 114, 121], [104, 140, 121], [104, 230, 121], [88, 254, 121], [20, 258, 121], [-24, 284, 135], [-40, 320, 135]],
+            [135, 80, [-70, 340], [-10, 340]],
+            [135, 60, [0, 390], [0, 442, 93]],
+            [93, 70, [0, 458], [0, 500]],
+            [149, 84, [196, 150], [196, 280]],
+            [107, 70, [208, 340], [208, 470]],
+          ],
+          clear: [[-40, -40, 30, 40]],
+        },
+        stairs: [],
         blocks: [
-          [96, 168, 104, 176, CRYSTAL], [96, 208, 104, 216, CRYSTAL],
-          [-80, 288, -72, 296, CRYSTAL], [-60, 316, -52, 324, CRYSTAL], [-8, 300, 0, 308, CRYSTAL], [-72, 340, -64, 348, CRYSTAL],
-          [0, 356, 8, 364, CRYSTAL], [24, 376, 32, 384, CRYSTAL], [-48, 380, -40, 388, CRYSTAL],
+          [-130, 444, -16, 456, BULKHEAD], [16, 444, 130, 456, BULKHEAD],
           [-60, 540, -52, 548, COLUMN], [52, 540, 60, 548, COLUMN], [-60, 600, -52, 608, COLUMN], [52, 600, 60, 608, COLUMN],
           [-20, 724, -12, 732, COLUMN], [12, 724, 20, 732, COLUMN],
-          [200, 160, 208, 168, CRYSTAL], [176, 140, 184, 148, CRYSTAL], [200, 400, 208, 408, CRYSTAL], [224, 440, 232, 448, CRYSTAL],
         ],
-        girders: [[-16, 20, 84, 16, 23, 88], [16, 23, 112, 120, 26, 116], [-120, 31, 330, 40, 34, 334], [-64, 31, 560, 64, 34, 564]],
-        gates: [[-56, 448, 56, 452, 'south', 'chain'], [-124, 300, -120, 316, 'east', 'secret'], [-12, 640, 12, 644, 'south', 'boss'], [-28, -8, -24, 8, 'east', 'chain'], [148, 176, 152, 192, 'west', 'chain'], [224, 92, 240, 96, 'north', 'cracked']],
-        lasers: [[-56, 480, 56, 480, 26, 44, 3.4, 0], [-56, 496, 56, 496, 26, 44, 3.4, 1.7], [-120, 120, -104, 120, -9.6, 3.3, 3, 0], [-120, 180, -104, 180, -9.6, 3.3, 3, 1.5], [120, 456, 120, 472, 26, 36.3, 3, 0]],
+        shards: [[100, 172, 3, 34], [100, 212, 3.5, 40], [-76, 292, 4, 46], [-56, 320, 3, 38], [-4, 304, 4, 50], [-68, 344, 5, 60], [4, 360, 4, 48], [28, 380, 3, 36], [-44, 384, 4, 44],
+          [204, 164, 4, 52], [180, 144, 3, 40], [204, 404, 4, 42], [228, 444, 3.5, 36]],
+        girders: [[-30, 20, 84, 30, 23, 88], [16, 23, 112, 120, 26, 116], [-120, 31, 330, 40, 34, 334], [-64, 31, 560, 64, 34, 564]],
+        gates: [[-16, 448, 16, 452, 'south', 'chain'], [-124, 300, -120, 316, 'east', 'secret'], [-12, 640, 12, 644, 'south', 'boss'], [-28, -8, -24, 8, 'east', 'chain'], [148, 176, 152, 192, 'west', 'chain'], [224, 92, 240, 96, 'north', 'cracked']],
+        lasers: [[-56, 480, 56, 480, 26, 44, 3.4, 0], [-56, 496, 56, 496, 26, 44, 3.4, 1.7], [-120, 120, -104, 120, -15.6, 4.3, 3, 0], [-120, 180, -104, 180, -15.6, 4.3, 3, 1.5], [120, 456, 120, 472, 26, 36.3, 3, 0]],
         extras: { enemies: [['carrier', 0, 21, 592]] },
         zones: [
           { name: 'START BASIN', area: [-24, -32, 24, 24], barrels: 3 },
@@ -3019,10 +3072,16 @@
       def.top = (def.top || TOP) * WORLD_SCALE;
       def.lasers = (def.lasers || []).map(row => row.map((v, k) => k < 6 ? v * WORLD_SCALE : v));
       def.exit = def.exit.map(v => typeof v === 'number' ? v * WORLD_SCALE : v);
-      def.rooms = scale(def.rooms, [4, 7, 9]);
+      const scaled = (v) => Array.isArray(v) ? v.map(scaled) : v * WORLD_SCALE;
+      def.rooms = def.rooms.map(room => {
+        if (Array.isArray(room)) return scale([room], [4, 7, 9])[0];
+        for (const field of ['at', 'radii', 'path', 'width', 'floor', 'ceil', 'head', 'dome', 'wobble', 'grain', 'roof']) if (room[field] !== undefined) room[field] = scaled(room[field]);
+        return room;
+      });
       for (const zone of def.zones) if (zone.altitude) zone.altitude = zone.altitude.map(v => v * WORLD_SCALE);
       def.stairs = scale(def.stairs || [], [4]);
       def.blocks = scale(def.blocks, [4]);
+      def.shards = scale(def.shards || []);
       def.girders = scale(def.girders);
       def.gates = scale(def.gates || []);
       if (def.extras) def.extras = { barrels: scale(def.extras.barrels || []), enemies: scale(def.extras.enemies || []) };
@@ -3034,7 +3093,7 @@
         t.ridges = (t.ridges || []).map(row => row.map(v => v * WORLD_SCALE));
         t.clear = (t.clear || []).map(row => row.map(v => v * WORLD_SCALE));
         t.lakes = (t.lakes || []).map(row => row.map(v => v * WORLD_SCALE));
-        t.canyons = (t.canyons || []).map(([depth, half, ...path]) => [depth * WORLD_SCALE, half * WORLD_SCALE, ...path.map(([x, z]) => [x * WORLD_SCALE, z * WORLD_SCALE])]);
+        t.canyons = (t.canyons || []).map(([depth, half, ...path]) => [depth * WORLD_SCALE, half * WORLD_SCALE, ...path.map(point => point.map(v => v * WORLD_SCALE))]);
         if (t.terrace) t.terrace *= WORLD_SCALE;
         if (t.water !== undefined) t.water *= WORLD_SCALE;
       }
@@ -3064,6 +3123,14 @@
     // The bottom of a space sector's open volume (the first room's floor); below a cell's underside is open down to it.
     let spaceFloor = -Infinity;
     const sideOf = new Array(GRID_MAX_W * GRID_D).fill(null);
+    // Shapes number from 1 in the level's list. Each cell remembers the shape that carved it, any `raise` laid over that, and
+    // the shapes giving it a curved floor or ceiling. `bent` marks cells that can't be drawn as a plain square.
+    const ownerOf = new Uint16Array(GRID_MAX_W * GRID_D), stepOf = new Uint16Array(GRID_MAX_W * GRID_D), floorOf = new Uint16Array(GRID_MAX_W * GRID_D), ceilOf = new Uint16Array(GRID_MAX_W * GRID_D), bent = new Uint8Array(GRID_MAX_W * GRID_D);
+    // A curve splits the cells it crosses: past the line ax + bz = c such a cell behaves as cell cutTo instead (-1 for solid).
+    const cutOn = new Uint8Array(GRID_MAX_W * GRID_D), cutA = new Float32Array(GRID_MAX_W * GRID_D), cutB = new Float32Array(GRID_MAX_W * GRID_D), cutC = new Float32Array(GRID_MAX_W * GRID_D), cutTo = new Int32Array(GRID_MAX_W * GRID_D);
+    // Grid corners along a curve are moved onto it, with the curve's normal and how far round it they sit.
+    const WARPS = (GRID_MAX_W + 1) * (GRID_D + 1);
+    const warpOn = new Uint8Array(WARPS), warpX = new Float32Array(WARPS), warpZ = new Float32Array(WARPS), warpNX = new Float32Array(WARPS), warpNZ = new Float32Array(WARPS), warpU = new Float32Array(WARPS);
     let level = LEVELS[0], levelIndex = 0;
     const gates = [];
     // Edges snap to the nearest cell boundary, so a rectangle that doesn't sit exactly on the grid still fills whole cells.
@@ -3073,21 +3140,177 @@
     };
     function carve(def) {
       open.fill(0); solidKind.fill(BULKHEAD); floorY.fill(FLOOR); ceilY.fill(WALL_TOP); sideOf.fill(null); roofY.fill(Infinity); underY.fill(-Infinity);
+      ownerOf.fill(0); stepOf.fill(0); floorOf.fill(0); ceilOf.fill(0);
       spaceFloor = def.space ? def.rooms[0][5] : -Infinity;
-      for (const [x0, z0, x1, z1, material, floor = FLOOR, ceil = WALL_TOP, side = null, roof = Infinity, roofMaterial = null, under = -Infinity] of def.rooms)
-        fillCells([x0, z0, x1, z1], i => { open[i] = 1 + material; floorY[i] = floor; ceilY[i] = ceil; sideOf[i] = side; roofY[i] = roof; roofOf[i] = roofMaterial; underY[i] = under; });
+      prepareShapes(def);
+      const plain = (i) => { ownerOf[i] = stepOf[i] = floorOf[i] = ceilOf[i] = 0; };
+      for (const room of def.rooms) {
+        if (!Array.isArray(room)) { carveShape(room); continue; }
+        const [x0, z0, x1, z1, material, floor = FLOOR, ceil = WALL_TOP, side = null, roof = Infinity, roofMaterial = null, under = -Infinity] = room;
+        fillCells([x0, z0, x1, z1], i => { open[i] = 1 + material; floorY[i] = floor; ceilY[i] = ceil; sideOf[i] = side; roofY[i] = roof; roofOf[i] = roofMaterial; underY[i] = under; plain(i); });
+      }
       for (const [x0, z0, x1, z1, material, from, to, axis, headroom] of def.stairs || []) {
         const span = axis === 'x' ? x1 - x0 : z1 - z0;
         fillCells([x0, z0, x1, z1], (i, x, z) => {
           const floor = from + (to - from) * ((axis === 'x' ? x - x0 : z - z0) + CELL / 2) / span;
-          open[i] = 1 + material; floorY[i] = floor; ceilY[i] = headroom ? floor + headroom : WALL_TOP;
+          open[i] = 1 + material; floorY[i] = floor; ceilY[i] = headroom ? floor + headroom : WALL_TOP; plain(i);
         });
       }
-      for (const block of def.blocks) fillCells(block, i => { open[i] = 0; solidKind[i] = block[4]; });
+      for (const block of def.blocks) fillCells(block, i => { open[i] = 0; solidKind[i] = block[4]; plain(i); ownerOf[i] = block.round || 0; });
       sealed.fill(0);
       for (const gate of def.gates || []) fillCells(gate, i => { sealed[i] = 1; });
       for (const hull of def.hulls || []) shapeHull(hull);
       applyTerrain(def);
+      settleShapes(def);
+    }
+    // The distance from a tube's centre line, and how far along the line (0 to 1) the nearest point is.
+    function onPath(s, x, z) {
+      let best = Infinity, along = 0;
+      for (const [ax, az, ex, ez, span, start] of s.legs) {
+        const t = clamp(((x - ax) * ex + (z - az) * ez) / (span * span), 0, 1), gap = Math.hypot(x - ax - ex * t, z - az - ez * t);
+        if (gap < best) { best = gap; along = start + t * span; }
+      }
+      return [best, along / s.length];
+    }
+    // A shape's field is negative inside it and positive outside, and close to the distance from its edge near that edge.
+    function shapeField(s) {
+      let field;
+      if (s.path) {
+        const half = s.width / 2;
+        field = (x, z) => onPath(s, x, z)[0] - half;
+      } else {
+        const [cx, cz] = s.at, [rx, rz] = s.radii, power = s.power || 2, c = Math.cos(s.turn || 0), sn = Math.sin(s.turn || 0), near = Math.min(rx, rz);
+        const size = (x, z) => {
+          const dx = x - cx, dz = z - cz, u = Math.abs((dx * c + dz * sn) / rx), v = Math.abs((dz * c - dx * sn) / rz);
+          return power === 2 ? Math.hypot(u, v) : (u ** power + v ** power) ** (1 / power);
+        };
+        field = s.hole ? (x, z) => { const k = size(x, z); return Math.max(k - 1, s.hole - k) * near; } : (x, z) => (size(x, z) - 1) * near;
+      }
+      if (!s.wobble) return field;
+      const grain = s.grain || 30, salt = s.id * 7 + 3;
+      return (x, z) => field(x, z) + s.wobble * (valueNoise(x / grain, z / grain, salt) * 2 - 1);
+    }
+    function prepareShape(s) {
+      if (s.path) {
+        s.legs = []; s.length = 0;
+        for (let k = 0; k + 1 < s.path.length; k++) {
+          const [ax, az] = s.path[k], [bx, bz] = s.path[k + 1], span = Math.hypot(bx - ax, bz - az);
+          s.legs.push([ax, az, bx - ax, bz - az, span, s.length]); s.length += span;
+        }
+      }
+      s.field = shapeField(s);
+      const reach = s.path ? s.width / 2 : Math.min(...s.radii), climbs = Array.isArray(s.floor);
+      s.climbs = climbs; s.curvedCeil = !!s.dome || !!s.head;
+      s.floorAt = climbs ? (x, z) => s.floor[0] + (s.floor[1] - s.floor[0]) * onPath(s, x, z)[1] : () => s.floor;
+      const lift = (x, z) => { const t = clamp(1 + s.field(x, z) / reach, 0, 1); return s.dome * (1 - t * t); };
+      s.ceilAt = (x, z) => (s.head ? s.floorAt(x, z) + s.head : s.ceil ?? WALL_TOP) + (s.dome ? lift(x, z) : 0);
+      s.ceilNormal = (x, z) => { const dx = (s.ceilAt(x + 1, z) - s.ceilAt(x - 1, z)) / 2, dz = (s.ceilAt(x, z + 1) - s.ceilAt(x, z - 1)) / 2, l = Math.hypot(dx, 1, dz); return [dx / l, -1 / l, dz / l]; };
+      s.around = s.path ? (x, z) => onPath(s, x, z)[1] * s.length : (x, z) => Math.atan2(z - s.at[1], x - s.at[0]) * (s.radii[0] + s.radii[1]) / 2;
+      const pad = (s.wobble || 0) + CELL;
+      if (s.path) {
+        const xs = s.path.map(p => p[0]), zs = s.path.map(p => p[1]), half = s.width / 2 + pad;
+        s.bounds = [Math.min(...xs) - half, Math.min(...zs) - half, Math.max(...xs) + half, Math.max(...zs) + half];
+      } else {
+        const [rx, rz] = s.turn ? [Math.hypot(...s.radii), Math.hypot(...s.radii)] : s.radii;
+        s.bounds = [s.at[0] - rx - pad, s.at[1] - rz - pad, s.at[0] + rx + pad, s.at[1] + rz + pad];
+      }
+    }
+    function prepareShapes(def) {
+      if (def.shapeList) return;
+      def.shapeList = def.rooms.filter(room => !Array.isArray(room));
+      def.shapeList.forEach((s, k) => { s.id = k + 1; prepareShape(s); });
+      if (def.roundBlocks) for (const block of def.blocks) {
+        if (Math.max(block[2] - block[0], block[3] - block[1]) > CELL * 6) continue;
+        const s = { at: [(block[0] + block[2]) / 2, (block[1] + block[3]) / 2], radii: [(block[2] - block[0]) / 2, (block[3] - block[1]) / 2], block: true, id: def.shapeList.length + 1 };
+        prepareShape(s); def.shapeList.push(s); block.round = s.id;
+      }
+    }
+    // A shape claims every cell it touches; the cells its edge crosses are split again in settleShapes.
+    function carveShape(s) {
+      const [bx0, bz0, bx1, bz1] = s.bounds, field = s.field, half = CELL / 2;
+      for (let gz = Math.max(0, Math.floor((bz0 - GRID_Z0) / CELL)); gz <= Math.min(GRID_D - 1, Math.floor((bz1 - GRID_Z0) / CELL)); gz++)
+        for (let gx = Math.max(0, Math.floor((bx0 - GRID_X0) / CELL)); gx <= Math.min(GRID_W - 1, Math.floor((bx1 - GRID_X0) / CELL)); gx++) {
+          const i = gz * GRID_W + gx, x0 = GRID_X0 + gx * CELL, z0 = GRID_Z0 + gz * CELL, x1 = x0 + CELL, z1 = z0 + CELL;
+          const values = [field(x0, z0), field(x1, z0), field(x1, z1), field(x0, z1), field(x0 + half, z0 + half)];
+          const low = Math.min(...values), high = Math.max(...values), corners = [[x0, z0], [x1, z0], [x1, z1], [x0, z1]];
+          if (low >= 0) continue;
+          if (s.solid) {
+            if (high < 0) { open[i] = 0; solidKind[i] = s.kind ?? BULKHEAD; ownerOf[i] = s.id; stepOf[i] = floorOf[i] = ceilOf[i] = 0; }
+            else if (open[i]) ownerOf[i] = s.id;
+            continue;
+          }
+          if (s.raise) {
+            if (!open[i]) continue;
+            stepOf[i] = s.id;
+          } else {
+            ownerOf[i] = s.id; stepOf[i] = 0;
+            ceilY[i] = s.curvedCeil ? Math.min(...corners.map(([x, z]) => s.ceilAt(x, z))) : s.ceil ?? WALL_TOP;
+            ceilOf[i] = s.curvedCeil ? s.id : 0; roofY[i] = s.roof ?? Infinity; roofOf[i] = null; underY[i] = -Infinity;
+          }
+          open[i] = 1 + s.material; sideOf[i] = s.side ?? null;
+          floorY[i] = s.climbs ? Math.max(...corners.map(([x, z]) => s.floorAt(x, z))) : s.floor;
+          floorOf[i] = s.climbs ? s.id : 0;
+        }
+    }
+    // With every shape carved, split the cells their edges cross and pull the grid's corners along each edge onto its curve.
+    function settleShapes(def) {
+      cutOn.fill(0); warpOn.fill(0); bent.fill(0);
+      const list = def.shapeList;
+      if (!list.length) return;
+      const nudge = 0.5, cellOf = (gx, gz) => gx >= 0 && gz >= 0 && gx < GRID_W && gz < GRID_D ? gz * GRID_W + gx : -1;
+      const slope = (field, x, z) => [(field(x + nudge, z) - field(x - nudge, z)) / (2 * nudge), (field(x, z + nudge) - field(x, z - nudge)) / (2 * nudge)];
+      // What lies past a cut: the first cell out along the curve's normal that the shape doesn't own.
+      const farSide = (i, s, cx, cz, nx, nz) => {
+        for (const reach of [1, 1.5, 2, 2.5]) {
+          const k = cellOf(Math.floor((cx + nx * reach * CELL - GRID_X0) / CELL), Math.floor((cz + nz * reach * CELL - GRID_Z0) / CELL));
+          if (k < 0) return -1;
+          if (k === i || (s.raise ? stepOf[k] === s.id : ownerOf[k] === s.id)) continue;
+          return open[k] ? k : -1;
+        }
+        return -1;
+      };
+      const cutBy = (i, s, gx, gz) => {
+        const flip = s.solid ? -1 : 1, x0 = GRID_X0 + gx * CELL, z0 = GRID_Z0 + gz * CELL, cx = x0 + CELL / 2, cz = z0 + CELL / 2;
+        const past = [[x0, z0], [x0 + CELL, z0], [x0 + CELL, z0 + CELL], [x0, z0 + CELL]].some(([x, z]) => s.field(x, z) * flip > 0);
+        if (!past) return false;
+        const field = (x, z) => s.field(x, z) * flip, [sx, sz] = slope(field, cx, cz), length = Math.hypot(sx, sz) || 1, nx = sx / length, nz = sz / length;
+        cutA[i] = nx; cutB[i] = nz; cutC[i] = nx * cx + nz * cz - field(cx, cz) / length;
+        cutTo[i] = s.solid ? -1 : farSide(i, s, cx, cz, nx, nz); cutOn[i] = 1;
+        return true;
+      };
+      for (let gz = 0; gz < GRID_D; gz++) for (let gx = 0; gx < GRID_W; gx++) {
+        const i = gz * GRID_W + gx, owner = ownerOf[i] && list[ownerOf[i] - 1];
+        if (floorOf[i] || ceilOf[i]) bent[i] = 1;
+        if (!open[i] || (owner && !owner.block && cutBy(i, owner, gx, gz))) continue;
+        if (stepOf[i]) cutBy(i, list[stepOf[i] - 1], gx, gz);
+      }
+      const differ = (a, b) => {
+        const openA = a >= 0 && !!open[a], openB = b >= 0 && !!open[b];
+        if (!openA || !openB) return openA !== openB;
+        if (ownerOf[a] && ownerOf[a] === ownerOf[b] && stepOf[a] === stepOf[b]) return false;
+        return open[a] !== open[b] || Math.abs(floorY[a] - floorY[b]) > 0.01 || Math.abs(ceilY[a] - ceilY[b]) > 0.01 || roofY[a] !== roofY[b];
+      };
+      const row = GRID_W + 1;
+      for (let iz = 0; iz <= GRID_D; iz++) for (let ix = 0; ix <= GRID_W; ix++) {
+        const ring = [cellOf(ix - 1, iz - 1), cellOf(ix, iz - 1), cellOf(ix, iz), cellOf(ix - 1, iz)];
+        if (!ring.some(k => k >= 0 && (ownerOf[k] || stepOf[k])) || !ring.some((k, n) => differ(k, ring[(n + 1) % 4]))) continue;
+        const x = GRID_X0 + ix * CELL, z = GRID_Z0 + iz * CELL;
+        let shape = null, nearest = CELL * 1.6;
+        for (const k of ring) if (k >= 0) for (const id of [ownerOf[k], stepOf[k]]) if (id) {
+          const gap = Math.abs(list[id - 1].field(x, z));
+          if (gap < nearest) { nearest = gap; shape = list[id - 1]; }
+        }
+        if (!shape) continue;
+        let px = x, pz = z;
+        for (let step = 0; step < 5; step++) {
+          const f = shape.field(px, pz), [sx, sz] = slope(shape.field, px, pz), l2 = sx * sx + sz * sz;
+          if (l2 < 1e-6) break;
+          px -= f * sx / l2; pz -= f * sz / l2;
+        }
+        const v = iz * row + ix, [sx, sz] = slope(shape.field, px, pz), length = Math.hypot(sx, sz) || 1;
+        warpOn[v] = 1; warpX[v] = px; warpZ[v] = pz; warpNX[v] = sx / length; warpNZ[v] = sz / length; warpU[v] = shape.around(px, pz) / 8;
+        for (const k of ring) if (k >= 0) bent[k] = 1;
+      }
     }
     // Rounds off a floating module: see `hulls` in the level notes above.
     function shapeHull({ at: [cx, cz], radii: [rx, rz], power = 2.5, top, bottom, roof, under, inner = 0.9 }) {
@@ -3118,9 +3341,12 @@
       if (wrapCells) d[0] -= AROUND * Math.round(d[0] / AROUND);
       return d;
     };
+    const pastCut = (i, x, z) => cutOn[i] && cutA[i] * x + cutB[i] * z > cutC[i] ? cutTo[i] : i;
     const cellIndex = (x, z) => {
-      const gx = wrapGX(Math.floor((x - GRID_X0) / CELL)), gz = Math.floor((z - GRID_Z0) / CELL), i = gz * GRID_W + gx;
-      return cellAt(gx, gz) && !sealed[i] ? i : -1;
+      const gx = wrapGX(Math.floor((x - GRID_X0) / CELL)), gz = Math.floor((z - GRID_Z0) / CELL);
+      if (!cellAt(gx, gz)) return -1;
+      const i = pastCut(gz * GRID_W + gx, x, z);
+      return i >= 0 && !sealed[i] ? i : -1;
     };
     // Sludge and lava hurt the ship when it flies low over them; returns the hazard's floor material or 0.
     const hazardAt = (x, z) => {
@@ -3134,8 +3360,10 @@
     const coveredAt = (x, z, y = -Infinity) => { const i = cellIndex(x, z); return i >= 0 && ceilY[i] < WALL_TOP && y < roofY[i] && y > underY[i]; };
     // Closed gates seal the room below a roof but not the sky above it.
     const freeAt = (x, y, z, pad = 0) => {
-      const gx = wrapGX(Math.floor((x - GRID_X0) / CELL)), gz = Math.floor((z - GRID_Z0) / CELL), i = gz * GRID_W + gx;
+      const gx = wrapGX(Math.floor((x - GRID_X0) / CELL)), gz = Math.floor((z - GRID_Z0) / CELL);
       if (!cellAt(gx, gz)) return false;
+      const i = pastCut(gz * GRID_W + gx, x, z);
+      if (i < 0) return false;
       if (y >= roofY[i] + pad && y <= WALL_TOP - pad) return true;
       if (y <= underY[i] - pad && y >= spaceFloor + pad) return true;
       return !sealed[i] && y >= floorY[i] + pad && y <= ceilY[i] - pad;
@@ -3218,14 +3446,14 @@
         // Canyons follow their paths: the distance to the nearest leg sets the depth, flat along the floor and steep at the walls.
         let cut = 0;
         for (const [depth, halfWidth, ...path] of t.canyons || []) {
-          let gap = Infinity;
+          let gap = Infinity, deep = depth;
           for (let k = 0; k + 1 < path.length; k++) {
-            const [ax, az] = path[k], [bx, bz] = path[k + 1], ex = bx - ax, ez = bz - az;
-            const along = clamp(((x - ax) * ex + (z - az) * ez) / (ex * ex + ez * ez), 0, 1);
-            gap = Math.min(gap, Math.hypot(x - ax - ex * along, z - az - ez * along));
+            const [ax, az, da = depth] = path[k], [bx, bz, db = depth] = path[k + 1], ex = bx - ax, ez = bz - az;
+            const along = clamp(((x - ax) * ex + (z - az) * ez) / (ex * ex + ez * ez), 0, 1), reach = Math.hypot(x - ax - ex * along, z - az - ez * along);
+            if (reach < gap) { gap = reach; deep = da + (db - da) * along; }
           }
           const width = halfWidth * (0.8 + 0.4 * noiseAt(x, z, 40, 17));
-          cut = Math.min(cut, -depth * smoothstep(width * 1.25, width * 0.55, gap) * smoothstep(10, 70, edge(x, z)));
+          cut = Math.min(cut, -deep * smoothstep(width * 1.25, width * 0.55, gap) * (t.toEdge ? 1 : smoothstep(10, 70, edge(x, z))));
         }
         h += cut;
         // Terraces cut the slopes into flat ledges and steep risers, like strata weathered back.
@@ -3467,7 +3695,7 @@
         for (let attempt = 0; attempt < 600 && placed < (zone.barrels || 0); attempt++) {
           let x = range(x0 + 3, x1 - 3), z = range(z0 + 3, z1 - 3);
           if (last && random() < 0.55) { const angle = range(0, Math.PI * 2), gap = range(3.7, 5); x = last[0] + Math.cos(angle) * gap; z = last[1] + Math.sin(angle) * gap; }
-          if (!walkable(x, z, 2.6) || !flatAt(x, z, 2.6) || hazardAt(x, z) || fromStart(x, z) < 18 ||
+          if (!walkable(x, z, 2.6) || !flatAt(x, z, 2.6) || !freeAt(x, floorAt(x, z) + 3, z) || hazardAt(x, z) || fromStart(x, z) < 18 ||
             barrels.some(b => (b.position[0] - x) ** 2 + (b.position[2] - z) ** 2 < 3.7 * 3.7)) continue;
           addBarrel(x, z); last = [x, z]; placed++;
         }
@@ -3481,7 +3709,7 @@
             // Lancers perch high to snipe; everything else hovers at a mid height.
             const lift = type === 'lancer' ? range(12, zone.high ? 34 : 18) : range(6, zone.high ? 25 : 15);
             const y = zone.altitude ? range(...zone.altitude) : type === 'sentry' ? floorY[i] + 3.4 : clamp(floorY[i] + lift, floorY[i] + 3.5, ceilY[i] - 3.5);
-            if (zone.altitude && !freeAt(x, y, z, margin)) return false;
+            if (!freeAt(x, y, z, zone.altitude ? margin : 1)) return false;
             if (!walkable(x, z, margin) || insideGirder([x, y, z], margin + 1) || fromStart(x, z) < 60 ||
               enemies.some(e => many > 1 ? Math.hypot(e.base[0] - x, e.base[1] - y, e.base[2] - z) < 12 : Math.hypot(e.base[0] - x, e.base[2] - z) < 14)) return false;
             const enemy = addEnemy(type, x, y, z);
@@ -3496,7 +3724,7 @@
           });
         }
         for (const type of ['health', 'weapon', 'missile', 'launcher']) scatter(zone[type] || 0, 3, (x, z) => {
-          if (!walkable(x, z, 3) || !flatAt(x, z, 2) || hazardAt(x, z) || fromStart(x, z) < 25 ||
+          if (!walkable(x, z, 3) || !flatAt(x, z, 2) || !freeAt(x, floorAt(x, z) + 3, z) || hazardAt(x, z) || fromStart(x, z) < 25 ||
             barrels.some(b => Math.hypot(b.position[0] - x, b.position[2] - z) < 4)) return false;
           pickups.push({ type, position: [x, floorAt(x, z) + 3, z], taken: false, phase: range(0, Math.PI * 2) });
           return true;
@@ -4200,6 +4428,18 @@
         for (let i = 0; i < 8; i++) stain(p, rnd() * 512, rnd() * 512, between(30, 90), between(20, 60), '230,248,255', between(0.12, 0.25));
         streaks(p, 26, '215,240,255', 0, 380, 0.22); scratches(p, 60, 0.2);
       }, { grime: 0.1, rust: 0, wear: 0.1, speckle: 0.1 });
+      // Glacier ice: pressed layers, bluer where they're older, crossed by cracks and patches of frost.
+      make('wallGlacier', 512, 512, '#8fb6cc', p => {
+        for (let y = 0; y < 512;) {
+          const h = between(10, 44), v = rnd();
+          plate(p, 0, y, 512, Math.min(h, 512 - y), `rgb(${Math.round(120 + v * 90)},${Math.round(165 + v * 65)},${Math.round(195 + v * 50)})`, 0.48, 0.6, 5);
+          y += h;
+        }
+        for (let i = 0; i < 9; i++) trace(p, wander(rnd() * 512, rnd() * 512, 10, between(14, 30), 0.9), [[p.c, 'rgba(230,248,255,0.5)', 3], [p.b, gray(0.3), 2]]);
+        for (let i = 0; i < 14; i++) stain(p, rnd() * 512, rnd() * 512, between(30, 110), between(10, 40), '235,248,255', between(0.12, 0.3));
+        for (let i = 0; i < 24; i++) frost(p, rnd() * 512, rnd() * 512, between(8, 20));
+        streaks(p, 22, '60,100,130', 0, 512, 0.16);
+      }, { grime: 0.05, rust: 0, wear: 0.1, speckle: 0.1 });
       make('wallHive', 512, 512, '#2a1604', p => {
         hexCells(p, (shape, n) => {
           p.c.fillStyle = '#5a3410'; shape(p.c, 0); p.c.fill(); p.b.fillStyle = gray(0.72); shape(p.b, 0); p.b.fill();
@@ -4209,6 +4449,17 @@
         });
         for (let i = 0; i < 10; i++) stain(p, rnd() * 512, rnd() * 512, between(20, 70), between(30, 90), '255,190,80', between(0.08, 0.18));
         streaks(p, 30, '40,22,4', 0, 420, 0.35);
+      }, { grime: 0.3, rust: 0, wear: 0.05, cavity: 1 });
+      // Dark resin laid down in overlapping strands, with a few veins that still glow.
+      make('wallChitin', 512, 512, '#2a1808', p => {
+        for (let i = 0; i < 46; i++) {
+          const wide = between(10, 26);
+          trace(p, wander(rnd() * 512, rnd() * 512, 16, between(14, 30), 0.5), [[p.c, 'rgba(170,110,50,0.6)', wide], [p.b, gray(between(0.5, 0.72)), wide * 0.8]]);
+        }
+        for (let i = 0; i < 12; i++) stain(p, rnd() * 512, rnd() * 512, between(30, 90), between(40, 120), '12,6,2', between(0.2, 0.4));
+        for (let i = 0; i < 6; i++) trace(p, wander(rnd() * 512, rnd() * 512, 12, between(10, 20), 0.8),
+          [[p.c, 'rgba(255,170,60,0.22)', 8], [p.b, gray(0.3), 3], [p.c, '#ffb54a', 1.6], [p.g, '#fff', 2]]);
+        streaks(p, 24, '10,5,2', 0, 420, 0.4);
       }, { grime: 0.3, rust: 0, wear: 0.05, cavity: 1 });
       make('wallBasalt', 512, 512, '#120e0c', p => {
         for (let x = 0; x < 512;) {
@@ -4722,7 +4973,7 @@
       ceiling: [0.4, 1, 1.5], pickupHealth: [0.6, 1, 2.4], pickupWeapon: [0.6, 1, 2.4], exitFrame: [0.5, 1, 2.6],
       wallComputer: [0.5, 1, 2.2], wallRust: [0.35, 1, 1.2], floorSludge: [1.2, 0.6, 1.8], gateDoor: [0.5, 1, 2],
       secretPanel: [0.4, 1, 1.6], crackedWall: [0.4, 1, 2.4], lock: [0.6, 1, 2.6], chain: [0.9, 1, 0.5], floorLava: [0.6, 0.8, 2.4],
-      wallIce: [0.8, 1, 1.6], wallHive: [0.5, 1, 2.2], wallBasalt: [0.35, 1, 2.6], wallContainer: [0.45, 1, 1.2], wallContainerB: [0.45, 1, 1.2], wallTech: [0.6, 1, 2.2],
+      wallIce: [0.8, 1, 1.6], wallGlacier: [0.7, 1, 1.4], wallHive: [0.5, 1, 2.2], wallChitin: [0.5, 1, 1.8], wallBasalt: [0.35, 1, 2.6], wallContainer: [0.45, 1, 1.2], wallContainerB: [0.45, 1, 1.2], wallTech: [0.6, 1, 2.2],
       wallVoid: [0.9, 1, 2.6], crystal: [1.1, 1, 1.5], floorIce: [1.1, 0.8, 1.4], floorHive: [0.5, 1, 2], floorWater: [1.5, 0.5, 1.6],
       floorVent: [0.5, 1, 2.6], floorVoid: [0.9, 1, 2.4], floorMoon: [0.2, 1, 1], wallMoon: [0.25, 1, 1],
       floorGrass: [0.15, 1, 1], wallCliff: [0.2, 1, 1], treeLeaves: [0.25, 1, 1], treeBark: [0.15, 1, 1],
@@ -4747,7 +4998,7 @@
     // Surfaces inside tunnels go in their own groups so the sun and sky can be dimmed there.
     const LOWER_VARIANTS = [['wallLower', 0.6], ['wallVent', 0.14], ['wallDoor', 0.12], ['wallPipes', 0.14]];
     const UPPER_VARIANTS = [['wallUpper', 0.68], ['wallWindows', 0.22], ['wallSign', 0.1]];
-    const TEXTURE_HEIGHT = { wallMoon: 16, wallCliff: 12, wallSandstone: 14, wallRust: 8, wallIce: 10, wallHive: 10, wallBasalt: 14, wallContainer: 7, wallContainerB: 7, wallTech: 10, wallVoid: 10 };
+    const TEXTURE_HEIGHT = { wallMoon: 16, wallCliff: 12, wallSandstone: 14, wallRust: 8, wallIce: 10, wallGlacier: 18, wallHive: 10, wallChitin: 14, wallBasalt: 14, wallContainer: 7, wallContainerB: 7, wallTech: 10, wallVoid: 10 };
     const pickVariant = (options, value) => { for (const [name, weight] of options) if ((value -= weight) < 0) return name; return options[0][0]; };
     const radarEdges = [], beacons = [];
     let levelMeshes = [];
@@ -4793,7 +5044,10 @@
       };
       const outsideGrid = (gx, gz) => (!wrapCells && (gx < 0 || gx >= GRID_W)) || gz < 0 || gz >= GRID_D;
       const openEdge = def.moon || def.canyon, closed = (gx, gz) => cellAt(gx, gz) === 0 && !(openEdge && outsideGrid(gx, gz)) ? 1 : 0;
-      const ao = (ix, iz) => 1 - 0.16 * (closed(ix - 1, iz - 1) + closed(ix, iz - 1) + closed(ix - 1, iz) + closed(ix, iz));
+      const ao = (ix, iz) => warpOn[iz * row + ix] ? 0.68 : 1 - 0.16 * (closed(ix - 1, iz - 1) + closed(ix, iz - 1) + closed(ix - 1, iz) + closed(ix, iz));
+      // A grid corner where it's drawn: curved walls move some of them.
+      const vertex = (ix, iz) => { const v = iz * row + ix; return warpOn[v] ? [warpX[v], warpZ[v]] : [GRID_X0 + ix * CELL, GRID_Z0 + iz * CELL]; };
+      const shapes = def.shapeList, at = (list, y) => list.map(([x, z]) => [x, y, z]), flatUv = (list) => list.map(([x, z]) => [x / 8, z / 8]);
       // Flat 4x4-cell patches of matching floor, ceiling and roof are drawn as one quad each, to keep the vertex count down;
       // the patches are small enough to follow a moon's or cylinder's curve.
       const PATCH = 4, merged = new Uint8Array(GRID_MAX_W * GRID_D);
@@ -4804,7 +5058,7 @@
           const gx = px + dx, gz = pz + dz, inside = gx >= 0 && gz >= 0 && gx < GRID_W && gz < GRID_D, k = gz * GRID_W + gx;
           if (!inside) continue;
           const edge = dx < 0 || dz < 0 || dx === PATCH || dz === PATCH;
-          if (!open[k] || natural[k] || (!edge && (open[k] !== open[first] || floorY[k] !== floorY[first] || ceilY[k] !== ceilY[first] ||
+          if (!open[k] || natural[k] || (!edge && (bent[k] || open[k] !== open[first] || floorY[k] !== floorY[first] || ceilY[k] !== ceilY[first] ||
             roofY[k] !== roofY[first] || roofOf[k] !== roofOf[first] || sealed[k]))) same = false;
         }
         if (!same) continue;
@@ -4865,17 +5119,20 @@
         if (!material) continue;
         // In a cylinder nothing rises past the axis, so walls stop there.
         const i = gz * GRID_W + gx, floor = floorY[i], covered = ceilY[i] < WALL_TOP, ceil = def.cylinder ? Math.min(ceilY[i], FLOOR + AXIS) : ceilY[i];
+        // Ground wholly above the sector's top, away from any edge of it, can never be seen.
+        if (natural[i] && floor >= WALL_TOP && [[1, 0], [-1, 0], [0, 1], [0, -1]].every(([dx, dz]) => outsideGrid(gx + dx, gz + dz) || floorY[(gz + dz) * GRID_W + wrapGX(gx + dx)] >= WALL_TOP)) continue;
         const x0 = GRID_X0 + gx * CELL, z0 = GRID_Z0 + gz * CELL, x1 = x0 + CELL, z1 = z0 + CELL;
         const corners = [ao(gx, gz), ao(gx + 1, gz), ao(gx + 1, gz + 1), ao(gx, gz + 1)];
+        const outline = bent[i] ? [vertex(gx, gz), vertex(gx + 1, gz), vertex(gx + 1, gz + 1), vertex(gx, gz + 1)] : [[x0, z0], [x1, z0], [x1, z1], [x0, z1]], under = [outline[3], outline[2], outline[1], outline[0]];
+        const floorShape = floorOf[i] ? shapes[floorOf[i] - 1] : null, ceilShape = ceilOf[i] ? shapes[ceilOf[i] - 1] : null;
         if (natural[i]) {
           const ids = [[gx, gz], [gx + 1, gz], [gx + 1, gz + 1], [gx, gz + 1]], heights = ids.map(([ix, iz]) => cornerOf(i, ix, iz));
           // A cell wholly under the lake shows only the water; along the shore the ground pokes up through it.
-          if (wet[i]) quad(def.terrain.liquid || 'floorWater', false, ids.map(([ix, iz]) => [GRID_X0 + ix * CELL, floor + 0.3, GRID_Z0 + iz * CELL]), [0, 1, 0],
-            ids.map(([ix, iz]) => [(GRID_X0 + ix * CELL) / 16, (GRID_Z0 + iz * CELL) / 16]), [1, 1, 1, 1]);
+          if (wet[i]) quad(def.terrain.liquid || 'floorWater', false, at(outline, floor + 0.3), [0, 1, 0], outline.map(([x, z]) => [x / 16, z / 16]), [1, 1, 1, 1]);
           // Steep ground shows the bank texture, mapped up the slope, instead of the floor stretched down it.
           const steep = Math.max(...heights) - Math.min(...heights) > CELL * 1.4;
           if (!wet[i] || heights.some(y => y > floor + 0.05))
-            quad(steep ? def.terrain.side || 'wallMoon' : FLOOR_MATERIALS[material - 1], false, ids.map(([ix, iz], k) => [GRID_X0 + ix * CELL, heights[k], GRID_Z0 + iz * CELL]), [0, 1, 0],
+            quad(steep ? def.terrain.side || 'wallMoon' : FLOOR_MATERIALS[material - 1], false, outline.map(([x, z], k) => [x, heights[k], z]), [0, 1, 0],
               ids.map(([ix, iz], k) => steep ? [(GRID_X0 + ix * CELL + GRID_Z0 + iz * CELL) / 16, -heights[k] / 16] : [(GRID_X0 + ix * CELL) / 30, (GRID_Z0 + iz * CELL) / 30]),
               ids.map(([ix, iz]) => tone(GRID_X0 + ix * CELL, GRID_Z0 + iz * CELL)), ids.map(([ix, iz]) => slope(ix, iz)));
         } else if (merged[i] === 2) {
@@ -4883,44 +5140,58 @@
           quad(FLOOR_MATERIALS[material - 1], covered, [[x0, floor, z0], [mx, floor, z0], [mx, floor, mz], [x0, floor, mz]], [0, 1, 0], uv, [1, 1, 1, 1]);
           if (covered) quad(ceilingOf(i), true, [[x0, ceil, mz], [mx, ceil, mz], [mx, ceil, z0], [x0, ceil, z0]], [0, -1, 0], [uv[3], uv[2], uv[1], uv[0]], [1, 1, 1, 1]);
           if (roofY[i] < WALL_TOP) quad(roofOf[i] || def.roof || 'floorPad', false, [[x0, roofY[i], z0], [mx, roofY[i], z0], [mx, roofY[i], mz], [x0, roofY[i], mz]], [0, 1, 0], uv, [1, 1, 1, 1]);
-        } else if (!merged[i]) quad(FLOOR_MATERIALS[material - 1], covered, [[x0, floor, z0], [x1, floor, z0], [x1, floor, z1], [x0, floor, z1]], [0, 1, 0],
-          [[x0 / 8, z0 / 8], [x1 / 8, z0 / 8], [x1 / 8, z1 / 8], [x0 / 8, z1 / 8]], corners);
-        if (covered && !merged[i]) quad(ceilingOf(i), true, [[x0, ceil, z1], [x1, ceil, z1], [x1, ceil, z0], [x0, ceil, z0]], [0, -1, 0],
-          [[x0 / 8, z1 / 8], [x1 / 8, z1 / 8], [x1 / 8, z0 / 8], [x0 / 8, z0 / 8]], [corners[3], corners[2], corners[1], corners[0]]);
+        } else if (!merged[i]) quad(FLOOR_MATERIALS[material - 1], covered, floorShape ? outline.map(([x, z]) => [x, floorShape.floorAt(x, z), z]) : at(outline, floor), [0, 1, 0], flatUv(outline), corners);
+        if (covered && !merged[i]) quad(ceilingOf(i), true, ceilShape ? under.map(([x, z]) => [x, ceilShape.ceilAt(x, z), z]) : at(under, ceil), [0, -1, 0], flatUv(under),
+          [corners[3], corners[2], corners[1], corners[0]], ceilShape && under.map(([x, z]) => ceilShape.ceilNormal(x, z)));
         const roof = roofY[i];
-        if (def.interior && (ceil >= WALL_TOP || roof < WALL_TOP)) quad(def.ceiling || 'ceiling', false, [[x0, WALL_TOP, z1], [x1, WALL_TOP, z1], [x1, WALL_TOP, z0], [x0, WALL_TOP, z0]], [0, -1, 0],
-          [[x0 / 8, z1 / 8], [x1 / 8, z1 / 8], [x1 / 8, z0 / 8], [x0 / 8, z0 / 8]], [0.9, 0.9, 0.9, 0.9]);
-        if (roof < WALL_TOP && !merged[i]) quad(roofOf[i] || def.roof || 'floorPad', false, [[x0, roof, z0], [x1, roof, z0], [x1, roof, z1], [x0, roof, z1]], [0, 1, 0],
-          [[x0 / 8, z0 / 8], [x1 / 8, z0 / 8], [x1 / 8, z1 / 8], [x0 / 8, z1 / 8]], [1, 1, 1, 1]);
+        if (def.interior && (ceil >= WALL_TOP || roof < WALL_TOP)) quad(def.ceiling || 'ceiling', false, at(under, WALL_TOP), [0, -1, 0], flatUv(under), [0.9, 0.9, 0.9, 0.9]);
+        if (roof < WALL_TOP && !merged[i]) quad(roofOf[i] || def.roof || 'floorPad', false, at(outline, roof), [0, 1, 0], flatUv(outline), [1, 1, 1, 1]);
         for (const [dx, dz] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
           const nx = gx + dx, nz = gz + dz, solid = closed(nx, nz), n = nz * GRID_W + wrapGX(nx);
           // An open level has no wall at its edge: the ground runs on and the edge only stops the ship.
           if (openEdge && outsideGrid(nx, nz)) continue;
           const normal = [-dx, 0, -dz], right = [dz, 0, -dx];
           const half = CELL / 2, cx = x0 + half + dx * half, cz = z0 + half + dz * half;
-          const a = [cx - right[0] * half, cz - right[2] * half], b = [cx + right[0] * half, cz + right[2] * half];
-          const ua = (a[0] * right[0] + a[1] * right[2]) / 8, ub = ua + CELL / 8;
+          const ax = cx - right[0] * half, az = cz - right[2] * half, bx = cx + right[0] * half, bz = cz + right[2] * half;
+          const ia = [Math.round((ax - GRID_X0) / CELL), Math.round((az - GRID_Z0) / CELL)], ib = [Math.round((bx - GRID_X0) / CELL), Math.round((bz - GRID_Z0) / CELL)];
+          const a = vertex(...ia), b = vertex(...ib);
+          let ua = (ax * right[0] + az * right[2]) / 8, ub = ua + CELL / 8;
           if (natural[i] && natural[n]) {
             // Between two natural cells, fill any step between their edges from the lower side: a cliff, or a seam.
-            const ia = [Math.round((a[0] - GRID_X0) / CELL), Math.round((a[1] - GRID_Z0) / CELL)], ib = [Math.round((b[0] - GRID_X0) / CELL), Math.round((b[1] - GRID_Z0) / CELL)];
             const lowA = cornerOf(i, ...ia), lowB = cornerOf(i, ...ib), highA = cornerOf(n, ...ia), highB = cornerOf(n, ...ib);
             if (highA + highB > lowA + lowB + 0.02)
               quad(sideOf[n] || def.terrain.side || 'wallMoon', false, [[a[0], lowA, a[1]], [b[0], lowB, b[1]], [b[0], highB, b[1]], [a[0], highA, a[1]]], normal,
                 [[ua * 0.5, -lowA / 16], [ub * 0.5, -lowB / 16], [ub * 0.5, -highB / 16], [ua * 0.5, -highA / 16]], [0.72, 0.72, 0.95, 0.95]);
             continue;
           }
-          const cornerA = closed(gx - right[0], gz - right[2]) ? 0.62 : 1, cornerB = closed(gx + right[0], gz + right[2]) ? 0.62 : 1;
-          const tile = Math.floor(ua + 0.25), plane = dx ? cx : cz;
-          const lower = pickVariant(def.walls?.lower || LOWER_VARIANTS, hashInt(tile, plane, dx * 3 + dz + 7));
-          const upper = pickVariant(def.walls?.upper || UPPER_VARIANTS, hashInt(tile, plane, dx * 3 + dz + 91));
+          // Along a curve a wall runs between its moved corners, textured by the distance round the curve and shaded smoothly.
+          const va = ia[1] * row + ia[0], vb = ib[1] * row + ib[0];
+          let facing = null;
+          if (warpOn[va] || warpOn[vb]) {
+            const run = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1, side = [(b[1] - a[1]) / run, 0, (a[0] - b[0]) / run], edge = dot(side, normal) < 0 ? mul(side, -1) : side;
+            const smooth = (v) => { const out = warpNX[v] * normal[0] + warpNZ[v] * normal[2] < 0 ? -1 : 1; return [warpNX[v] * out, 0, warpNZ[v] * out]; };
+            const na = warpOn[va] ? smooth(va) : edge, nb = warpOn[vb] ? smooth(vb) : edge;
+            facing = [na, nb, nb, na];
+            if (warpOn[va] && warpOn[vb] && Math.abs(warpU[vb] - warpU[va]) < 1.5) { ua = warpU[va]; ub = warpU[vb]; } else ub = ua + run / 8;
+          }
+          const cornerA = !facing && closed(gx - right[0], gz - right[2]) ? 0.62 : 1, cornerB = !facing && closed(gx + right[0], gz + right[2]) ? 0.62 : 1;
+          const tile = Math.floor(ua + 0.25), plane = facing ? 0 : dx ? cx : cz, salt = facing ? 7 : dx * 3 + dz + 7;
+          const lower = pickVariant(def.walls?.lower || LOWER_VARIANTS, hashInt(tile, plane, salt));
+          const upper = pickVariant(def.walls?.upper || UPPER_VARIANTS, hashInt(tile, plane, salt + 84));
           const lowerSize = TEXTURE_HEIGHT[lower] || 16, upperSize = TEXTURE_HEIGHT[upper] || 12;
           const shade = (y) => (covered ? 0.75 : 1) * (0.5 + 0.5 * clamp((y - floor) / 22, 0, 1));
+          // A wall meets a climbing floor or a curved ceiling at the height they reach at each of its ends.
+          const stretch = (y, [x, z]) => {
+            if (!floorShape && !ceilShape) return y;
+            const t = clamp((y - floor) / ((ceil - floor) || 1), 0, 1), low = floorShape ? floorShape.floorAt(x, z) : floor, high = ceilShape ? ceilShape.ceilAt(x, z) : ceil;
+            return y + (low - floor) * (1 - t) + (high - ceil) * t;
+          };
           // A band of wall texture between two heights; v runs down from vTop over vSize units.
           const band = (name, y0, y1, vTop, vSize) => {
             if (y1 - y0 < 0.01) return;
             const v0 = (vTop - y0) / vSize, v1 = (vTop - y1) / vSize;
-            quad(name, covered, [[a[0], y0, a[1]], [b[0], y0, b[1]], [b[0], y1, b[1]], [a[0], y1, a[1]]], normal,
-              [[ua, v0], [ub, v0], [ub, v1], [ua, v1]], [shade(y0) * cornerA, shade(y0) * cornerB, shade(y1) * cornerB, shade(y1) * cornerA]);
+            quad(name, covered, [[a[0], stretch(y0, a), a[1]], [b[0], stretch(y0, b), b[1]], [b[0], stretch(y1, b), b[1]], [a[0], stretch(y1, a), a[1]]], normal,
+              [[ua, v0], [ub, v0], [ub, v1], [ua, v1]], [shade(y0) * cornerA, shade(y0) * cornerB, shade(y1) * cornerB, shade(y1) * cornerA], facing);
           };
           // A bulkhead wall rising from `bottom` to `top`: kick plate and panels, upper cladding, then a lit crown.
           const bulkhead = (kind, bottom, top) => {
@@ -4948,13 +5219,13 @@
             const bottom = Math.max(roofY[i], neighborCeil);
             if (roofY[n] > bottom) band(sideOf[n] || 'crown', bottom, roofY[n], roofY[n], TEXTURE_HEIGHT[sideOf[n]] || 4);
           }
-          if (neighborFloor > floor + 0.01) {
+          if (neighborFloor > floor + 0.01 && !(floorOf[i] && floorOf[i] === floorOf[n])) {
             const top = Math.min(neighborFloor, ceil), side = sideOf[n];
             if (side) band(side, floor, top, top, TEXTURE_HEIGHT[side] || 10);
             else band(lower, floor, top, floor + lowerSize, lowerSize);
             if (neighborFloor - floor > 3) radarEdges.push([a[0], a[1], b[0], b[1]]);
           }
-          if (neighborCeil < ceil - 0.01) {
+          if (neighborCeil < ceil - 0.01 && !(ceilOf[i] && ceilOf[i] === ceilOf[n])) {
             // Next to a roofed room the wall only climbs to the roof's edge, like the lintel over a doorway.
             const bottom = Math.max(neighborCeil, floor), top = Math.min(ceil, roofY[n]);
             if (roofY[n] < Infinity) band(sideOf[n] || def.crown || 'crown', bottom, top, top, TEXTURE_HEIGHT[sideOf[n]] || 4);
@@ -5016,7 +5287,7 @@
         ...enemies.filter(e => e.type === 'sentry' || e.type === 'core').map(e => e.position)].filter(Boolean);
       const clearOf = (x, z, gap) => spots.every(p => (p[0] - x) ** 2 + (p[2] - z) ** 2 > gap * gap) &&
         !(def.girders || []).some(([x0, , z0, x1, , z1]) => x > x0 - 4 && x < x1 + 4 && z > z0 - 4 && z < z1 + 4);
-      const flatCell = (gx, gz, floor) => { const k = gz * GRID_W + wrapGX(gx); return !outsideGrid(gx, gz) && cellAt(gx, gz) && !natural[k] && !sealed[k] && floorY[k] === floor; };
+      const flatCell = (gx, gz, floor) => { const k = gz * GRID_W + wrapGX(gx); return !outsideGrid(gx, gz) && cellAt(gx, gz) && !natural[k] && !sealed[k] && !bent[k] && floorY[k] === floor; };
       let openCount = 0;
       for (let k = 0; k < GRID_W * GRID_D; k++) if (open[k] && !natural[k]) openCount++;
       const propCount = def.props ?? Math.min(120, Math.round(openCount / 150));
@@ -5081,10 +5352,28 @@
         bake(def.terrain.side || 'wallMoon', facetedData(points, ROCK_TRIS, 3), base, 0.85);
         addBlocker([base[0], base[1] + size * boulder.squash * 0.2, base[2]], size * 0.85);
       }
+      // Crystal shards: a tall leaning facet with smaller ones round its foot. Each blocks as a stack of balls.
+      for (const [x, z, size, tall] of def.shards) {
+        const ground = floorAt(x, z), seed = Math.round(x * 3 + z);
+        for (let k = 0; k < 4; k++) {
+          const turn = hashInt(seed, k, 41) * Math.PI * 2, out = k ? size * 1.5 : 0, height = tall * (k ? 0.4 + 0.35 * hashInt(seed, k, 42) : 1), width = size * (k ? 0.6 : 1);
+          const leanX = Math.cos(turn) * height * (k ? 0.3 : 0.12), leanZ = Math.sin(turn) * height * (k ? 0.3 : 0.12), points = [], tris = [];
+          for (const [y, r] of [[-0.5, width], [0.22, width * 0.72]]) for (let c = 0; c < 6; c++) {
+            const a = c / 6 * Math.PI * 2 + turn;
+            points.push([Math.cos(a) * r + leanX * y, y * height, Math.sin(a) * r + leanZ * y]);
+          }
+          points.push([leanX * 0.5, height * 0.5, leanZ * 0.5]);
+          for (let c = 0; c < 6; c++) { const d = (c + 1) % 6; tris.push([c, d, 6 + d], [c, 6 + d, 6 + c], [6 + c, 6 + d, 12]); }
+          const center = [x + Math.cos(turn) * out, ground + height / 2 - 1, z + Math.sin(turn) * out];
+          bake('crystal', facetedData(points, tris, 6), center, 1);
+          const stride = Math.max(2, width * 1.2);
+          for (let y = -height / 2 + width / 2; y < height * 0.4; y += stride) addBlocker([center[0] + leanX * y / height, center[1] + y, center[2] + leanZ * y / height], width * (y > height * 0.2 ? 0.55 : 0.8));
+        }
+      }
       for (let iz = 1; iz < GRID_D; iz++) for (let ix = 1; ix < GRID_W; ix++) {
         const cells = [[ix - 1, iz - 1], [ix, iz - 1], [ix - 1, iz], [ix, iz]];
         const solid = cells.filter(([x, z]) => closed(x, z));
-        if (solid.length !== 1) continue;
+        if (solid.length !== 1 || warpOn[iz * row + ix]) continue;
         const spaces = cells.filter(([x, z]) => !closed(x, z)).map(([x, z]) => z * GRID_W + x);
         const bottom = Math.min(...spaces.map(i => floorY[i])), top = Math.min(...spaces.map(i => ceilY[i])), covered = top < WALL_TOP;
         const vx = GRID_X0 + ix * CELL, vz = GRID_Z0 + iz * CELL, ox = solid[0][0] < ix ? -1 : 1, oz = solid[0][1] < iz ? -1 : 1;
@@ -7293,9 +7582,11 @@
       explored.fill(0); visitedZones.clear(); mapCtx.clearRect(0, 0, mapImage.width, mapImage.height); revealTimer = 0;
       let gx0 = GRID_W, gz0 = GRID_D, gx1 = 0, gz1 = 0;
       for (let gz = 0; gz < GRID_D; gz++) for (let gx = 0; gx < GRID_W; gx++)
-        if (cellAt(gx, gz)) { gx0 = Math.min(gx0, gx); gz0 = Math.min(gz0, gz); gx1 = Math.max(gx1, gx); gz1 = Math.max(gz1, gz); }
+        if (mappable(gx, gz)) { gx0 = Math.min(gx0, gx); gz0 = Math.min(gz0, gz); gx1 = Math.max(gx1, gx); gz1 = Math.max(gz1, gz); }
       mapBounds = [gx0 - 1, gz0 - 1, gx1 + 1, gz1 + 1];
     }
+    // Ground standing above the sector's top is rock to the ship, so the map treats it as rock too.
+    function mappable(gx, gz) { return !!cellAt(gx, gz) && floorY[gz * GRID_W + gx] < WALL_TOP; }
     function paintMapCell(gx, gz) {
       const i = gz * GRID_W + gx, material = open[i] - 1, x = gx * MAP_PX, y = (GRID_D - 1 - gz) * MAP_PX;
       const h = clamp((floorY[i] - FLOOR) / (WALL_TOP - FLOOR), 0, 1);
@@ -7303,7 +7594,7 @@
         : `rgb(${Math.round(16 + h * 40)},${Math.round(40 + h * 95)},${Math.round(50 + h * 95)})`;
       mapCtx.fillRect(x, y, MAP_PX, MAP_PX);
       for (const [dx, dz, rx, ry, rw, rh] of [[-1, 0, 0, 0, 1, MAP_PX], [1, 0, MAP_PX - 1, 0, 1, MAP_PX], [0, 1, 0, 0, MAP_PX, 1], [0, -1, 0, MAP_PX - 1, MAP_PX, 1]]) {
-        const next = cellAt(gx + dx, gz + dz), step = next && Math.abs(floorY[(gz + dz) * GRID_W + gx + dx] - floorY[i]) > 3;
+        const next = mappable(gx + dx, gz + dz), step = next && Math.abs(floorY[(gz + dz) * GRID_W + gx + dx] - floorY[i]) > 3;
         if (!next || step) { mapCtx.fillStyle = next ? '#4fa3b0' : '#a6f2fb'; mapCtx.fillRect(x + rx, y + ry, rw, rh); }
       }
     }
@@ -7313,10 +7604,13 @@
       const cx = Math.floor((sx - GRID_X0) / CELL), cz = Math.floor((sz - GRID_Z0) / CELL);
       for (let dz = -reach; dz <= reach; dz++) for (let dx = -reach; dx <= reach; dx++) {
         const gx = cx + dx, gz = cz + dz;
-        if (dx * dx + dz * dz > reach * reach || !cellAt(gx, gz) || explored[gz * GRID_W + gx]) continue;
+        if (dx * dx + dz * dz > reach * reach || !mappable(gx, gz) || explored[gz * GRID_W + gx]) continue;
         const tx = GRID_X0 + (gx + 0.5) * CELL, tz = GRID_Z0 + (gz + 0.5) * CELL, steps = Math.ceil(Math.hypot(tx - sx, tz - sz) / (CELL / 3));
         let clear = true;
-        for (let k = 1; k < steps && clear; k++) clear = isOpen(sx + (tx - sx) * k / steps, sz + (tz - sz) * k / steps);
+        for (let k = 1; k < steps && clear; k++) {
+          const i = cellIndex(sx + (tx - sx) * k / steps, sz + (tz - sz) * k / steps);
+          clear = i >= 0 && floorY[i] < WALL_TOP;
+        }
         if (clear) { explored[gz * GRID_W + gx] = 1; paintMapCell(gx, gz); }
       }
     }
@@ -8654,7 +8948,7 @@
         let peak = 0, sum = 0;
         for (const v of data) { peak = Math.max(peak, Math.abs(v)); sum += v * v; }
         return { peak: +peak.toFixed(3), rms: +Math.sqrt(sum / data.length).toFixed(3) };
-      }, exitCenter, exitOpen, step(seconds) { for (let t = 0; t < seconds; t += 1 / 60) update(1 / 60); }, ship, enemies, shots, enemyShots, bend, unbend, damage, ranks, timers, waits, wells, wingman, usePower, dashShip, flipShip, resetPowers, showUpgrades, enemyMissiles, barrels, pickups, gates, addEnemy, openGate, hurtEnemy, resetGame, insideGirder, startSector, cells: { open, floorY, ceilY, roofY, underY, cellIndex }, get level() { return level; }, get health() { return health; }, set health(v) { health = v; }, get phoenixReady() { return phoenixReady; }, get dashCharges() { return dashCharges; }, get time() { return time; }, get firing() { return mouseFiring; }, set firing(v) { mouseFiring = v; }, get boosting() { return boostFrom !== null; }, get objective() { return objectiveIndex; }, get mapOpen() { return mapOpen; }, set mapOpen(v) { mapOpen = v; } };
+      }, exitCenter, exitOpen, step(seconds) { for (let t = 0; t < seconds; t += 1 / 60) update(1 / 60); }, ship, enemies, shots, enemyShots, bend, unbend, damage, ranks, timers, waits, wells, wingman, usePower, dashShip, flipShip, resetPowers, showUpgrades, enemyMissiles, barrels, pickups, gates, addEnemy, openGate, hurtEnemy, resetGame, insideGirder, startSector, render, cells: { open, floorY, ceilY, roofY, underY, cellIndex, freeAt, cutOn, cutTo, warpOn, ownerOf }, get level() { return level; }, get health() { return health; }, set health(v) { health = v; }, get phoenixReady() { return phoenixReady; }, get dashCharges() { return dashCharges; }, get time() { return time; }, get firing() { return mouseFiring; }, set firing(v) { mouseFiring = v; }, get boosting() { return boostFrom !== null; }, get objective() { return objectiveIndex; }, get mapOpen() { return mapOpen; }, set mapOpen(v) { mapOpen = v; } };
     let perfSums = [0, 0, 0, 0], perfFrames = 0, perfStart = 0;
     const perfParts = { combat: 0, reveal: 0, music: 0 }, slowFactor = Number(new URLSearchParams(location.search).get('slow')) || 1;
     function perfReport(parts) {
