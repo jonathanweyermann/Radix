@@ -370,7 +370,9 @@
     //     earlier ones. Their walls follow the true curve, both as drawn and for collisions. Options, in `more`:
     //     dome (the ceiling rises this far in the middle), head (with a floor of [from, to], a tube that climbs and keeps this
     //     headroom), side (texture for the faces of a step), power (above 2 squares an oval off), turn (radians), hole (0 to 1,
-    //     a ring), wobble and grain (how far, and over what distance, the edge wanders), raise (changes only the floor of cells
+    //     a ring), arch ('x' or 'z': the dome curves across that axis only, making a barrel vault), dish (the floor sinks this far
+    //     in the middle), crown (the floor rises this far in the middle: a tank's domed top), bore (true: domes and dishes follow
+    //     a circle, not a shallow curve), wobble and grain (how far, and over what distance, the edge wanders), raise (changes only the floor of cells
     //     already open: ledges, mounds, pools) and solid (a round pillar at least three cells across, in wall kind `kind`).
     //     Put door frames and tubes before the chambers they open into, so that the chamber's curve cuts their ends. Shapes
     //     work in ordinary sectors, not in open space or a cylinder.
@@ -485,38 +487,50 @@
         ],
       },
       {
-        name: 'DELTA-9', title: 'TOXIN REFINERY', music: 'acidbath', music2: 'toxin', top: 45, start: [0, -4, 0], yaw: 0, exit: [0, 24, 700, true],
+        // A refinery is round things joined by pipes: settling basins, clarifier pools and storage tanks with domed tops,
+        // towers in the yards, and a long barrel-roofed hall. The ducts and sheds between them stay square.
+        name: 'DELTA-9', title: 'TOXIN REFINERY', music: 'acidbath', music2: 'toxin', top: 75, roundBlocks: true, start: [0, -4, 0], yaw: 0, exit: [0, 24, 700, true],
         sky: { zenith: [0.04, 0.06, 0.03], fog: [0.19, 0.23, 0.15], sun: [0.7, 0.75, 0.5], sunDir: [-0.3, 0.45, 0.8] },
         walls: { lower: [['wallRust', 0.45], ['wallPipes', 0.3], ['wallVent', 0.25]], upper: [['wallRust', 0.55], ['wallUpper', 0.45]] },
         rooms: [
           [-24, -32, 24, 32, PAD, BASE, 11],
-          [-8, 32, 8, 80, PLATE, BASE, 1],
-          [-64, 80, 64, 176, SLUDGE, -19], [-64, 120, 64, 136, PLATE, -5, SKY, 'wallRust'], [-8, 80, 8, 176, PLATE, -5, SKY, 'wallRust'], [-56, 88, -24, 112, PAD, -3, SKY, 'wallRust'],
-          [64, 120, 112, 136, PLATE, BASE, 7],
-          [112, 96, 176, 192, GRATE, BASE, 19], [128, 112, 160, 176, SLUDGE, BASE, 19], [128, 140, 160, 148, PLATE, -5, 19],
-          [176, 160, 184, 176, PLATE, BASE, 9], [184, 144, 232, 192, PLATE, BASE, 9],
-          [-112, 120, -64, 136, PLATE, BASE, 7],
-          [-176, 96, -112, 208, GRATE], [-168, 104, -120, 136, SLUDGE],
-          [-184, 148, -176, 164, PLATE, BASE, 9], [-216, 140, -184, 172, PLATE, BASE, 9],
-          [-8, 176, 8, 240, PLATE, BASE, 3],
-          [-72, 240, 72, 320, GRATE, BASE, 23], [-56, 256, -24, 304, SLUDGE, BASE, 23], [24, 256, 56, 304, SLUDGE, BASE, 23],
-          [128, 192, 152, 272, PLATE, -3, 9], [72, 264, 152, 280, PLATE, -3, 9],
-          [-176, 208, -152, 300, PLATE, BASE, 5], [-152, 284, -72, 300, PLATE, BASE, 5],
-          [-8, 320, 8, 400, PLATE, BASE, 5],
-          [-48, 400, 48, 480, SLUDGE], [-48, 456, 48, 480, PAD, -3], [-48, 400, -32, 456, PLATE, -5], [32, 400, 48, 456, PLATE, -5],
-          [-8, 480, 8, 520, PLATE, -3, 9],
-          [-96, 520, 96, 616, GRATE], [-96, 580, 96, 592, SLUDGE, -19], [-96, 520, -72, 616, PLATE, 7, SKY, 'wallPipes'], [72, 544, 96, 616, PLATE, 19, SKY, 'wallPipes'],
+          // Ducts, sheds and yards.
+          [-8, 32, 8, 84, PLATE, BASE, 1], [60, 120, 112, 136, PLATE, BASE, 7], [-112, 120, -60, 136, PLATE, BASE, 7],
+          [112, 96, 176, 192, GRATE, BASE, 19], [176, 160, 184, 176, PLATE, BASE, 9], [184, 144, 232, 192, PLATE, BASE, 9],
+          [-176, 96, -112, 208, GRATE], [-184, 148, -176, 164, PLATE, BASE, 9], [-216, 140, -184, 172, PLATE, BASE, 9],
+          [-8, 172, 8, 244, PLATE, BASE, 3], [128, 192, 152, 272, PLATE, -3, 9], [68, 264, 152, 280, PLATE, -3, 9],
+          [-176, 208, -152, 300, PLATE, BASE, 5], [-152, 284, -68, 300, PLATE, BASE, 5], [-8, 316, 8, 404, PLATE, BASE, 5], [-8, 476, 8, 520, PLATE, -3, 9],
+          [-96, 520, 96, 616, GRATE], [152, 248, 160, 264, PLATE, -3, 9], [160, 240, 240, 400, GRATE],
+          [176, 400, 192, 536, PLATE, BASE, 5], [96, 520, 176, 536, PLATE, BASE, 5], [-24, 612, 24, 626, PLATE, BASE, 12],
+          // The settling basin: a round pool crossed by two walkways.
+          oval(0, 128, 64, 48, SLUDGE, -19),
+          tube([[-72, 128], [72, 128]], 16, PLATE, -5, undefined, { raise: true, side: 'wallRust' }), tube([[0, 74], [0, 182]], 16, PLATE, -5, undefined, { raise: true, side: 'wallRust' }),
+          oval(-40, 100, 16, 12, PAD, -3, undefined, { raise: true, side: 'wallRust' }),
+          // The filter room's pool, and the tank yard.
+          oval(144, 144, 18, 34, SLUDGE, BASE, undefined, { raise: true }), tube([[120, 144], [168, 144]], 8, PLATE, -5, undefined, { raise: true, side: 'wallRust' }),
+          oval(-144, 120, 26, 18, SLUDGE, BASE, undefined, { raise: true }), oval(-156, 180, 13, 13, PLATE, 13, undefined, { raise: true, crown: 7, side: 'wallRust' }),
+          // The refinery hall, under a barrel roof.
+          oval(0, 280, 72, 40, GRATE, BASE, 23, { power: 8, dome: 22, arch: 'x' }),
+          oval(-40, 280, 16, 24, SLUDGE, BASE, undefined, { raise: true }), oval(40, 280, 16, 24, SLUDGE, BASE, undefined, { raise: true }),
+          // The outflow pool: a clarifier with a walkway round its rim and a pad on its north side.
+          oval(0, 440, 48, 40, SLUDGE),
+          oval(0, 440, 50, 42, PLATE, -5, undefined, { raise: true, hole: 0.82, side: 'wallRust' }), oval(0, 488, 60, 34, PAD, -3, undefined, { raise: true, side: 'wallRust' }),
+          // The scrubber yard: a winding drain with shelves either side.
+          tube([[-100, 586], [-40, 580], [30, 592], [100, 584]], 12, SLUDGE, -19, undefined, { raise: true }),
+          oval(-100, 568, 30, 52, PLATE, 7, undefined, { raise: true, side: 'wallPipes' }), oval(96, 580, 26, 40, PLATE, 19, undefined, { raise: true, side: 'wallPipes' }),
           [-140, 552, -96, 584, PAD, 7, 21],
-          [152, 248, 160, 264, PLATE, -3, 9],
-          [160, 240, 240, 400, GRATE], [208, 256, 232, 296, SLUDGE, -19], [176, 264, 200, 288, PLATE, 9, SKY, 'wallRust'], [208, 320, 232, 344, PLATE, 13, SKY, 'wallRust'], [168, 360, 192, 384, PLATE, 5, SKY, 'wallRust'],
-          [176, 400, 192, 536, PLATE, BASE, 5], [96, 520, 176, 536, PLATE, BASE, 5],
-          [-24, 616, 24, 664, VENT],
-          [-40, 664, 40, 720, PAD, 17],
+          // The tank farm: storage tanks with domed tops, and a sump.
+          oval(220, 276, 14, 22, SLUDGE, -19, undefined, { raise: true }),
+          oval(188, 276, 14, 14, PLATE, 9, undefined, { raise: true, crown: 7, side: 'wallRust' }), oval(220, 332, 15, 15, PLATE, 13, undefined, { raise: true, crown: 8, side: 'wallRust' }),
+          oval(180, 372, 13, 13, PLATE, 5, undefined, { raise: true, crown: 6, side: 'wallRust' }), oval(188, 324, 10, 10, PLATE, 1, undefined, { raise: true, crown: 5, side: 'wallRust' }),
+          // The flare chimney, a round stack with an updraft in it, and the deck beyond.
+          oval(0, 644, 24, 24, VENT),
+          oval(0, 692, 42, 30, PAD, 17),
         ],
         blocks: [
           [-40, 148, -32, 156, COLUMN], [32, 96, 40, 104, COLUMN], [40, 152, 48, 160, COLUMN],
           [116, 100, 124, 108, COLUMN], [164, 180, 172, 188, COLUMN],
-          [-148, 160, -140, 172, COLUMN], [-128, 176, -120, 184, COLUMN],
+          [-128, 176, -120, 184, COLUMN],
           [-8, 272, 8, 288, REACTOR], [-68, 244, -60, 252, COLUMN], [60, 244, 68, 252, COLUMN], [-68, 308, -60, 316, COLUMN], [60, 308, 68, 316, COLUMN],
           [200, 160, 216, 176, BULKHEAD],
           [-64, 544, -48, 560, REACTOR], [48, 556, 64, 572, REACTOR], [-52, 596, -36, 612, REACTOR], [216, 368, 232, 384, REACTOR],
@@ -557,30 +571,33 @@
         ],
       },
       {
-        name: 'EPSILON-5', title: 'CRYO VAULTS', music: 'cryo', music2: 'nadir', top: 49, start: [0, -4, 0], yaw: 0, exit: [0, 24, 724, true], tint: [0.88, 0.96, 1.1],
+        // The fighters sleep under barrel vaults. The well between the halls is a round shaft that goes down a long way, the
+        // reservoir has a frozen shore, and the spire at the end is one tall bore.
+        name: 'EPSILON-5', title: 'CRYO VAULTS', music: 'cryo', music2: 'nadir', top: 80, roundBlocks: true, start: [0, -4, 0], yaw: 0, exit: [0, 24, 724, true], tint: [0.88, 0.96, 1.1],
         sky: { zenith: [0.05, 0.08, 0.14], fog: [0.36, 0.44, 0.54], sun: [0.8, 0.9, 1.0], sunDir: [0.3, 0.6, 0.7] },
         walls: { lower: [['wallIce', 0.5], ['wallLower', 0.2], ['wallComputer', 0.15], ['wallDoor', 0.15]], upper: [['wallIce', 0.6], ['wallWindows', 0.4]] },
         rooms: [
           [-24, -32, 24, 24, PAD, BASE, 13],
-          [-8, 24, 8, 96, PLATE, BASE, 5],
-          [-64, 96, 64, 192, ICE, BASE, 25],
-          [-64, 256, 64, 280, PLATE, 9, 21],
-          [-24, 280, 24, 360, ICE, -35, 21], [-8, 360, 8, 372, PLATE, BASE, 9],
-          [-80, 372, 80, 440, ICE, BASE, 21],
-          [-112, 128, -64, 144, PLATE, BASE, 7], [-176, 112, -112, 240, GRATE, BASE, 17],
+          // Corridors and the square rooms off them.
+          [-8, 24, 8, 100, PLATE, BASE, 5], [-112, 128, -60, 144, PLATE, BASE, 7], [-176, 112, -112, 240, GRATE, BASE, 17],
           [-184, 160, -176, 176, PLATE, BASE, 9], [-216, 152, -184, 184, PLATE, BASE, 9],
-          [-160, 240, -144, 400, PLATE, BASE, 3], [-144, 384, -80, 400, PLATE, BASE, 3],
-          [-8, 440, 8, 520, PLATE, BASE, 5],
-          [-40, 520, 40, 620, PAD, BASE, 25],
-          [80, 388, 124, 428, PAD, BASE, 9],
-          [64, 160, 136, 176, PLATE, BASE, 9],
-          [136, 160, 248, 360, ICE, -27], [136, 160, 248, 184, ICE, 1, SKY, 'wallIce'], [224, 184, 248, 360, ICE, 13, SKY, 'wallIce'], [160, 280, 200, 312, ICE, -7, SKY, 'wallIce'],
-          [140, 320, 156, 336, VENT, -27],
-          [184, 360, 200, 460, PLATE, BASE, 5],
-          [136, 460, 216, 540, GRATE, BASE, 21],
-          [40, 524, 136, 540, PLATE, BASE, 9],
-          [-40, 620, 40, 700, ICE, -27], [-16, 640, 16, 672, VENT, -27],
-          [-40, 700, 40, 744, PAD, 17, SKY, 'wallIce'],
+          [-160, 240, -144, 400, PLATE, BASE, 3], [-144, 384, -76, 400, PLATE, BASE, 3], [-8, 436, 8, 524, PLATE, BASE, 5],
+          [76, 388, 124, 428, PAD, BASE, 9], [60, 160, 168, 176, PLATE, BASE, 9], [184, 340, 200, 460, PLATE, BASE, 5],
+          [136, 460, 216, 540, GRATE, BASE, 21], [36, 524, 136, 540, PLATE, BASE, 9], [-64, 256, 64, 280, PLATE, 9, 21], [-8, 356, 8, 376, PLATE, BASE, 9],
+          [-16, 616, 16, 632, PLATE, BASE, 9],
+          // The vault hall, the cryo chamber and the exit vault, each under a barrel roof.
+          oval(0, 144, 68, 48, ICE, BASE, 25, { power: 8, dome: 26, arch: 'x' }),
+          oval(0, 406, 80, 34, ICE, BASE, 21, { power: 6, dome: 16, arch: 'z' }),
+          oval(0, 570, 40, 50, PAD, BASE, 25, { power: 6, dome: 14, arch: 'x' }),
+          // The cold well: a round shaft under a dome, going down a long way past the door on its far side.
+          oval(0, 320, 34, 40, ICE, -70, 21, { dome: 16 }),
+          // The frozen reservoir, with shelves round its shore and an island.
+          oval(196, 252, 52, 108, ICE, -27, undefined, { wobble: 6, grain: 40 }),
+          oval(196, 160, 72, 36, ICE, 1, undefined, { raise: true, side: 'wallIce' }), oval(256, 270, 36, 100, ICE, 13, undefined, { raise: true, side: 'wallIce' }),
+          oval(180, 296, 20, 16, ICE, -7, undefined, { raise: true, side: 'wallIce' }), oval(160, 328, 8, 8, VENT, -27, undefined, { raise: true }),
+          // The cryo spire, one tall bore with an updraft at its foot and a ledge at its far end.
+          oval(0, 684, 42, 58, ICE, -27),
+          oval(0, 746, 56, 46, PAD, 17, undefined, { raise: true, side: 'wallIce' }), oval(0, 656, 16, 16, VENT, -27, undefined, { raise: true }),
         ],
         stairs: [[-64, 192, -40, 256, PAD, BASE, 9, 'z', 12], [40, 192, 64, 256, PAD, BASE, 9, 'z', 12]],
         blocks: [
@@ -588,14 +605,14 @@
           [-64, 384, -56, 392, COLUMN], [-40, 384, -32, 392, COLUMN], [32, 384, 40, 392, COLUMN], [56, 384, 64, 392, COLUMN],
           [-64, 412, -56, 420, COLUMN], [-40, 412, -32, 420, COLUMN], [32, 412, 40, 420, COLUMN], [56, 412, 64, 420, COLUMN],
           [-148, 168, -140, 176, COLUMN], [-136, 204, -128, 212, COLUMN], [-28, 540, -20, 548, COLUMN], [20, 540, 28, 548, COLUMN],
-          [176, 220, 184, 228, CRYSTAL], [208, 300, 216, 308, CRYSTAL], [152, 480, 160, 488, COLUMN], [192, 512, 200, 520, COLUMN],
-          [-36, 680, -28, 688, CRYSTAL], [28, 660, 36, 668, CRYSTAL],
+          [152, 480, 160, 488, COLUMN], [192, 512, 200, 520, COLUMN],
         ],
+        shards: [[176, 224, 3, 40], [212, 304, 3, 36], [-30, 684, 3, 50], [28, 664, 3, 44]],
         girders: [[-64, 10, 140, 64, 13, 144], [-24, -2, 316, 24, 1, 320], [-80, 8, 428, 80, 11, 432], [136, 9, 236, 248, 12, 240], [-40, 5, 690, 40, 8, 694]],
         gates: [
           [-8, 88, 8, 92, 'south', 'chain'], [-8, 364, 8, 368, 'south', 'chain'], [-84, 384, -80, 400, 'west', 'chain'],
           [-8, 440, 8, 444, 'south', 'chain'], [-180, 160, -176, 176, 'east', 'secret'], [80, 400, 84, 416, 'west', 'cracked'],
-          [132, 160, 136, 176, 'west', 'chain'], [-40, 620, 40, 624, 'south', 'chain'],
+          [132, 160, 136, 176, 'west', 'chain'], [-16, 620, 16, 624, 'south', 'chain'],
         ],
         lasers: [[184, 410, 200, 410, -10.4, 5, 4, 0]],
         zones: [
@@ -2285,32 +2302,45 @@
         ],
       },
       {
-        name: 'OMEGA', title: 'CORE BREACH', music: 'furnace', music2: 'omega', top: 49, start: [0, -4, 0], yaw: 0, exit: [0, 36, 728, true],
+        // The core arena is a round pit with a walkway round its rim and the core standing in the middle, the coolant core a long
+        // round tank, and the throne room ends in a curve. The sentinel's crown hall sits under a barrel roof.
+        name: 'OMEGA', title: 'CORE BREACH', music: 'furnace', music2: 'omega', top: 90, roundBlocks: true, start: [0, -4, 0], yaw: 0, exit: [0, 36, 728, true],
         brief: 'THE OMEGA SENTINEL GUARDS THE CROWN HALL',
         sky: { zenith: [0.06, 0.02, 0.1], fog: [0.24, 0.16, 0.27], sun: [0.85, 0.5, 0.78], sunDir: [-0.5, 0.4, 0.6] },
         walls: { lower: [['wallVoid', 0.35], ['wallComputer', 0.35], ['wallLower', 0.3]], upper: [['wallVoid', 0.5], ['wallUpper', 0.5]] },
         rooms: [
-          [-20, -32, 20, 24, PAD, BASE, 9],
-          [-8, 24, 8, 120, PLATE, BASE, 1],
-          [-96, 120, 96, 312, VOID, -27], [-96, 120, -72, 312, PLATE, 1, SKY, 'wallVoid'], [72, 120, 96, 312, PLATE, 1, SKY, 'wallVoid'],
-          [-60, 312, -44, 440, PLATE, BASE, 3], [44, 312, 60, 440, PLATE, -3, 11],
-          [-80, 440, 80, 520, PLATE, -3, 23],
-          [-32, 580, 32, 640, PAD, 9],
-          [-136, 200, -96, 216, PLATE, 1, 13],
-          [-232, 120, -136, 312, VOID, -43], [-232, 120, -200, 184, VOID, BASE, SKY, 'wallVoid'], [-168, 200, -136, 264, VOID, 9, SKY, 'wallVoid'],
-          [-232, 248, -200, 312, VOID, 25, SKY, 'wallVoid'], [-192, 140, -176, 156, VENT, -43], [-252, 180, -232, 220, PAD, BASE, 9],
-          [-200, 312, -184, 456, PLATE, 9, 21], [-184, 456, -80, 472, PLATE, 9, 21],
-          [-88, 640, 88, 744, VOID, BASE], [-88, 640, -56, 700, VOID, 9, SKY, 'wallVoid'], [56, 660, 88, 744, VOID, 17, SKY, 'wallVoid'], [-24, 664, -8, 680, VENT, BASE],
-          [-20, 708, 20, 744, PAD, 29, SKY, 'wallVoid'],
+          // Door frames.
+          [-142, 200, -90, 216, PLATE, 1, 13], [-16, 632, 16, 652, PAD, 9, 25], [-236, 192, -226, 208, PAD, BASE, 9], [-252, 180, -236, 220, PAD, BASE, 9],
+          // Bores and passages.
+          tube([[0, 22], [0, 124]], 16, PLATE, [BASE, 1], undefined, { head: 8, dome: 5 }),
+          tube([[-52, 290], [-58, 360], [-50, 446]], 16, PLATE, BASE, -1, { dome: 4 }),
+          tube([[52, 290], [58, 360], [50, 446]], 16, PLATE, -3, 7, { dome: 4 }),
+          tube([[-192, 300], [-192, 448], [-176, 464], [-76, 464]], 16, PLATE, 9, 18, { dome: 3 }),
+          oval(0, -4, 22, 28, PAD, BASE, 7, { dome: 8 }),
+          // The core arena.
+          oval(0, 216, 96, 96, VOID, -27),
+          oval(0, 216, 98, 98, PLATE, 1, undefined, { raise: true, hole: 0.74, side: 'wallVoid' }),
+          oval(0, 216, 24, 24, VOID, BASE, undefined, { solid: true, kind: REACTOR }),
+          // The crown hall, and the deck beyond it.
+          oval(0, 480, 84, 40, PLATE, -3, 23, { power: 5, dome: 16, arch: 'z' }),
+          oval(0, 610, 34, 30, PAD, 9),
+          // The coolant core.
+          oval(-184, 216, 48, 96, VOID, -43),
+          oval(-232, 150, 30, 40, VOID, BASE, undefined, { raise: true, side: 'wallVoid' }), oval(-140, 232, 34, 38, VOID, 9, undefined, { raise: true, side: 'wallVoid' }),
+          oval(-228, 282, 30, 38, VOID, 25, undefined, { raise: true, side: 'wallVoid' }), oval(-184, 148, 8, 8, VENT, -43, undefined, { raise: true }),
+          // The throne room.
+          oval(0, 696, 90, 48, VOID, BASE, undefined, { power: 2.6 }),
+          oval(-70, 672, 26, 28, VOID, 9, undefined, { raise: true, side: 'wallVoid' }), oval(72, 712, 24, 34, VOID, 17, undefined, { raise: true, side: 'wallVoid' }),
+          oval(-16, 672, 8, 8, VENT, BASE, undefined, { raise: true }), oval(0, 730, 22, 18, PAD, 29, undefined, { raise: true, side: 'wallVoid' }),
         ],
-        stairs: [[-72, 200, -52, 232, PAD, 1, -27, 'x'], [52, 200, 72, 232, PAD, -27, 1, 'x'], [-12, 520, 12, 580, PAD, -3, 9, 'z']],
+        stairs: [[-72, 200, -52, 232, PAD, 1, -27, 'x'], [52, 200, 72, 232, PAD, -27, 1, 'x'], [-12, 520, 12, 580, PAD, -3, 9, 'z', 14]],
         blocks: [
-          [-24, 192, 24, 240, REACTOR],
           [-52, 148, -44, 156, COLUMN], [44, 148, 52, 156, COLUMN], [-52, 276, -44, 284, COLUMN], [44, 276, 52, 284, COLUMN],
-          [-176, 160, -168, 168, CRYSTAL], [-208, 216, -200, 224, CRYSTAL], [-56, 680, -48, 688, REACTOR], [48, 700, 56, 708, REACTOR],
+          [-56, 680, -48, 688, REACTOR], [48, 700, 56, 708, REACTOR],
         ],
+        shards: [[-172, 164, 3, 50], [-204, 220, 3, 56]],
         girders: [[-8, -7, 70, 8, -4, 74], [-96, 14, 160, 96, 17, 164], [-96, 4, 270, 96, 7, 274], [-80, 8, 456, 80, 11, 460], [-232, 17, 228, -136, 20, 232], [-88, 33, 690, 88, 36, 694]],
-        gates: [[-12, 520, 12, 524, 'south', 'boss'], [-100, 200, -96, 216, 'east', 'chain'], [-236, 192, -232, 208, 'east', 'cracked'], [-32, 640, 32, 644, 'south', 'chain']],
+        gates: [[-12, 520, 12, 524, 'south', 'boss'], [-100, 200, -96, 216, 'east', 'chain'], [-236, 192, -232, 208, 'east', 'cracked'], [-16, 640, 16, 644, 'south', 'chain']],
         lasers: [[-200, 380, -184, 380, 10, 20.3, 3.2, 0]],
         extras: { enemies: [['sentinel', 0, 12, 484], ['pylon', -52, 1, 468], ['pylon', 52, 1, 468], ['pylon', -52, 1, 500], ['pylon', 52, 1, 500]] },
         zones: [
@@ -2810,9 +2840,10 @@
       {
         // Inside the ark: a sealed hull of corridors opening into chambers far taller than any room so far. Floating blocks
         // hang in the cargo void, a habitat drum turns for gravity in the spin section, and the reactor hall is built
-        // around a crackling column caged by turning rings.
+        // around a crackling column caged by turning rings. The spin section is a true horizontal bore round the drum, and the
+        // reactor hall a round well.
         name: 'THE ARK', title: 'REACTOR SPINE', music: 'anvil', music2: 'ark', top: 100, start: [0, -2, -24], yaw: 0, exit: [0, 12, 736, true],
-        interior: true, roof: 'floorPlate', tint: [0.86, 0.9, 1.0],
+        interior: true, lit: true, roof: 'floorPlate', tint: [0.86, 0.9, 1.0],
         sky: { zenith: [0.01, 0.015, 0.03], fog: [0.03, 0.045, 0.07], sun: [0.3, 0.34, 0.42], sunDir: [0.2, 1, 0.15] },
         walls: { lower: [['wallTech', 0.35], ['wallComputer', 0.25], ['wallPipes', 0.25], ['wallVent', 0.15]], upper: [['wallUpper', 0.5], ['wallTech', 0.3], ['wallWindows', 0.2]] },
         rooms: [
@@ -2820,7 +2851,8 @@
           [-48, -40, 48, 48, PAD, BASE, BASE + 34],
           [-44, -32, -28, -8, PLATE, BASE + 6, BASE + 34, 'wallContainer'], [28, 8, 44, 32, PLATE, BASE + 8, BASE + 34, 'wallContainerB'], [-44, 20, -32, 36, PLATE, BASE + 4, BASE + 34, 'wallContainerB'],
           // The spine corridor north, behind the docking clamps.
-          [-8, 48, 8, 140, GRATE, BASE, BASE + 12],
+          [-8, 44, 8, 60, GRATE, BASE, BASE + 12],
+          tube([[0, 64], [0, 142]], 16, GRATE, BASE, BASE + 8, { dome: 4 }),
           // The cargo void: a drop of seventy units under a ceiling a hundred above, with blocks hanging in the air.
           [-120, 140, 120, 300, PLATE, BASE - 70],
           [-16, 196, 16, 244, VENT, BASE - 70],
@@ -2831,23 +2863,26 @@
           [-120, 216, 120, 224, GRATE, BASE - 70, BASE + 12, 'wallTech', BASE + 16],
           // The main corridor on to the spin section, high in the void's north wall.
           [-8, 300, 8, 330, GRATE, BASE + 10, BASE + 24],
-          // The spin section: the habitat drum turns across the middle, with the gravity governors on platforms around it.
-          [-112, 330, 112, 480, PLATE, BASE - 50],
-          [-92, 388, -68, 412, PLATE, BASE - 50, BASE - 6, 'wallTech', BASE - 2], [68, 388, 92, 412, PLATE, BASE - 50, BASE - 6, 'wallTech', BASE - 2],
-          [-12, 458, 12, 476, PLATE, BASE - 50, BASE - 36, 'wallTech', BASE - 32],
-          [-8, 480, 8, 500, GRATE, BASE + 10, BASE + 22],
-          // The reactor hall: a deep, round-walled well around the core column, with regulator platforms at its edge.
-          [-120, 500, 120, 680, GRATE, BASE - 80],
-          [-12, 648, 12, 672, PLATE, BASE - 80, BASE + 2, 'wallTech', BASE + 6], [-72, 544, -48, 568, PLATE, BASE - 80, BASE + 2, 'wallTech', BASE + 6], [48, 544, 72, 568, PLATE, BASE - 80, BASE + 2, 'wallTech', BASE + 6],
-          [-120, 584, -96, 600, GRATE, BASE - 80, BASE - 4, 'wallTech', BASE], [96, 584, 120, 600, GRATE, BASE - 80, BASE - 4, 'wallTech', BASE],
+          [-8, 480, 8, 506, GRATE, BASE + 10, BASE + 22],
           // The bridge.
-          [-8, 680, 8, 712, GRATE, BASE + 14, BASE + 26],
-          [-40, 712, 40, 752, PAD, BASE + 14, BASE + 44],
+          [-8, 674, 8, 716, GRATE, BASE + 14, BASE + 26],
+          oval(0, 732, 42, 20, PAD, BASE + 14, BASE + 36, { dome: 8, power: 3 }),
           // West service ducts: a long crawlway from the docking bay to the spin section, with two side rooms.
-          [-136, 0, -48, 12, PLATE, BASE, BASE + 10], [-136, 12, -124, 372, PLATE, BASE, BASE + 10], [-124, 360, -112, 372, PLATE, BASE, BASE + 10],
+          [-136, 0, -48, 12, PLATE, BASE, BASE + 10], [-136, 12, -124, 372, PLATE, BASE, BASE + 10],
           [-200, 100, -136, 160, PLATE, BASE, BASE + 18], [-200, 220, -140, 280, PLATE, BASE, BASE + 18], [-140, 240, -136, 256, PLATE, BASE, BASE + 10],
           // East conduit trench: low under the cargo void, along the hull and into the bottom of the reactor hall.
-          [120, 150, 200, 166, PLATE, BASE - 70, BASE - 56], [184, 166, 200, 600, PLATE, BASE - 70, BASE - 52], [120, 584, 184, 600, PLATE, BASE - 70, BASE - 56],
+          [120, 150, 200, 166, PLATE, BASE - 70, BASE - 56], [184, 166, 200, 600, PLATE, BASE - 70, BASE - 52], [112, 584, 184, 600, PLATE, BASE - 70, BASE - 56],
+          // The spin section: a bore round the habitat drum, with the gravity governors on pedestals.
+          oval(0, 405, 112, 75, PLATE, 18, 20, { power: 12, dome: 80, dish: 80, arch: 'x', bore: true }),
+          oval(-80, 400, 14, 14, PLATE, BASE - 2, undefined, { raise: true, side: 'wallTech' }), oval(80, 400, 14, 14, PLATE, BASE - 2, undefined, { raise: true, side: 'wallTech' }),
+          oval(0, 467, 13, 10, PLATE, BASE - 32, undefined, { raise: true, side: 'wallTech' }),
+          // The west ducts' way into the bore.
+          [-124, 360, -100, 372, PLATE, BASE, BASE + 10],
+          // The reactor hall: a deep round well around the core column, with the regulators on pedestals and ledges at its edge.
+          oval(0, 590, 118, 88, GRATE, BASE - 80),
+          oval(0, 660, 13, 13, PLATE, BASE + 6, undefined, { raise: true, side: 'wallTech' }), oval(-60, 556, 13, 13, PLATE, BASE + 6, undefined, { raise: true, side: 'wallTech' }),
+          oval(60, 556, 13, 13, PLATE, BASE + 6, undefined, { raise: true, side: 'wallTech' }),
+          oval(-118, 592, 26, 22, GRATE, BASE, undefined, { raise: true, side: 'wallTech' }), oval(118, 592, 26, 22, GRATE, BASE, undefined, { raise: true, side: 'wallTech' }),
         ],
         stairs: [],
         blocks: [],
@@ -3124,7 +3159,7 @@
       const scaled = (v) => Array.isArray(v) ? v.map(scaled) : v * WORLD_SCALE;
       def.rooms = def.rooms.map(room => {
         if (Array.isArray(room)) return scale([room], [4, 7, 9])[0];
-        for (const field of ['at', 'radii', 'path', 'width', 'floor', 'ceil', 'head', 'dome', 'wobble', 'grain', 'roof']) if (room[field] !== undefined) room[field] = scaled(room[field]);
+        for (const field of ['at', 'radii', 'path', 'width', 'floor', 'ceil', 'head', 'dome', 'dish', 'crown', 'wobble', 'grain', 'roof']) if (room[field] !== undefined) room[field] = scaled(room[field]);
         return room;
       });
       for (const zone of def.zones) if (zone.altitude) zone.altitude = zone.altitude.map(v => v * WORLD_SCALE);
@@ -3249,11 +3284,15 @@
       }
       s.field = shapeField(s);
       const reach = s.path ? s.width / 2 : Math.min(...s.radii), climbs = Array.isArray(s.floor);
-      s.climbs = climbs; s.curvedCeil = !!s.dome || !!s.head;
-      s.floorAt = climbs ? (x, z) => s.floor[0] + (s.floor[1] - s.floor[0]) * onPath(s, x, z)[1] : () => s.floor;
-      const lift = (x, z) => { const t = clamp(1 + s.field(x, z) / reach, 0, 1); return s.dome * (1 - t * t); };
-      s.ceilAt = (x, z) => (s.head ? s.floorAt(x, z) + s.head : s.ceil ?? WALL_TOP) + (s.dome ? lift(x, z) : 0);
-      s.ceilNormal = (x, z) => { const dx = (s.ceilAt(x + 1, z) - s.ceilAt(x - 1, z)) / 2, dz = (s.ceilAt(x, z + 1) - s.ceilAt(x, z - 1)) / 2, l = Math.hypot(dx, 1, dz); return [dx / l, -1 / l, dz / l]; };
+      s.curvedFloor = climbs || !!s.crown || !!s.dish; s.curvedCeil = !!s.dome || !!s.head;
+      // How far out from the middle a point lies, 0 to 1, and how high a curved floor or ceiling stands there.
+      const out = s.arch ? (x, z) => Math.min(1, s.arch === 'x' ? Math.abs(x - s.at[0]) / s.radii[0] : Math.abs(z - s.at[1]) / s.radii[1]) : (x, z) => clamp(1 + s.field(x, z) / reach, 0, 1);
+      const bulge = s.bore ? (x, z) => Math.sqrt(Math.max(0, 1 - out(x, z) ** 2)) : (x, z) => 1 - out(x, z) ** 2;
+      const base = climbs ? (x, z) => s.floor[0] + (s.floor[1] - s.floor[0]) * onPath(s, x, z)[1] : () => s.floor;
+      s.floorAt = s.crown || s.dish ? (x, z) => base(x, z) + ((s.crown || 0) - (s.dish || 0)) * bulge(x, z) : base;
+      s.ceilAt = (x, z) => (s.head ? base(x, z) + s.head : s.ceil ?? WALL_TOP) + (s.dome ? s.dome * bulge(x, z) : 0);
+      const facing = (height, up) => (x, z) => { const dx = (height(x + 1, z) - height(x - 1, z)) / 2, dz = (height(x, z + 1) - height(x, z - 1)) / 2, l = Math.hypot(dx, 1, dz); return [dx * -up / l, up / l, dz * -up / l]; };
+      s.ceilNormal = facing(s.ceilAt, -1); s.floorNormal = facing(s.floorAt, 1);
       s.around = s.path ? (x, z) => onPath(s, x, z)[1] * s.length : (x, z) => Math.atan2(z - s.at[1], x - s.at[0]) * (s.radii[0] + s.radii[1]) / 2;
       const pad = (s.wobble || 0) + CELL;
       if (s.path) {
@@ -3297,8 +3336,8 @@
             ceilOf[i] = s.curvedCeil ? s.id : 0; roofY[i] = s.roof ?? Infinity; roofOf[i] = null; underY[i] = -Infinity;
           }
           open[i] = 1 + s.material; sideOf[i] = s.side ?? null;
-          floorY[i] = s.climbs ? Math.max(...corners.map(([x, z]) => s.floorAt(x, z))) : s.floor;
-          floorOf[i] = s.climbs ? s.id : 0;
+          floorY[i] = s.curvedFloor ? Math.max(...corners.map(([x, z]) => s.floorAt(x, z))) : s.floor;
+          floorOf[i] = s.curvedFloor ? s.id : 0;
         }
     }
     // With every shape carved, split the cells their edges cross and pull the grid's corners along each edge onto its curve.
@@ -5189,7 +5228,7 @@
           quad(FLOOR_MATERIALS[material - 1], covered, [[x0, floor, z0], [mx, floor, z0], [mx, floor, mz], [x0, floor, mz]], [0, 1, 0], uv, [1, 1, 1, 1]);
           if (covered) quad(ceilingOf(i), true, [[x0, ceil, mz], [mx, ceil, mz], [mx, ceil, z0], [x0, ceil, z0]], [0, -1, 0], [uv[3], uv[2], uv[1], uv[0]], [1, 1, 1, 1]);
           if (roofY[i] < WALL_TOP) quad(roofOf[i] || def.roof || 'floorPad', false, [[x0, roofY[i], z0], [mx, roofY[i], z0], [mx, roofY[i], mz], [x0, roofY[i], mz]], [0, 1, 0], uv, [1, 1, 1, 1]);
-        } else if (!merged[i]) quad(FLOOR_MATERIALS[material - 1], covered, floorShape ? outline.map(([x, z]) => [x, floorShape.floorAt(x, z), z]) : at(outline, floor), [0, 1, 0], flatUv(outline), corners);
+        } else if (!merged[i]) quad(FLOOR_MATERIALS[material - 1], covered, floorShape ? outline.map(([x, z]) => [x, floorShape.floorAt(x, z), z]) : at(outline, floor), [0, 1, 0], flatUv(outline), corners, floorShape && outline.map(([x, z]) => floorShape.floorNormal(x, z)));
         if (covered && !merged[i]) quad(ceilingOf(i), true, ceilShape ? under.map(([x, z]) => [x, ceilShape.ceilAt(x, z), z]) : at(under, ceil), [0, -1, 0], flatUv(under),
           [corners[3], corners[2], corners[1], corners[0]], ceilShape && under.map(([x, z]) => ceilShape.ceilNormal(x, z)));
         const roof = roofY[i];
@@ -5236,10 +5275,10 @@
             return y + (low - floor) * (1 - t) + (high - ceil) * t;
           };
           // A band of wall texture between two heights; v runs down from vTop over vSize units.
-          const band = (name, y0, y1, vTop, vSize) => {
+          const band = (name, y0, y1, vTop, vSize, ends) => {
             if (y1 - y0 < 0.01) return;
             const v0 = (vTop - y0) / vSize, v1 = (vTop - y1) / vSize;
-            quad(name, covered, [[a[0], stretch(y0, a), a[1]], [b[0], stretch(y0, b), b[1]], [b[0], stretch(y1, b), b[1]], [a[0], stretch(y1, a), a[1]]], normal,
+            quad(name, covered, [[a[0], stretch(y0, a), a[1]], [b[0], stretch(y0, b), b[1]], [b[0], ends ? ends[1] : stretch(y1, b), b[1]], [a[0], ends ? ends[0] : stretch(y1, a), a[1]]], normal,
               [[ua, v0], [ub, v0], [ub, v1], [ua, v1]], [shade(y0) * cornerA, shade(y0) * cornerB, shade(y1) * cornerB, shade(y1) * cornerA], facing);
           };
           // A bulkhead wall rising from `bottom` to `top`: kick plate and panels, upper cladding, then a lit crown.
@@ -5269,9 +5308,10 @@
             if (roofY[n] > bottom) band(sideOf[n] || 'crown', bottom, roofY[n], roofY[n], TEXTURE_HEIGHT[sideOf[n]] || 4);
           }
           if (neighborFloor > floor + 0.01 && !(floorOf[i] && floorOf[i] === floorOf[n])) {
-            const top = Math.min(neighborFloor, ceil), side = sideOf[n];
-            if (side) band(side, floor, top, top, TEXTURE_HEIGHT[side] || 10);
-            else band(lower, floor, top, floor + lowerSize, lowerSize);
+            const top = Math.min(neighborFloor, ceil), side = sideOf[n], nextFloor = floorOf[n] ? shapes[floorOf[n] - 1] : null;
+            const ends = nextFloor ? [a, b].map(([x, z]) => Math.min(nextFloor.floorAt(x, z), ceil)) : null;
+            if (side) band(side, floor, top, top, TEXTURE_HEIGHT[side] || 10, ends);
+            else band(lower, floor, top, floor + lowerSize, lowerSize, ends);
             if (neighborFloor - floor > 3) radarEdges.push([a[0], a[1], b[0], b[1]]);
           }
           if (neighborCeil < ceil - 0.01 && !(ceilOf[i] && ceilOf[i] === ceilOf[n])) {
