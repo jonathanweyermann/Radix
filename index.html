@@ -364,8 +364,9 @@
     //     big rooms; by default about one for every hundred and fifty open cells
     //   hulls: rounded shapes for floating modules in open space { at: [x, z], radii: [x, z], power, top: [centre, rim],
     //     bottom: [centre, rim], roof, under, inner }. Cells carved with the hull's `roof` and `under` heights take a rounded
-    //     outline (a superellipse of that power), a domed top and a keeled bottom; rooms inside it are clipped back to walls
-    //     where they pass `inner` of the way to the rim, and their ceilings and floors stay clear of the hull.
+    //     outline (a superellipse of that power) along the true curve, a smooth domed top and a keeled bottom; plain rooms inside
+    //     it are clipped back to walls where they pass `inner` of the way to the rim, and rooms' ceilings and floors stay clear of
+    //     the hull. A shape inside a hull gives the same `roof` and `under`, and is the author's to keep inside the rim.
     //   rooms can also hold shapes, made with `oval` and `tube`, carved in their place in the list so later entries overwrite
     //     earlier ones. Their walls follow the true curve, both as drawn and for collisions. Options, in `more`:
     //     dome (the ceiling rises this far in the middle), head (with a floor of [from, to], a tube that climbs and keeps this
@@ -375,7 +376,7 @@
     //     a circle, not a shallow curve), wobble and grain (how far, and over what distance, the edge wanders), raise (changes only the floor of cells
     //     already open: ledges, mounds, pools) and solid (a round pillar at least three cells across, in wall kind `kind`).
     //     Put door frames and tubes before the chambers they open into, so that the chamber's curve cuts their ends. Shapes
-    //     work in ordinary sectors, not in open space or a cylinder.
+    //     work everywhere but a cylinder.
     //     A shape with a `roof` and the terrain's side texture is a cave or tunnel through the rock.
     //     buried (with the terrain's side texture): a cave under natural ground. The hill runs on over it unbroken, and where
     //     the hillside falls away below the cave's ceiling the shape opens to the sky as a cutting up to the cave's mouth.
@@ -411,6 +412,7 @@
     // `ceil`; each door [x0, z0, x1, z1, top] cuts a doorway through the walls up to `top`.
     const inIce = (more) => ({ side: 'wallGlacier', roof: 130, ...more });
     const inCave = (more) => ({ side: 'wallIce', buried: true, ...more });
+    const inHull = (roof, under, more) => ({ roof, under, ...more });
     const oval = (x, z, rx, rz, material, floor = BASE, ceil, more) => ({ at: [x, z], radii: [rx, rz], material, floor, ceil, ...more });
     const tube = (path, width, material, floor = BASE, ceil, more) => ({ path, width, material, floor, ceil, ...more });
     // Points round a circle for a tube, at bearings in degrees clockwise from north (+z).
@@ -1217,48 +1219,52 @@
       },
       {
         // The brood ark: a living ship in open space, its rounded hive hull grown round a hold where the brood mother sits
-        // among her egg sacs, with two smaller pods and egg spheres drifting round it. You enter through the maw.
+        // among her egg sacs, with two smaller pods and egg spheres drifting round it. You enter through the maw. It's grown, not
+        // built, so nothing inside is straight: a ribbed gullet narrows to a throat, and the hold is a great domed stomach.
         name: 'TAU-3', title: 'BROOD ARK', music: 'brood', music2: 'hivemind', top: 200, width: 256, start: [0, 0, -30], yaw: 0, exit: [0, 20, 730, true], since: 'six',
-        space: true, roof: 'floorHive', hull: 'floorHive', ceiling: 'wallBasalt', crown: 'wallHive', posts: false, tint: [0.72, 0.62, 0.5],
+        space: true, lit: true, roof: 'wallChitin', hull: 'wallChitin', ceiling: 'wallChitin', crown: 'wallChitin', posts: false, tint: [0.72, 0.62, 0.5],
         sky: { zenith: [0.0, 0.0, 0.01], fog: [0.02, 0.015, 0.01], sun: [1.1, 0.95, 0.75], sunDir: [0.5, 0.5, 0.3] },
-        walls: { lower: [['wallHive', 1]], upper: [['wallHive', 1]] },
+        walls: { lower: [['wallChitin', 1]], upper: [['wallChitin', 1]] },
         rooms: [
           [-512, -48, 512, 752, VOID, -200],
-          [-260, 196, 260, 668, PLATE, 64, SKY, 'wallHive', undefined, null, -30],
-          [-24, 196, 24, 200, HIVE, -20, 8, 'wallHive', 64, null, -30],
-          [-40, 200, 40, 280, HIVE, -20, 30, null, 64, null, -30],
-          [-16, 280, 16, 340, HIVE, -16, 14, null, 64, null, -30],
-          [-120, 340, 120, 540, HIVE, -24, 60, null, 64, null, -30],
-          [-80, 360, 80, 520, HIVE, -26, 64, null, 64, null, -30],
-          [-200, 300, -140, 380, HIVE, -18, 30, null, 64, null, -30],
-          [140, 300, 200, 380, HIVE, -18, 30, null, 64, null, -30],
-          [-200, 480, -140, 560, HIVE, -18, 30, null, 64, null, -30],
-          [140, 480, 200, 560, HIVE, -18, 30, null, 64, null, -30],
-          [-140, 332, -120, 348, HIVE, -16, 12, null, 64, null, -30],
-          [120, 332, 140, 348, HIVE, -16, 12, null, 64, null, -30],
-          [-140, 512, -120, 528, HIVE, -16, 12, null, 64, null, -30],
-          [120, 512, 140, 528, HIVE, -16, 12, null, 64, null, -30],
-          [-176, 380, -164, 480, HIVE, -16, 12, null, 64, null, -30],
-          [164, 380, 176, 480, HIVE, -16, 12, null, 64, null, -30],
-          [-16, 540, 16, 620, HIVE, -16, 14, null, 64, null, -30],
-          [-60, 600, 60, 640, HIVE, -18, 26, null, 64, null, -30],
-          [-66, 394, -54, 406, HIVE, -10, 60, 'wallHive', 64, null, -30],
-          [54, 394, 66, 406, HIVE, -10, 60, 'wallHive', 64, null, -30],
-          [-66, 474, -54, 486, HIVE, -10, 60, 'wallHive', 64, null, -30],
-          [54, 474, 66, 486, HIVE, -10, 60, 'wallHive', 64, null, -30],
-          [-6, 434, 6, 446, HIVE, -14, 60, 'wallHive', 64, null, -30],
-          [320, 230, 440, 370, PLATE, 30, SKY, 'wallHive', undefined, null, 0],
-          [336, 246, 424, 354, HIVE, 6, 24, null, 30, null, 0],
-          [372, 230, 388, 246, HIVE, 6, 18, null, 30, null, 0],
-          [-440, 490, -320, 630, PLATE, 50, SKY, 'wallHive', undefined, null, 20],
-          [-424, 506, -336, 614, HIVE, 26, 44, null, 50, null, 20],
-          [-388, 490, -372, 506, HIVE, 26, 38, null, 50, null, 20],
+          [-260, 196, 260, 668, PLATE, 64, SKY, 'wallChitin', undefined, null, -30],
+          // The maw and the ribbed gullet, narrowing to the throat.
+          [-24, 196, 24, 200, HIVE, -20, 8, 'wallChitin', 64, null, -30],
+          tube([[0, 300], [0, 356]], 30, HIVE, -1, -1, inHull(64, -30, { dome: 15, dish: 15, bore: true })),
+          tube([[0, 244], [0, 276]], 64, HIVE, 5, 5, inHull(64, -30, { dome: 32, dish: 32, bore: true })),
+          // A round bore closes at its ends: the door and the valve into the throat are cut through them.
+          [-24, 200, 24, 222, HIVE, -20, 8, null, 64, null, -30],
+          [-14, 296, 14, 316, HIVE, -13, 11, null, 64, null, -30],
+          // The tubes between the hold, the egg chambers and the birthing halls, and on to the tail.
+          tube([[-152, 352], [-96, 394]], 18, HIVE, -16, 2, inHull(64, -30, { dome: 6 })), tube([[152, 352], [96, 394]], 18, HIVE, -16, 2, inHull(64, -30, { dome: 6 })),
+          tube([[-152, 528], [-96, 486]], 18, HIVE, -16, 2, inHull(64, -30, { dome: 6 })), tube([[152, 528], [96, 486]], 18, HIVE, -16, 2, inHull(64, -30, { dome: 6 })),
+          tube([[-170, 384], [-170, 476]], 14, HIVE, -16, 4, inHull(64, -30, { dome: 6 })), tube([[170, 384], [170, 476]], 14, HIVE, -16, 4, inHull(64, -30, { dome: 6 })),
+          tube([[0, 530], [0, 600]], 28, HIVE, -16, 4, inHull(64, -30, { dome: 10 })),
+          oval(-170, 338, 34, 42, HIVE, -18, 12, inHull(64, -30, { dome: 18 })), oval(170, 338, 34, 42, HIVE, -18, 12, inHull(64, -30, { dome: 18 })),
+          oval(-170, 522, 34, 42, HIVE, -18, 12, inHull(64, -30, { dome: 18 })), oval(170, 522, 34, 42, HIVE, -18, 12, inHull(64, -30, { dome: 18 })),
+          oval(0, 622, 64, 30, HIVE, -18, 10, inHull(64, -30, { dome: 16 })),
+          // The hold: a domed stomach, with the egg sacs and the brood mother on stalks.
+          oval(0, 440, 122, 102, HIVE, -26, 30, inHull(64, -30, { dome: 40, dish: 16 })),
+          oval(-60, 400, 8, 8, HIVE, -10, undefined, { raise: true, side: 'wallHive' }), oval(60, 400, 8, 8, HIVE, -10, undefined, { raise: true, side: 'wallHive' }),
+          oval(-60, 480, 8, 8, HIVE, -10, undefined, { raise: true, side: 'wallHive' }), oval(60, 480, 8, 8, HIVE, -10, undefined, { raise: true, side: 'wallHive' }),
+          oval(0, 440, 9, 9, HIVE, -14, undefined, { raise: true, side: 'wallHive' }),
+          // The two pods.
+          [320, 230, 440, 370, PLATE, 30, SKY, 'wallChitin', undefined, null, 0],
+          [372, 230, 388, 256, HIVE, 6, 18, null, 30, null, 0],
+          oval(380, 302, 44, 52, HIVE, 6, 16, inHull(30, 0, { dome: 8 })),
+          [-440, 490, -320, 630, PLATE, 50, SKY, 'wallChitin', undefined, null, 20],
+          [-388, 490, -372, 516, HIVE, 26, 38, null, 50, null, 20],
+          oval(-380, 562, 44, 52, HIVE, 26, 36, inHull(50, 20, { dome: 8 })),
         ],
         hulls: [{ at: [0, 432], radii: [260, 236], top: [84, 40], bottom: [-74, -32], roof: 64, under: -30 }, { at: [380, 300], radii: [60, 70], top: [40, 30], bottom: [-10, -2], roof: 30, under: 0 }, { at: [-380, 560], radii: [60, 70], top: [60, 50], bottom: [10, 18], roof: 50, under: 20 }],
         stairs: [], blocks: [],
         girders: [[260, 10, 300, 320, 13, 304], [-320, 30, 560, -260, 33, 564], [-260, -60, 380, -180, -57, 384], [180, 60, 500, 260, 63, 504]],
         gates: [[-24, 196, 24, 200, 'south', 'chain']],
         spinners: [
+          // The gullet's ribs.
+          ...[232, 248, 264, 280].map(z => ({ kind: 'ring', at: [0, 5, z], axis: [0, 0, 1], radius: 33, inner: 27, length: 4, speed: 0, materials: ['wallChitin', 'wallChitin', 'wallHive'] })),
+          { kind: 'ring', at: [0, -1, 300], axis: [0, 0, 1], radius: 30, inner: 13, length: 8, speed: 0, materials: ['wallChitin', 'wallChitin', 'wallHive'] },
+          ...[316, 332, 348].map(z => ({ kind: 'ring', at: [0, -1, z], axis: [0, 0, 1], radius: 18, inner: 12.5, length: 3, speed: 0, materials: ['wallChitin', 'wallChitin', 'wallHive'] })),
           { kind: 'sphere', at: [384, 25, 432], axis: [0, 1, 0], radius: 10, speed: 0.2, materials: ['wallHive', null, null] },
           { kind: 'sphere', at: [380, 90, 552], axis: [0, 1, 0], radius: 14, speed: -0.1, materials: ['wallHive', null, null] },
           { kind: 'sphere', at: [256, 45, 624], axis: [0, 1, 0], radius: 14, speed: 0.2, materials: ['wallHive', null, null] },
@@ -2135,21 +2141,22 @@
         // The ore belt between Sigma-4's moon and Omega: open space crowded with asteroids, the big ones bored by drill rigs and
         // strung together by conveyor trusses, and a rounded refinery where the ore is smelted, with a tug hauling it away.
         name: 'SIGMA-4', title: 'ORE BELT', music: 'nadir', music2: 'belt', top: 200, width: 256, start: [0, 0, -30], yaw: 0, exit: [0, 20, 730, true], since: 'six',
-        space: true, roof: 'floorPlate', hull: 'floorPlate', rockMaterial: 'wallBasalt',
+        space: true, roof: 'floorPlate', hull: 'floorPlate', ceiling: 'wallTech', rockMaterial: 'wallBasalt',
         sky: { zenith: [0.0, 0.0, 0.01], fog: [0.015, 0.012, 0.01], sun: [1.15, 1.0, 0.85], sunDir: [-0.5, 0.45, 0.4] },
         walls: { lower: [['wallRust', 0.4], ['wallPipes', 0.3], ['wallTech', 0.3]] },
         rooms: [
           [-512, -48, 512, 752, VOID, -200],
           [100, 400, 340, 600, PLATE, 40, SKY, 'wallTech', undefined, null, -16],
           [196, 400, 244, 404, PLATE, -10, 10, 'wallTech', 40, null, -16],
-          [160, 404, 280, 460, GRATE, -10, 26, null, 40, null, -16],
-          [130, 460, 310, 540, GRATE, -12, 30, null, 40, null, -16],
-          [150, 540, 290, 580, PLATE, -10, 20, null, 40, null, -16],
-          [150, 472, 166, 488, VENT, -12, 30, null, 40, null, -16],
-          [274, 472, 290, 488, VENT, -12, 30, null, 40, null, -16],
+          [196, 404, 244, 436, PLATE, -10, 10, null, 40, null, -16],
+          // The smelter: a domed round hall with the crucible at its heart and the updrafts either side.
+          oval(220, 500, 92, 76, GRATE, -12, 8, inHull(40, -16, { dome: 26 })),
+          oval(220, 500, 20, 20, SLAG, -6, undefined, { raise: true, side: 'wallRust' }),
+          oval(220, 500, 15, 15, LAVA, -9, undefined, { raise: true }),
+          oval(158, 486, 8, 8, VENT, -12, undefined, { raise: true }), oval(282, 486, 8, 8, VENT, -12, undefined, { raise: true }),
           [-350, 120, -250, 240, PLATE, 30, SKY, 'wallTech', undefined, null, 0],
-          [-334, 136, -266, 224, PLATE, 6, 24, null, 30, null, 0],
-          [-308, 120, -292, 136, PLATE, 6, 18, null, 30, null, 0],
+          [-308, 120, -292, 146, PLATE, 6, 18, null, 30, null, 0],
+          oval(-300, 180, 34, 42, PLATE, 6, 16, inHull(30, 0, { dome: 8 })),
         ],
         hulls: [{ at: [220, 500], radii: [120, 100], top: [56, 30], bottom: [-40, -20], roof: 40, under: -16 }, { at: [-300, 180], radii: [50, 60], top: [40, 32], bottom: [-12, -4], roof: 30, under: 0 }],
         rocks: [[-160, 30, 330, 44, 0], [60, -40, 220, 40, 1], [380, 60, 260, 38, 2], [-380, -30, 500, 42, 3], [-60, 70, 620, 36, 0], [-429, 145, 295, 12, 1], [-272, -133, 215, 20, 2], [-231, 66, 460, 8, 3], [-463, -161, 338, 5, 0], [145, -22, 109, 8, 1], [41, 92, 532, 26, 2], [-108, -57, 388, 20, 3], [56, -133, 669, 12, 0], [356, 23, 231, 5, 1], [-441, 152, 382, 8, 2], [-213, 40, 217, 12, 3], [-302, 86, 284, 6, 0], [413, 57, 365, 20, 1], [12, 92, 378, 16, 2], [-223, -48, 385, 5, 3], [-174, -123, 198, 16, 0], [-321, -167, 352, 12, 1], [197, 168, 393, 26, 2], [295, -4, 288, 20, 3], [239, 165, 391, 8, 0], [-274, 100, 292, 8, 1], [-20, 95, 245, 20, 2], [-172, -72, 476, 8, 3], [-457, 154, 166, 20, 0], [317, 157, 521, 26, 1], [-5, -90, 248, 16, 2], [-342, 26, 380, 8, 3], [354, -129, 106, 12, 0], [405, -7, 186, 5, 1], [-473, -2, 491, 12, 2], [33, -38, 523, 5, 3], [125, -155, 549, 12, 0], [287, -44, 698, 20, 1], [-270, -127, 100, 5, 2], [426, -145, 642, 5, 3], [438, 43, 665, 10, 0], [152, -57, 312, 26, 1], [-125, -90, 56, 5, 2], [-221, 153, 247, 6, 3], [-229, 169, 675, 5, 0], [-250, -14, 683, 20, 1], [443, 39, 302, 20, 2], [167, 161, 341, 26, 3], [392, -160, 542, 12, 0], [3, 46, 296, 10, 1], [-20, -86, 54, 20, 2], [-302, -29, 351, 6, 3], [15, -141, 628, 16, 0], [9, -145, 475, 20, 1], [468, 24, 440, 16, 2], [-154, -65, 670, 6, 3], [-382, -75, 650, 20, 0], [385, -57, 214, 8, 1], [202, -67, 681, 5, 2], [-53, -65, 172, 16, 3], [210, -160, 589, 6, 0], [-268, -93, 616, 16, 1], [-240, 0, 514, 12, 2], [-118, 44, 617, 12, 3], [95, 117, 135, 5, 0], [-293, 12, 436, 10, 1], [432, -37, 432, 10, 2], [-167, -70, 558, 8, 3], [-171, -168, 257, 6, 0], [339, -150, 674, 6, 1], [335, -74, 44, 12, 2], [-470, -126, 431, 10, 3], [182, 89, 287, 12, 0], [-383, 103, 573, 26, 1], [467, 157, 59, 20, 2], [-340, 78, 573, 5, 3], [365, -5, 209, 10, 0], [-110, -51, 487, 5, 1], [353, 109, 342, 5, 2], [-285, 164, 363, 26, 3], [-475, 85, 538, 6, 0], [-355, -127, 178, 10, 1], [-93, -115, 192, 20, 2], [230, 30, 71, 12, 3], [-404, 93, 480, 5, 0], [-295, 127, 627, 8, 1], [370, 15, 113, 26, 2], [179, 111, 322, 8, 3], [-314, -26, 308, 26, 0], [-65, 42, 302, 10, 1], [-117, 81, 664, 16, 2], [336, -91, 137, 12, 3], [-455, -9, 648, 26, 0], [-29, -17, 375, 5, 1], [411, -159, 487, 6, 2]],
@@ -2190,56 +2197,56 @@
       {
         // Omega's high station, hanging in open space over the crown world. The operations area is a box about four hundred
         // units each way, marked by lights at its edges. You approach from outside and fly in through the docking port to a
-        // whole deck inside the hub; a maintenance shaft in engineering drops out of its underside to the reactor.
+        // whole deck inside the hub; a maintenance shaft in engineering drops out of its underside to the reactor. A spaceship's
+        // hull sets its rooms' shapes: the bay and core hall are round, the wings lie along the curve of the hull, and the
+        // crossways bow with it. Crew quarters and engineering are cabins and plant rooms, and stay square.
         name: 'OMEGA', title: 'HIGH STATION', music: 'horizon', music2: 'station', top: 200, start: [0, 0, -30], yaw: 0, exit: [0, 20, 720, true],
-        space: true, roof: 'floorPlate', hull: 'floorPlate',
+        space: true, roof: 'floorPlate', hull: 'floorPlate', ceiling: 'wallTech',
         sky: { zenith: [0.0, 0.0, 0.01], fog: [0.01, 0.012, 0.02], sun: [1.15, 1.05, 0.95], sunDir: [0.6, 0.45, 0.3] },
         walls: { lower: [['wallTech', 0.45], ['wallPipes', 0.2], ['wallWindows', 0.2], ['wallVent', 0.15]] },
         rooms: [
           [-256, -48, 256, 752, VOID, -200],
           // The hub: solid from its underside to its roof, with a whole deck carved out inside.
           [-150, 250, 150, 650, PLATE, 64, SKY, 'wallTech', undefined, null, -30],
-          // Docking bay behind the port, and the concourse running north from it.
-          [-60, 254, 60, 330, PAD, -20, 40, null, 64, null, -30],
+          // The docking port.
           [-16, 250, 16, 254, PLATE, -20, 6, 'wallTech', 64, null, -30],
-          [-12, 330, 12, 560, GRATE, -16, 14, null, 64, null, -30],
-          // Cross corridors joining the wings.
-          [-146, 400, 146, 420, GRATE, -16, 12, null, 64, null, -30],
-          [-146, 540, 146, 560, GRATE, -16, 12, null, 64, null, -30],
-          // Hydroponics: a tall hall of planting beds.
-          [-146, 290, -70, 400, GRASS, -20, 50, null, 64, null, -30],
-          [-136, 300, -118, 330, GRASS, -14, 50, 'wallTech', 64, null, -30],
-          [-106, 300, -88, 330, GRASS, -14, 50, 'wallTech', 64, null, -30],
-          [-136, 352, -118, 382, GRASS, -14, 50, 'wallTech', 64, null, -30],
-          [-106, 352, -88, 382, GRASS, -14, 50, 'wallTech', 64, null, -30],
-          [-82, 330, -70, 340, PLATE, -20, 50, null, 64, null, -30],
-          // The armory: container stacks in a long hall.
-          [70, 290, 146, 400, PLATE, -20, 44, null, 64, null, -30],
-          [78, 300, 94, 316, PLATE, -12, 44, 'wallContainer', 64, null, -30],
-          [112, 296, 136, 312, PLATE, -4, 44, 'wallContainerB', 64, null, -30],
-          [80, 344, 100, 360, PLATE, -8, 44, 'wallContainerB', 64, null, -30],
-          [118, 360, 140, 380, PLATE, -14, 44, 'wallContainer', 64, null, -30],
-          // The core hall, with three pedestals for the control cores.
-          [-60, 420, 60, 540, GRATE, -24, 56, null, 64, null, -30],
-          [-40, 476, -32, 484, PAD, -18, 56, 'wallTech', 64, null, -30],
-          [32, 476, 40, 484, PAD, -18, 56, 'wallTech', 64, null, -30],
-          [-4, 511, 4, 519, PAD, -18, 56, 'wallTech', 64, null, -30],
+          [-16, 254, 16, 262, PLATE, -20, 6, null, 64, null, -30],
           // Crew quarters: a block of small rooms off two corridors.
-          [-146, 420, -70, 540, PLATE, -16, 16, null, 64, null, -30],
+          [-132, 420, -70, 540, PLATE, -16, 16, null, 64, null, -30],
           [-122, 420, -118, 516, PLATE, 64, SKY, 'wallTech', undefined, null, -30],
           [-98, 444, -94, 540, PLATE, 64, SKY, 'wallTech', undefined, null, -30],
-          [-146, 460, -122, 464, PLATE, 64, SKY, 'wallTech', undefined, null, -30],
+          [-132, 460, -122, 464, PLATE, 64, SKY, 'wallTech', undefined, null, -30],
           [-118, 492, -98, 496, PLATE, 64, SKY, 'wallTech', undefined, null, -30],
           [-94, 470, -70, 474, PLATE, 64, SKY, 'wallTech', undefined, null, -30],
           // Engineering: a coolant channel, updraft vents and the maintenance shaft down out of the hull.
-          [70, 420, 146, 540, GRATE, -20, 44, null, 64, null, -30],
-          [74, 430, 142, 438, SLUDGE, -26, 44, 'wallRust', 64, null, -30],
+          [70, 420, 132, 540, GRATE, -20, 44, null, 64, null, -30],
+          [74, 430, 128, 438, SLUDGE, -26, 44, 'wallRust', 64, null, -30],
           [80, 470, 92, 482, VENT, -20, 44, null, 64, null, -30],
-          [124, 470, 136, 482, VENT, -20, 44, null, 64, null, -30],
+          [112, 470, 124, 482, VENT, -20, 44, null, 64, null, -30],
           [100, 500, 116, 516, VOID, -200, 44, 'wallTech', 64],
-          // The command bridge at the north end.
-          [-50, 560, 50, 646, PAD, -10, 30, null, 64, null, -30],
-          [-30, 600, 30, 616, PLATE, -4, 30, 'wallComputer', 64, null, -30],
+          // The concourse running north from the bay through the core hall, and the crossways bowing with the hull.
+          tube([[0, 320], [0, 430]], 24, GRATE, -16, 6, inHull(64, -30, { dome: 6 })),
+          tube([[0, 530], [0, 580]], 24, GRATE, -16, 6, inHull(64, -30, { dome: 6 })),
+          tube([[-112, 388], [-112, 420]], 18, GRATE, -16, 6, inHull(64, -30, { dome: 4 })), tube([[112, 388], [112, 420]], 18, GRATE, -16, 6, inHull(64, -30, { dome: 4 })),
+          tube(arc(0, 724, 326, 156, 204, 10), 20, GRATE, -16, 6, inHull(64, -30, { dome: 5 })),
+          tube(arc(0, 236, 326, -22, 22, 10), 20, GRATE, -16, 6, inHull(64, -30, { dome: 5 })),
+          // The docking bay, under a shallow dome.
+          oval(0, 298, 64, 42, PAD, -20, 20, inHull(64, -30, { dome: 20 })),
+          // Hydroponics: a barrel-vaulted hall of planting beds lying along the hull.
+          oval(-100, 350, 30, 54, GRASS, -20, 12, inHull(64, -30, { arch: 'x', dome: 26, turn: 0.35 })),
+          oval(-88, 322, 8, 12, GRASS, -14, undefined, { raise: true, side: 'wallTech', turn: 0.35 }), oval(-84, 362, 8, 12, GRASS, -14, undefined, { raise: true, side: 'wallTech', turn: 0.35 }),
+          oval(-116, 330, 8, 12, GRASS, -14, undefined, { raise: true, side: 'wallTech', turn: 0.35 }), oval(-112, 376, 8, 12, GRASS, -14, undefined, { raise: true, side: 'wallTech', turn: 0.35 }),
+          // The armory: container stacks in the matching hall on the far side.
+          oval(100, 350, 30, 54, PLATE, -20, 30, inHull(64, -30, { turn: -0.35 })),
+          oval(92, 324, 8, 8, PLATE, -12, undefined, { raise: true, power: 8, side: 'wallContainer' }), oval(116, 340, 9, 8, PLATE, -4, undefined, { raise: true, power: 8, side: 'wallContainerB' }),
+          oval(88, 364, 9, 8, PLATE, -8, undefined, { raise: true, power: 8, side: 'wallContainerB' }), oval(116, 384, 7, 8, PLATE, -14, undefined, { raise: true, power: 8, side: 'wallContainer' }),
+          // The core hall: a round drum under a dome, with three pedestals for the control cores.
+          oval(0, 480, 60, 60, GRATE, -24, 24, inHull(64, -30, { dome: 32 })),
+          oval(-36, 480, 5, 5, PAD, -18, undefined, { raise: true, side: 'wallTech' }), oval(36, 480, 5, 5, PAD, -18, undefined, { raise: true, side: 'wallTech' }),
+          oval(0, 515, 5, 5, PAD, -18, undefined, { raise: true, side: 'wallTech' }),
+          // The command bridge at the bow, its curved front following the hull, with a curved console.
+          oval(0, 600, 58, 42, PAD, -10, 14, inHull(64, -30, { dome: 14 })),
+          tube(arc(0, 560, 58, -28, 28), 10, PLATE, -4, undefined, { raise: true, side: 'wallComputer' }),
           // The west lab, high on its truss, and the east hangar, low on its own.
           ...podRooms([-250, 380, -196, 460], { floor: 30, ceil: 54, under: 24, roof: 60, doors: [[-200, 412, -196, 428, 44]] }),
           ...podRooms([196, 340, 250, 440], { floor: -40, ceil: -10, under: -46, roof: -4, doors: [[196, 376, 200, 404, -18]] }),
@@ -2277,7 +2284,7 @@
         objectives: [
           { kind: 'destroy', text: 'DESTROY THE HULL TURRETS', targets: [['sentry', -70, 58.7, 330], ['sentry', 70, 54.9, 590], ['sentry', 36, 73.2, 470], ['sentry', -223, 69.6, 420], ['sentry', 223, 7.2, 400]] },
           { kind: 'gate', text: 'SHOOT THE LOCKS ON THE DOCKING PORT', gate: 0 },
-          { kind: 'destroy', text: 'SHUT DOWN LIFE SUPPORT', targets: [['core', -112, -8, 342, 'LIFE SUPPORT'], ['core', -132, 0, 500, 'LIFE SUPPORT'], ['core', 108, 0, 500, 'LIFE SUPPORT']] },
+          { kind: 'destroy', text: 'SHUT DOWN LIFE SUPPORT', targets: [['core', -112, -8, 342, 'LIFE SUPPORT'], ['core', -126, 0, 500, 'LIFE SUPPORT'], ['core', 108, 0, 500, 'LIFE SUPPORT']] },
           { kind: 'destroy', text: 'DESTROY THE HUB CONTROL CORES', targets: [['core', -36, -6, 480, 'CONTROL CORE'], ['core', 36, -6, 480, 'CONTROL CORE'], ['core', 0, -6, 515, 'CONTROL CORE']] },
           { kind: 'reach', text: 'TAKE THE COMMAND BRIDGE', at: [0, 4, 630], radius: 18 },
           { kind: 'destroy', text: 'DESTROY THE REACTOR STABILIZERS', targets: [['core', 60, -120, 450, 'STABILIZER'], ['core', -30, -120, 502, 'STABILIZER'], ['core', -30, -120, 398, 'STABILIZER']] },
@@ -2286,14 +2293,14 @@
         zones: [
           { name: 'DOCKING BAY', area: [-60, 254, 60, 330], drones: 2, barrels: 4 },
           { name: 'CONCOURSE', area: [-12, 330, 12, 400], hunters: 2 },
-          { name: 'HYDROPONICS', area: [-146, 290, -70, 400], drones: 3, health: 1 },
-          { name: 'ARMORY', area: [70, 290, 146, 400], wardens: 1, drones: 2, weapon: 1, missile: 1, barrels: 4 },
-          { name: 'SOUTH CROSSWAY', area: [-146, 400, 146, 420], hunters: 1 },
+          { name: 'HYDROPONICS', area: [-124, 304, -72, 398], drones: 3, health: 1 },
+          { name: 'ARMORY', area: [72, 304, 124, 398], wardens: 1, drones: 2, weapon: 1, missile: 1, barrels: 4 },
+          { name: 'SOUTH CROSSWAY', area: [-60, 398, 60, 416], hunters: 1 },
           { name: 'CORE HALL', area: [-60, 420, 60, 540], drones: 3, aegis: 1, health: 1 },
-          { name: 'CREW QUARTERS', area: [-146, 420, -70, 540], drones: 2, hunters: 2, health: 1 },
-          { name: 'ENGINEERING', area: [70, 420, 146, 540], drones: 2, lancers: 1, missile: 1 },
-          { name: 'NORTH CROSSWAY', area: [-146, 540, 146, 560], hunters: 1 },
-          { name: 'COMMAND BRIDGE', area: [-50, 560, 50, 646], escorts: 1, drones: 2, health: 1 },
+          { name: 'CREW QUARTERS', area: [-132, 420, -70, 540], drones: 2, hunters: 2, health: 1 },
+          { name: 'ENGINEERING', area: [70, 420, 132, 540], drones: 2, lancers: 1, missile: 1 },
+          { name: 'NORTH CROSSWAY', area: [-60, 546, 60, 562], hunters: 1 },
+          { name: 'COMMAND BRIDGE', area: [-40, 572, 40, 644], escorts: 1, drones: 2, health: 1 },
           { name: 'WEST LAB', area: [-246, 384, -200, 456], health: 1, launcher: 1, drones: 1 },
           { name: 'EAST HANGAR', area: [200, 344, 246, 436], hunters: 2, missile: 1, barrels: 3 },
           { name: 'APPROACH', area: [-256, -48, 256, 250], altitude: [-60, 80], drones: 4, skimmers: 3, strikers: 1 },
@@ -3225,7 +3232,7 @@
       const scaled = (v) => Array.isArray(v) ? v.map(scaled) : v * WORLD_SCALE;
       def.rooms = def.rooms.map(room => {
         if (Array.isArray(room)) return scale([room], [4, 7, 9])[0];
-        for (const field of ['at', 'radii', 'path', 'width', 'floor', 'ceil', 'head', 'dome', 'dish', 'crown', 'wobble', 'grain', 'roof', 'shell']) if (room[field] !== undefined) room[field] = scaled(room[field]);
+        for (const field of ['at', 'radii', 'path', 'width', 'floor', 'ceil', 'head', 'dome', 'dish', 'crown', 'wobble', 'grain', 'roof', 'under', 'shell']) if (room[field] !== undefined) room[field] = scaled(room[field]);
         return room;
       });
       for (const zone of def.zones) if (zone.altitude) zone.altitude = zone.altitude.map(v => v * WORLD_SCALE);
@@ -3275,7 +3282,7 @@
     const sideOf = new Array(GRID_MAX_W * GRID_D).fill(null);
     // Shapes number from 1 in the level's list. Each cell remembers the shape that carved it, any `raise` laid over that, and
     // the shapes giving it a curved floor or ceiling. `bent` marks cells that can't be drawn as a plain square.
-    const ownerOf = new Uint16Array(GRID_MAX_W * GRID_D), stepOf = new Uint16Array(GRID_MAX_W * GRID_D), floorOf = new Uint16Array(GRID_MAX_W * GRID_D), ceilOf = new Uint16Array(GRID_MAX_W * GRID_D), bent = new Uint8Array(GRID_MAX_W * GRID_D), capped = new Uint8Array(GRID_MAX_W * GRID_D);
+    const ownerOf = new Uint16Array(GRID_MAX_W * GRID_D), stepOf = new Uint16Array(GRID_MAX_W * GRID_D), floorOf = new Uint16Array(GRID_MAX_W * GRID_D), ceilOf = new Uint16Array(GRID_MAX_W * GRID_D), bent = new Uint8Array(GRID_MAX_W * GRID_D), capped = new Uint8Array(GRID_MAX_W * GRID_D), hullOf = new Uint16Array(GRID_MAX_W * GRID_D);
     // A curve splits the cells it crosses: past the line ax + bz = c such a cell behaves as cell cutTo instead (-1 for solid).
     const cutOn = new Uint8Array(GRID_MAX_W * GRID_D), cutA = new Float32Array(GRID_MAX_W * GRID_D), cutB = new Float32Array(GRID_MAX_W * GRID_D), cutC = new Float32Array(GRID_MAX_W * GRID_D), cutTo = new Int32Array(GRID_MAX_W * GRID_D);
     // Grid corners along a curve are moved onto it, with the curve's normal and how far round it they sit.
@@ -3290,7 +3297,7 @@
     };
     function carve(def) {
       open.fill(0); solidKind.fill(BULKHEAD); floorY.fill(FLOOR); ceilY.fill(WALL_TOP); sideOf.fill(null); roofY.fill(Infinity); underY.fill(-Infinity);
-      ownerOf.fill(0); stepOf.fill(0); floorOf.fill(0); ceilOf.fill(0); capped.fill(0);
+      ownerOf.fill(0); stepOf.fill(0); floorOf.fill(0); ceilOf.fill(0); capped.fill(0); hullOf.fill(0);
       spaceFloor = def.space ? def.rooms[0][5] : -Infinity;
       prepareShapes(def);
       const plain = (i) => { ownerOf[i] = stepOf[i] = floorOf[i] = ceilOf[i] = capped[i] = 0; };
@@ -3359,6 +3366,13 @@
       s.ceilAt = (x, z) => (s.head ? base(x, z) + s.head : s.ceil ?? WALL_TOP) + (s.dome ? s.dome * bulge(x, z) : 0);
       const facing = (height, up) => (x, z) => { const dx = (height(x + 1, z) - height(x - 1, z)) / 2, dz = (height(x, z + 1) - height(x, z - 1)) / 2, l = Math.hypot(dx, 1, dz); return [dx * -up / l, up / l, dz * -up / l]; };
       s.ceilNormal = facing(s.ceilAt, -1); s.floorNormal = facing(s.floorAt, 1);
+      if (s.top) {
+        // A hull's surfaces run from its centre to its rim, flattening out towards the middle.
+        const near = Math.min(...s.radii), rise = (x, z) => Math.min(1, clamp(1 + s.field(x, z) / near, 0, 1) ** s.power) ** 0.75;
+        s.topAt = (x, z) => s.top[0] + (s.top[1] - s.top[0]) * rise(x, z);
+        s.bottomAt = (x, z) => s.bottom[0] + (s.bottom[1] - s.bottom[0]) * rise(x, z);
+        s.topNormal = facing(s.topAt, 1); s.bottomNormal = facing(s.bottomAt, -1);
+      }
       s.around = s.path ? (x, z) => onPath(s, x, z)[1] * s.length : (x, z) => Math.atan2(z - s.at[1], x - s.at[0]) * (s.radii[0] + s.radii[1]) / 2;
       const pad = (s.wobble || 0) + CELL;
       if (s.path) {
@@ -3378,6 +3392,7 @@
         const s = { at: [(block[0] + block[2]) / 2, (block[1] + block[3]) / 2], radii: [(block[2] - block[0]) / 2, (block[3] - block[1]) / 2], block: true, id: def.shapeList.length + 1 };
         prepareShape(s); def.shapeList.push(s); block.round = s.id;
       }
+      for (const hull of def.hulls || []) { hull.power ??= 2.5; hull.id = def.shapeList.length + 1; prepareShape(hull); def.shapeList.push(hull); }
     }
     // A shape claims every cell it touches; the cells its edge crosses are split again in settleShapes.
     function carveShape(s, list) {
@@ -3399,7 +3414,7 @@
           } else {
             ownerOf[i] = s.id; stepOf[i] = 0;
             ceilY[i] = s.curvedCeil ? Math.min(...corners.map(([x, z]) => s.ceilAt(x, z))) : s.ceil ?? WALL_TOP;
-            ceilOf[i] = s.curvedCeil ? s.id : 0; roofOf[i] = null; underY[i] = -Infinity; capped[i] = s.buried ? 1 : 0;
+            ceilOf[i] = s.curvedCeil ? s.id : 0; roofOf[i] = null; underY[i] = s.under ?? -Infinity; capped[i] = s.buried ? 1 : 0;
             roofY[i] = s.shell ? Math.max(...corners.map(([x, z]) => s.ceilAt(x, z))) + s.shell : s.roof ?? Infinity;
           }
           open[i] = 1 + s.material; sideOf[i] = s.side ?? null;
@@ -3468,19 +3483,26 @@
       }
     }
     // Rounds off a floating module: see `hulls` in the level notes above.
-    function shapeHull({ at: [cx, cz], radii: [rx, rz], power = 2.5, top, bottom, roof, under, inner = 0.9 }) {
+    function shapeHull(hull) {
+      const { at: [cx, cz], radii: [rx, rz], power, roof, under, inner = 0.97, id, field } = hull;
       const markRoof = Math.fround(roof), markUnder = Math.fround(under), clearance = 3 * WORLD_SCALE;
       for (let gz = 0; gz < GRID_D; gz++) for (let gx = 0; gx < GRID_W; gx++) {
         const i = gz * GRID_W + gx;
         const mine = underY[i] === markUnder || (roofY[i] === markRoof && underY[i] === -Infinity);
         if (!mine) continue;
-        const x = GRID_X0 + (gx + 0.5) * CELL, z = GRID_Z0 + (gz + 0.5) * CELL;
-        const e = Math.abs((x - cx) / rx) ** power + Math.abs((z - cz) / rz) ** power, k = e ** 0.75;
-        const high = top[0] + (top[1] - top[0]) * k, low = bottom[0] + (bottom[1] - bottom[0]) * k;
-        if (e > 1 && !sealed[i]) { open[i] = 1 + VOID; floorY[i] = spaceFloor; ceilY[i] = WALL_TOP; roofY[i] = Infinity; underY[i] = -Infinity; sideOf[i] = null; continue; }
+        const x0 = GRID_X0 + gx * CELL, z0 = GRID_Z0 + gz * CELL, x = x0 + CELL / 2, z = z0 + CELL / 2;
+        // A cell the rim passes through stays, and settleShapes draws it to the curve.
+        if (!sealed[i] && Math.min(field(x0, z0), field(x0 + CELL, z0), field(x0 + CELL, z0 + CELL), field(x0, z0 + CELL), field(x, z)) >= 0) {
+          open[i] = 1 + VOID; floorY[i] = spaceFloor; ceilY[i] = WALL_TOP; roofY[i] = Infinity; underY[i] = -Infinity; sideOf[i] = null;
+          ownerOf[i] = stepOf[i] = floorOf[i] = ceilOf[i] = 0;
+          continue;
+        }
+        const e = Math.abs((x - cx) / rx) ** power + Math.abs((z - cz) / rz) ** power, high = hull.topAt(x, z), low = hull.bottomAt(x, z), shaped = ownerOf[i];
+        hullOf[i] = id;
+        if (!shaped && !sealed[i]) ownerOf[i] = id;
         if (underY[i] === -Infinity) { roofY[i] = high; continue; }
         underY[i] = low;
-        if (roofY[i] === Infinity || (e > inner && !sealed[i])) { floorY[i] = high; ceilY[i] = WALL_TOP; roofY[i] = Infinity; sideOf[i] = sideOf[i] || 'wallTech'; continue; }
+        if (roofY[i] === Infinity || (e > inner && !sealed[i] && !shaped)) { floorY[i] = high; ceilY[i] = WALL_TOP; roofY[i] = Infinity; sideOf[i] = sideOf[i] || 'wallTech'; continue; }
         roofY[i] = high; ceilY[i] = Math.min(ceilY[i], high - clearance); floorY[i] = Math.max(floorY[i], low + clearance);
       }
     }
@@ -5215,6 +5237,15 @@
       // A grid corner where it's drawn: curved walls move some of them.
       const vertex = (ix, iz) => { const v = iz * row + ix; return warpOn[v] ? [warpX[v], warpZ[v]] : [GRID_X0 + ix * CELL, GRID_Z0 + iz * CELL]; };
       const shapes = def.shapeList, at = (list, y) => list.map(([x, z]) => [x, y, z]), flatUv = (list) => list.map(([x, z]) => [x / 8, z / 8]);
+      // Along a curve a wall runs between its moved corners, textured by the distance round the curve and shaded smoothly.
+      const alongCurve = (ia, ib, a, b, normal, ua) => {
+        const va = ia[1] * row + ia[0], vb = ib[1] * row + ib[0];
+        if (!warpOn[va] && !warpOn[vb]) return [null, ua, ua + CELL / 8];
+        const run = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1, side = [(b[1] - a[1]) / run, 0, (a[0] - b[0]) / run], edge = dot(side, normal) < 0 ? mul(side, -1) : side;
+        const smooth = (v) => { const out = warpNX[v] * normal[0] + warpNZ[v] * normal[2] < 0 ? -1 : 1; return [warpNX[v] * out, 0, warpNZ[v] * out]; };
+        const na = warpOn[va] ? smooth(va) : edge, nb = warpOn[vb] ? smooth(vb) : edge;
+        return [[na, nb, nb, na], ...(warpOn[va] && warpOn[vb] && Math.abs(warpU[vb] - warpU[va]) < 1.5 ? [warpU[va], warpU[vb]] : [ua, ua + run / 8])];
+      };
       // Flat 4x4-cell patches of matching floor, ceiling and roof are drawn as one quad each, to keep the vertex count down;
       // the patches are small enough to follow a moon's or cylinder's curve.
       const PATCH = 4, merged = new Uint8Array(GRID_MAX_W * GRID_D);
@@ -5232,42 +5263,61 @@
         for (let dz = 0; dz < PATCH; dz++) for (let dx = 0; dx < PATCH; dx++) merged[(pz + dz) * GRID_W + px + dx] = dz === 0 && dx === 0 ? 2 : 1;
       }
       // In open space each cell is a stack of open and solid spans; a wall face is wherever one cell's open span meets
-      // its neighbor's solid one, and the space floor itself is never drawn.
-      const spansOf = (k) => {
-        const spans = [[floorY[k], Math.min(ceilY[k], WALL_TOP), ceilY[k] < WALL_TOP]];
-        if (roofY[k] < Infinity) spans.push([roofY[k], WALL_TOP, false]);
-        if (underY[k] > -Infinity) spans.push([spaceFloor, underY[k], false]);
+      // its neighbor's solid one, and the space floor itself is never drawn. Cells of one hull or one curved floor or ceiling
+      // share a surface, so a cell compares them at its own height and no step shows between them.
+      const topOf = (k) => roofY[k] < Infinity ? roofY[k] : floorY[k];
+      const spansOf = (k, like = k) => {
+        const hull = hullOf[k] && hullOf[k] === hullOf[like], top = hull ? topOf(like) : topOf(k), roofed = roofY[k] < Infinity;
+        const floor = !roofed ? top : floorOf[k] && floorOf[k] === floorOf[like] ? floorY[like] : floorY[k];
+        const ceil = ceilOf[k] && ceilOf[k] === ceilOf[like] ? ceilY[like] : ceilY[k];
+        const spans = [[floor, Math.min(ceil, WALL_TOP), ceil < WALL_TOP]];
+        if (roofed) spans.push([top, WALL_TOP, false]);
+        if (underY[k] > -Infinity) spans.push([spaceFloor, hull && underY[like] > -Infinity ? underY[like] : underY[k], false]);
         return spans;
       };
-      const solidsOf = (k) => {
-        const edges = spansOf(k).sort((p, q) => p[0] - q[0]), solid = [];
+      const solidsOf = (k, like) => {
+        const edges = spansOf(k, like).sort((p, q) => p[0] - q[0]), solid = [];
         let y = spaceFloor;
         for (const [lo, hi] of edges) { if (lo > y + 0.01) solid.push([y, lo]); y = Math.max(y, hi); }
         if (y < WALL_TOP - 0.01) solid.push([y, WALL_TOP]);
         return solid;
       };
+      // The true height of cell k's surface at height y, at one end of a wall.
+      const trueHeight = (y, k, [x, z]) => {
+        const hull = hullOf[k] ? shapes[hullOf[k] - 1] : null, near = (v) => Math.abs(y - v) < 0.01;
+        if (hull && near(topOf(k))) return hull.topAt(x, z);
+        if (hull && near(underY[k])) return hull.bottomAt(x, z);
+        if (floorOf[k] && near(floorY[k])) return shapes[floorOf[k] - 1].floorAt(x, z);
+        if (ceilOf[k] && near(ceilY[k])) return shapes[ceilOf[k] - 1].ceilAt(x, z);
+        return y;
+      };
       if (def.space) for (let gz = 0; gz < GRID_D; gz++) for (let gx = 0; gx < GRID_W; gx++) {
         const material = cellAt(gx, gz);
         if (!material) continue;
-        const i = gz * GRID_W + gx, x0 = GRID_X0 + gx * CELL, z0 = GRID_Z0 + gz * CELL, x1 = x0 + CELL, z1 = z0 + CELL, flat = [1, 1, 1, 1];
-        const uv = [[x0 / 8, z0 / 8], [x1 / 8, z0 / 8], [x1 / 8, z1 / 8], [x0 / 8, z1 / 8]], covered = ceilY[i] < WALL_TOP;
-        if (floorY[i] > spaceFloor + 0.01) quad(FLOOR_MATERIALS[material - 1], covered, [[x0, floorY[i], z0], [x1, floorY[i], z0], [x1, floorY[i], z1], [x0, floorY[i], z1]], [0, 1, 0], uv, flat);
-        if (covered) quad(def.ceiling || 'ceiling', true, [[x0, ceilY[i], z1], [x1, ceilY[i], z1], [x1, ceilY[i], z0], [x0, ceilY[i], z0]], [0, -1, 0], [uv[3], uv[2], uv[1], uv[0]], flat);
-        if (roofY[i] < Infinity) quad(roofOf[i] || def.roof || 'floorPlate', false, [[x0, roofY[i], z0], [x1, roofY[i], z0], [x1, roofY[i], z1], [x0, roofY[i], z1]], [0, 1, 0], uv, flat);
-        if (underY[i] > -Infinity) quad(def.hull || 'floorPlate', false, [[x0, underY[i], z1], [x1, underY[i], z1], [x1, underY[i], z0], [x0, underY[i], z0]], [0, -1, 0], [uv[3], uv[2], uv[1], uv[0]], [0.7, 0.7, 0.7, 0.7]);
+        const i = gz * GRID_W + gx, x0 = GRID_X0 + gx * CELL, z0 = GRID_Z0 + gz * CELL, x1 = x0 + CELL, z1 = z0 + CELL, flat = [1, 1, 1, 1], covered = ceilY[i] < WALL_TOP;
+        const outline = bent[i] ? [vertex(gx, gz), vertex(gx + 1, gz), vertex(gx + 1, gz + 1), vertex(gx, gz + 1)] : [[x0, z0], [x1, z0], [x1, z1], [x0, z1]], under = [outline[3], outline[2], outline[1], outline[0]];
+        const hull = hullOf[i] ? shapes[hullOf[i] - 1] : null, floorShape = floorOf[i] ? shapes[floorOf[i] - 1] : null, ceilShape = ceilOf[i] ? shapes[ceilOf[i] - 1] : null, roofed = roofY[i] < Infinity;
+        const top = () => quad(roofOf[i] || def.roof || 'floorPlate', false, hull ? outline.map(([x, z]) => [x, hull.topAt(x, z), z]) : at(outline, topOf(i)), [0, 1, 0], flatUv(outline), flat, hull && outline.map(([x, z]) => hull.topNormal(x, z)));
+        if (hull && !roofed) top();
+        else if (floorY[i] > spaceFloor + 0.01) quad(FLOOR_MATERIALS[material - 1], covered, floorShape ? outline.map(([x, z]) => [x, floorShape.floorAt(x, z), z]) : at(outline, floorY[i]), [0, 1, 0], flatUv(outline), flat, floorShape && outline.map(([x, z]) => floorShape.floorNormal(x, z)));
+        if (covered) quad(def.ceiling || 'ceiling', true, ceilShape ? under.map(([x, z]) => [x, ceilShape.ceilAt(x, z), z]) : at(under, ceilY[i]), [0, -1, 0], flatUv(under), flat, ceilShape && under.map(([x, z]) => ceilShape.ceilNormal(x, z)));
+        if (roofed) top();
+        if (underY[i] > -Infinity) quad(def.hull || 'floorPlate', false, hull ? under.map(([x, z]) => [x, hull.bottomAt(x, z), z]) : at(under, underY[i]), [0, -1, 0], flatUv(under), [0.7, 0.7, 0.7, 0.7], hull && under.map(([x, z]) => hull.bottomNormal(x, z)));
         for (const [dx, dz] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
           const nx = gx + dx, nz = gz + dz;
           if (outsideGrid(nx, nz)) continue;
-          const n = nz * GRID_W + nx, solid = cellAt(nx, nz) ? solidsOf(n) : [[spaceFloor, WALL_TOP]];
+          const n = nz * GRID_W + nx, solid = cellAt(nx, nz) ? solidsOf(n, i) : [[spaceFloor, WALL_TOP]];
           const normal = [-dx, 0, -dz], right = [dz, 0, -dx], half = CELL / 2, cx = x0 + half + dx * half, cz = z0 + half + dz * half;
-          const a = [cx - right[0] * half, cz - right[2] * half], b = [cx + right[0] * half, cz + right[2] * half];
-          const ua = (a[0] * right[0] + a[1] * right[2]) / 8, ub = ua + CELL / 8;
-          const name = sideOf[n] || pickVariant(def.walls?.lower || LOWER_VARIANTS, hashInt(Math.floor(ua), dx ? cx : cz, dx * 3 + dz + 7)), size = TEXTURE_HEIGHT[name] || 12;
+          const ax = cx - right[0] * half, az = cz - right[2] * half, bx = cx + right[0] * half, bz = cz + right[2] * half;
+          const ia = [Math.round((ax - GRID_X0) / CELL), Math.round((az - GRID_Z0) / CELL)], ib = [Math.round((bx - GRID_X0) / CELL), Math.round((bz - GRID_Z0) / CELL)];
+          const a = vertex(...ia), b = vertex(...ib), [facing, ua, ub] = alongCurve(ia, ib, a, b, normal, (ax * right[0] + az * right[2]) / 8);
+          const name = sideOf[n] || pickVariant(def.walls?.lower || LOWER_VARIANTS, hashInt(Math.floor(ua + 0.25), facing ? 0 : dx ? cx : cz, facing ? 7 : dx * 3 + dz + 7)), size = TEXTURE_HEIGHT[name] || 12;
+          const end = (y, p) => { const here = trueHeight(y, i, p); return here !== y ? here : trueHeight(y, n, p); };
           for (const [lo, hi, inside] of spansOf(i)) for (const [s0, s1] of solid) {
             const y0 = Math.max(lo, s0), y1 = Math.min(hi, s1);
             if (y1 - y0 < 0.01) continue;
-            quad(name, inside, [[a[0], y0, a[1]], [b[0], y0, b[1]], [b[0], y1, b[1]], [a[0], y1, a[1]]], normal,
-              [[ua, (y1 - y0) / size], [ub, (y1 - y0) / size], [ub, 0], [ua, 0]], [0.75, 0.75, 1, 1]);
+            quad(name, inside, [[a[0], end(y0, a), a[1]], [b[0], end(y0, b), b[1]], [b[0], end(y1, b), b[1]], [a[0], end(y1, a), a[1]]], normal,
+              [[ua, -end(y0, a) / size], [ub, -end(y0, b) / size], [ub, -end(y1, b) / size], [ua, -end(y1, a) / size]], [0.75, 0.75, 1, 1], facing);
             if (y1 - y0 > 3) radarEdges.push([a[0], a[1], b[0], b[1]]);
           }
         }
@@ -5338,16 +5388,8 @@
                 [[ua * 0.5, -lowA / 16], [ub * 0.5, -lowB / 16], [ub * 0.5, -highB / 16], [ua * 0.5, -highA / 16]], [0.72, 0.72, 0.95, 0.95]);
             if (natural[i] && natural[n]) continue;
           }
-          // Along a curve a wall runs between its moved corners, textured by the distance round the curve and shaded smoothly.
-          const va = ia[1] * row + ia[0], vb = ib[1] * row + ib[0];
-          let facing = null;
-          if (warpOn[va] || warpOn[vb]) {
-            const run = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1, side = [(b[1] - a[1]) / run, 0, (a[0] - b[0]) / run], edge = dot(side, normal) < 0 ? mul(side, -1) : side;
-            const smooth = (v) => { const out = warpNX[v] * normal[0] + warpNZ[v] * normal[2] < 0 ? -1 : 1; return [warpNX[v] * out, 0, warpNZ[v] * out]; };
-            const na = warpOn[va] ? smooth(va) : edge, nb = warpOn[vb] ? smooth(vb) : edge;
-            facing = [na, nb, nb, na];
-            if (warpOn[va] && warpOn[vb] && Math.abs(warpU[vb] - warpU[va]) < 1.5) { ua = warpU[va]; ub = warpU[vb]; } else ub = ua + run / 8;
-          }
+          const curve = alongCurve(ia, ib, a, b, normal, ua), facing = curve[0];
+          ua = curve[1]; ub = curve[2];
           const cornerA = !facing && closed(gx - right[0], gz - right[2]) ? 0.62 : 1, cornerB = !facing && closed(gx + right[0], gz + right[2]) ? 0.62 : 1;
           const tile = Math.floor(ua + 0.25), plane = facing ? 0 : dx ? cx : cz, salt = facing ? 7 : dx * 3 + dz + 7;
           const lower = pickVariant(def.walls?.lower || LOWER_VARIANTS, hashInt(tile, plane, salt));
