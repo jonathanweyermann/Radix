@@ -397,7 +397,7 @@
     //     { lakes: [x, z, radius, depth] basins, water (the lakes' surface height above the room floor), trees (how many),
     //     liquid: what fills the lakes ('floorWater' by default, 'floorLava' burns, 'floorIce' is frozen),
     //     canyons: [[depth, half width, [x, z], [x, z, depth], ...]] winding channels along each path, whose points can set a
-    //     depth of their own, toEdge (canyons keep their depth right up to the map's edge), terrace (cut slopes into ledges this tall),
+    //     depth of their own, toEdge (canyons keep their depth right up to the map's edge), terrace (cut gentle slopes into ledges this tall; steep ones stay smooth),
     //     hills (height of the rolling ground),
     //     craters: [x, z, radius, depth], ridges: [x, z0, z1, half width, height], small and boulders (how many small craters
     //     and loose rocks to scatter), clear: areas [x0, z0, x1, z1] kept flat for buildings }. Its floors follow a smooth
@@ -2864,8 +2864,8 @@
           oval(0, 482, 42, 38, PAD, 49),
           // The Crucible: the pit, and the crucible itself standing in it with its lip above the melt.
           oval(0, 344, 56, 48, SLAG, 25),
-          oval(0, 344, 24, 24, SLAG, 37, undefined, { raise: true, side: 'wallBasalt' }),
-          oval(0, 344, 18, 18, LAVA, 33, undefined, { raise: true }),
+          oval(0, 344, 26, 26, SLAG, 37, undefined, { raise: true, side: 'wallBasalt' }),
+          oval(0, 344, 16, 16, LAVA, 33, undefined, { raise: true }),
           // The Mega Forge: the pool, the rim walkway, the anvil and two updrafts.
           oval(0, 612, 100, 88, LAVA, -27),
           oval(0, 612, 100, 88, PLATE, 49, undefined, { raise: true, hole: 0.8, side: 'wallTech' }),
@@ -3423,12 +3423,25 @@
         }
     }
     // With every shape carved, split the cells their edges cross and pull the grid's corners along each edge onto its curve.
+    const curveSlope = (field, x, z) => [field(x + 0.5, z) - field(x - 0.5, z), field(x, z + 0.5) - field(x, z - 0.5)];
+    // The point on a shape's curve nearest (x, z), and which way the curve faces there.
+    function ontoCurve(shape, x, z) {
+      let px = x, pz = z;
+      for (let step = 0; step < 5; step++) {
+        const f = shape.field(px, pz), [sx, sz] = curveSlope(shape.field, px, pz), l2 = sx * sx + sz * sz;
+        if (l2 < 1e-6) break;
+        px -= f * sx / l2; pz -= f * sz / l2;
+      }
+      const [sx, sz] = curveSlope(shape.field, px, pz), length = Math.hypot(sx, sz) || 1;
+      return [px, pz, sx / length, sz / length];
+    }
     function settleShapes(def) {
       cutOn.fill(0); warpOn.fill(0); bent.fill(0);
       const list = def.shapeList;
       if (!list.length) return;
-      const nudge = 0.5, cellOf = (gx, gz) => gx >= 0 && gz >= 0 && gx < GRID_W && gz < GRID_D ? gz * GRID_W + gx : -1;
-      const slope = (field, x, z) => [(field(x + nudge, z) - field(x - nudge, z)) / (2 * nudge), (field(x, z + nudge) - field(x, z - nudge)) / (2 * nudge)];
+      const cellOf = (gx, gz) => gx >= 0 && gz >= 0 && gx < GRID_W && gz < GRID_D ? gz * GRID_W + gx : -1;
+      // A raise later in the list can sink a pool into this one: its cells still lie inside this one, whose edge isn't there.
+      const insideRaise = (k, id) => k >= 0 && (stepOf[k] === id || (stepOf[k] > id && list[id - 1].field(GRID_X0 + (k % GRID_W + 0.5) * CELL, GRID_Z0 + (Math.floor(k / GRID_W) + 0.5) * CELL) < 0));
       // What lies past a cut: the first cell out along the curve's normal that the shape doesn't own.
       const farSide = (i, s, cx, cz, nx, nz) => {
         for (const reach of [1, 1.5, 2, 2.5]) {
@@ -3443,7 +3456,7 @@
         const flip = s.solid ? -1 : 1, x0 = GRID_X0 + gx * CELL, z0 = GRID_Z0 + gz * CELL, cx = x0 + CELL / 2, cz = z0 + CELL / 2;
         const past = [[x0, z0], [x0 + CELL, z0], [x0 + CELL, z0 + CELL], [x0, z0 + CELL]].some(([x, z]) => s.field(x, z) * flip > 0);
         if (!past) return false;
-        const field = (x, z) => s.field(x, z) * flip, [sx, sz] = slope(field, cx, cz), length = Math.hypot(sx, sz) || 1, nx = sx / length, nz = sz / length;
+        const field = (x, z) => s.field(x, z) * flip, [sx, sz] = curveSlope(field, cx, cz), length = Math.hypot(sx, sz) || 1, nx = sx / length, nz = sz / length;
         cutA[i] = nx; cutB[i] = nz; cutC[i] = nx * cx + nz * cz - field(cx, cz) / length;
         cutTo[i] = s.solid ? -1 : farSide(i, s, cx, cz, nx, nz); cutOn[i] = 1;
         return true;
@@ -3467,18 +3480,13 @@
         const x = GRID_X0 + ix * CELL, z = GRID_Z0 + iz * CELL;
         let shape = null, nearest = CELL * 1.6;
         for (const k of ring) if (k >= 0) for (const id of [ownerOf[k], stepOf[k]]) if (id) {
+          if (list[id - 1].raise && ring.every(c => insideRaise(c, id))) continue;
           const gap = Math.abs(list[id - 1].field(x, z));
           if (gap < nearest) { nearest = gap; shape = list[id - 1]; }
         }
         if (!shape) continue;
-        let px = x, pz = z;
-        for (let step = 0; step < 5; step++) {
-          const f = shape.field(px, pz), [sx, sz] = slope(shape.field, px, pz), l2 = sx * sx + sz * sz;
-          if (l2 < 1e-6) break;
-          px -= f * sx / l2; pz -= f * sz / l2;
-        }
-        const v = iz * row + ix, [sx, sz] = slope(shape.field, px, pz), length = Math.hypot(sx, sz) || 1;
-        warpOn[v] = 1; warpX[v] = px; warpZ[v] = pz; warpNX[v] = sx / length; warpNZ[v] = sz / length; warpU[v] = shape.around(px, pz) / 8;
+        const v = iz * row + ix, [px, pz, nx, nz] = ontoCurve(shape, x, z);
+        warpOn[v] = 1; warpX[v] = px; warpZ[v] = pz; warpNX[v] = nx; warpNZ[v] = nz; warpU[v] = shape.around(px, pz) / 8;
         for (const k of ring) if (k >= 0) bent[k] = 1;
       }
     }
@@ -3633,9 +3641,18 @@
           cut = Math.min(cut, -deep * smoothstep(width * 1.25, width * 0.55, gap) * (t.toEdge ? 1 : smoothstep(10, 70, edge(x, z))));
         }
         h += cut;
-        // Terraces cut the slopes into flat ledges and steep risers, like strata weathered back.
-        if (t.terrace) { const step = t.terrace, ledge = Math.floor(h / step) * step, rise = smoothstep(t.terraceSoft ?? 0.75, 1, h / step - Math.floor(h / step)); h = ledge + rise * step; }
         t.heights[iz * (GRID_W + 1) + ix] = h;
+      }
+      // Terraces cut the slopes into flat ledges and steep risers, like strata weathered back. A slope that climbs much of a
+      // ledge in one cell is too steep for the grid to show them, and they'd only break it into teeth, so they fade out there.
+      if (t.terrace) {
+        const step = t.terrace, soft = t.terraceSoft ?? 0.75, row = GRID_W + 1, raw = t.heights.slice();
+        const at = (ix, iz) => raw[clamp(iz, 0, GRID_D) * row + clamp(ix, 0, GRID_W)];
+        for (let iz = 0; iz <= GRID_D; iz++) for (let ix = 0; ix <= GRID_W; ix++) {
+          const h = at(ix, iz), part = h / step - Math.floor(h / step), ledged = Math.floor(h / step) * step + smoothstep(soft, 1, part) * step;
+          const climb = Math.hypot(at(ix + 1, iz) - at(ix - 1, iz), at(ix, iz + 1) - at(ix, iz - 1)) / 2;
+          t.heights[iz * row + ix] = h + (ledged - h) * smoothstep(step * 0.5, step * 0.2, climb);
+        }
       }
     }
     const NATURAL_FLOORS = [MOON, GRASS, SAND, ICE, SLAG];
@@ -5195,7 +5212,8 @@
         for (const i of [0, 1, 2, 0, 2, 3]) list.push(...corners[i], ...(normals ? normals[i] : normal), ...uvs[i], shades[i]);
       };
       // Natural ground: each cell corner is the average of the natural cells around it whose floors are within a cliff's
-      // height of this one; next to anything built, a corner stays at the cell's own floor so walls meet it exactly.
+      // height of this one. Next to anything built up from the ground a corner stays at the cell's own floor, so walls meet it
+      // exactly; a room sunk into the ground is left out, and its wall climbs to the ground along its top.
       const CLIFF = (def.terrain?.cliff ?? 7.2) * WORLD_SCALE, row = GRID_W + 1, terrain = def.terrain?.heights;
       // A covered cell dressed in the terrain's own rock is a cave or arch: its ceiling and steps are that rock too.
       const rocky = (k) => !!def.terrain && sideOf[k] === (def.terrain.side || 'wallMoon');
@@ -5208,7 +5226,7 @@
           if (outsideGrid(cx, cz)) { if (Math.abs(FLOOR - surface(i)) < CLIFF) { sum += FLOOR; count++; } continue; }
           const k = cz * GRID_W + wrapGX(cx);
           if (capped[k] === 2) continue;
-          if (!groundCell(k)) return surface(i);
+          if (!groundCell(k)) { if (open[k] && (roofY[k] < Infinity ? roofY[k] : ceilY[k] < WALL_TOP ? Infinity : floorY[k]) < surface(i)) continue; return surface(i); }
           if (Math.abs(surface(k) - surface(i)) < CLIFF) { sum += surface(k); count++; }
         }
         return sum / count;
@@ -5231,7 +5249,51 @@
         ];
         for (const [normal, corners] of faces) quad(name, covered, corners, normal, corners.map(p => uvOf(p, normal)), [1, 1, 1, 1]);
       };
+      // A pillar's wall follows its curve in several pieces, so it reads as round and not as a few flat panels.
+      const roundWall = (shape, a, b, ua, ub, facing) => {
+        const na = facing[0], nb = facing[1], parts = Math.min(4, Math.ceil(Math.acos(clamp(na[0] * nb[0] + na[2] * nb[2], -1, 1)) / (Math.PI / 12)));
+        if (parts < 2 || Math.abs(shape.field(a[0], a[1])) > 0.02 || Math.abs(shape.field(b[0], b[1])) > 0.02) return [[a, b, ua, ub, facing]];
+        const points = [[a, na, ua]];
+        for (let k = 1; k < parts; k++) {
+          const t = k / parts, [x, z, nx, nz] = ontoCurve(shape, a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t), out = nx * (na[0] + nb[0]) + nz * (na[2] + nb[2]) < 0 ? -1 : 1;
+          points.push([[x, z], [nx * out, 0, nz * out], ua + (ub - ua) * t]);
+        }
+        points.push([b, nb, ub]);
+        return points.slice(1).map(([end, normal, u], k) => { const [start, first, from] = points[k]; return [start, end, from, u, [first, normal, normal, first]]; });
+      };
       const outsideGrid = (gx, gz) => (!wrapCells && (gx < 0 || gx >= GRID_W)) || gz < 0 || gz >= GRID_D;
+      // The corners of every piece of ground, and how far past too steep for the floor texture it runs.
+      const groundY = new Float32Array(GRID_W * GRID_D * 4), past = new Float32Array(GRID_W * GRID_D), STEEP = CELL * 1.4;
+      if (def.terrain) for (let gz = 0; gz < GRID_D; gz++) for (let gx = 0; gx < GRID_W; gx++) {
+        const i = gz * GRID_W + gx;
+        if (!open[i] || !groundCell(i)) continue;
+        for (const [k, ix, iz] of [[0, gx, gz], [1, gx + 1, gz], [2, gx + 1, gz + 1], [3, gx, gz + 1]]) groundY[i * 4 + k] = cornerOf(i, ix, iz);
+        const corners = groundY.subarray(i * 4, i * 4 + 4);
+        past[i] = Math.max(...corners) - Math.min(...corners) - STEEP;
+      }
+      const pastAt = (ix, iz) => {
+        let sum = 0, count = 0;
+        for (const [cx, cz] of [[ix - 1, iz - 1], [ix, iz - 1], [ix - 1, iz], [ix, iz]]) {
+          if (outsideGrid(cx, cz)) continue;
+          const k = cz * GRID_W + wrapGX(cx);
+          if (open[k] && groundCell(k)) { sum += past[k]; count++; }
+        }
+        return count ? sum / count : -STEEP;
+      };
+      // One triangle of ground, its corners as [x, y, z, normal, shade, how steep]. Where it turns steep the bank texture takes
+      // over along a line through the triangle, so the two meet in a slanting line and not round the edges of the cells.
+      const groundTri = (flat, bank, ...tri) => {
+        const draw = (name, steep, list) => {
+          const out = groups[name] || (groups[name] = []);
+          for (const [x, y, z, nx, ny, nz, shade] of list) out.push(x, y, z, nx, ny, nz, ...(steep ? [(x + z) / 16, -y / 16] : [x / 30, z / 30]), shade);
+        };
+        const count = tri.filter(p => p[7] > 0).length;
+        if (count === 0 || count === 3) return draw(count ? bank : flat, !!count, tri);
+        const odd = tri.findIndex(p => (p[7] > 0) === (count === 1)), a = tri[odd], b = tri[(odd + 1) % 3], c = tri[(odd + 2) % 3];
+        const cross = (q) => { const t = a[7] / (a[7] - q[7]); return a.map((v, k) => v + (q[k] - v) * t); }, ab = cross(b), ac = cross(c), lone = count === 1;
+        draw(lone ? bank : flat, lone, [a, ab, ac]);
+        draw(lone ? flat : bank, !lone, [ab, b, c, ab, c, ac]);
+      };
       const openEdge = def.moon || def.canyon, closed = (gx, gz) => cellAt(gx, gz) === 0 && !(openEdge && outsideGrid(gx, gz)) ? 1 : 0;
       const ao = (ix, iz) => warpOn[iz * row + ix] ? 0.68 : 1 - 0.16 * (closed(ix - 1, iz - 1) + closed(ix, iz - 1) + closed(ix - 1, iz) + closed(ix, iz));
       // A grid corner where it's drawn: curved walls move some of them.
@@ -5337,21 +5399,24 @@
         // In a cylinder nothing rises past the axis, so walls stop there.
         const i = gz * GRID_W + gx, floor = floorY[i], covered = ceilY[i] < WALL_TOP, ceil = def.cylinder ? Math.min(ceilY[i], FLOOR + AXIS) : ceilY[i];
         // Ground wholly above the sector's top, away from any edge of it, can never be seen.
-        if (natural[i] && floor >= WALL_TOP && [[1, 0], [-1, 0], [0, 1], [0, -1]].every(([dx, dz]) => outsideGrid(gx + dx, gz + dz) || floorY[(gz + dz) * GRID_W + wrapGX(gx + dx)] >= WALL_TOP)) continue;
+        if (natural[i] && floor >= WALL_TOP && [[1, 0], [-1, 0], [0, 1], [0, -1]].every(([dx, dz]) => { if (outsideGrid(gx + dx, gz + dz)) return true; const k = (gz + dz) * GRID_W + wrapGX(gx + dx); return !groundCell(k) || (floorY[k] >= WALL_TOP && Math.abs(floorY[k] - floor) < CELL); })) continue;
         const x0 = GRID_X0 + gx * CELL, z0 = GRID_Z0 + gz * CELL, x1 = x0 + CELL, z1 = z0 + CELL;
         const corners = [ao(gx, gz), ao(gx + 1, gz), ao(gx + 1, gz + 1), ao(gx, gz + 1)];
         const outline = bent[i] ? [vertex(gx, gz), vertex(gx + 1, gz), vertex(gx + 1, gz + 1), vertex(gx, gz + 1)] : [[x0, z0], [x1, z0], [x1, z1], [x0, z1]], under = [outline[3], outline[2], outline[1], outline[0]];
         const floorShape = floorOf[i] ? shapes[floorOf[i] - 1] : null, ceilShape = ceilOf[i] ? shapes[ceilOf[i] - 1] : null;
         if (groundCell(i)) {
-          const ids = [[gx, gz], [gx + 1, gz], [gx + 1, gz + 1], [gx, gz + 1]], heights = ids.map(([ix, iz]) => cornerOf(i, ix, iz));
+          const ids = [[gx, gz], [gx + 1, gz], [gx + 1, gz + 1], [gx, gz + 1]], heights = ids.map((id, k) => groundY[i * 4 + k]);
           // A cell wholly under the lake shows only the water; along the shore the ground pokes up through it.
           if (wet[i]) quad(def.terrain.liquid || 'floorWater', false, at(outline, floor + 0.3), [0, 1, 0], outline.map(([x, z]) => [x / 16, z / 16]), [1, 1, 1, 1]);
-          // Steep ground shows the bank texture, mapped up the slope, instead of the floor stretched down it.
-          const steep = Math.max(...heights) - Math.min(...heights) > CELL * 1.4;
-          if (!wet[i] || heights.some(y => y > floor + 0.05))
-            quad(steep ? def.terrain.side || 'wallMoon' : FLOOR_MATERIALS[capped[i] === 1 ? def.rooms[0][4] : material - 1], false, outline.map(([x, z], k) => [x, heights[k], z]), [0, 1, 0],
-              ids.map(([ix, iz], k) => steep ? [(GRID_X0 + ix * CELL + GRID_Z0 + iz * CELL) / 16, -heights[k] / 16] : [(GRID_X0 + ix * CELL) / 30, (GRID_Z0 + iz * CELL) / 30]),
-              ids.map(([ix, iz]) => tone(GRID_X0 + ix * CELL, GRID_Z0 + iz * CELL)), ids.map(([ix, iz]) => slope(ix, iz)));
+          // Steep ground shows the bank texture, mapped up the slope, instead of the floor stretched down it. Each cell folds
+          // along its flatter diagonal, so a slope running across the grid doesn't crease into teeth.
+          if (!wet[i] || heights.some(y => y > floor + 0.05)) {
+            const flatName = FLOOR_MATERIALS[capped[i] === 1 ? def.rooms[0][4] : material - 1], bank = def.terrain.side || 'wallMoon';
+            const points = ids.map(([ix, iz], k) => [outline[k][0], heights[k], outline[k][1], ...slope(ix, iz), tone(GRID_X0 + ix * CELL, GRID_Z0 + iz * CELL), pastAt(ix, iz)]);
+            const [p, q, r, u] = Math.abs(heights[0] - heights[2]) <= Math.abs(heights[1] - heights[3]) ? points : [points[1], points[2], points[3], points[0]];
+            groundTri(flatName, bank, p, q, r);
+            groundTri(flatName, bank, p, r, u);
+          }
         }
         if (merged[i] === 2) {
           const mx = x0 + CELL * PATCH, mz = z0 + CELL * PATCH, uv = [[x0 / 8, z0 / 8], [mx / 8, z0 / 8], [mx / 8, mz / 8], [x0 / 8, mz / 8]];
@@ -5376,8 +5441,7 @@
           const half = CELL / 2, cx = x0 + half + dx * half, cz = z0 + half + dz * half;
           const ax = cx - right[0] * half, az = cz - right[2] * half, bx = cx + right[0] * half, bz = cz + right[2] * half;
           const ia = [Math.round((ax - GRID_X0) / CELL), Math.round((az - GRID_Z0) / CELL)], ib = [Math.round((bx - GRID_X0) / CELL), Math.round((bz - GRID_Z0) / CELL)];
-          const a = vertex(...ia), b = vertex(...ib);
-          let ua = (ax * right[0] + az * right[2]) / 8, ub = ua + CELL / 8;
+          let a = vertex(...ia), b = vertex(...ib), ua = (ax * right[0] + az * right[2]) / 8, ub = ua + CELL / 8;
           if (!solid && groundCell(i) && groundCell(n)) {
             // Between two natural cells, fill any step between their edges from the lower side: a cliff, or a seam. Beside a
             // cave's mouth the fill stops at the cave's ceiling.
@@ -5388,7 +5452,8 @@
                 [[ua * 0.5, -lowA / 16], [ub * 0.5, -lowB / 16], [ub * 0.5, -highB / 16], [ua * 0.5, -highA / 16]], [0.72, 0.72, 0.95, 0.95]);
             if (natural[i] && natural[n]) continue;
           }
-          const curve = alongCurve(ia, ib, a, b, normal, ua), facing = curve[0];
+          const curve = alongCurve(ia, ib, a, b, normal, ua);
+          let facing = curve[0];
           ua = curve[1]; ub = curve[2];
           const cornerA = !facing && closed(gx - right[0], gz - right[2]) ? 0.62 : 1, cornerB = !facing && closed(gx + right[0], gz + right[2]) ? 0.62 : 1;
           const tile = Math.floor(ua + 0.25), plane = facing ? 0 : dx ? cx : cz, salt = facing ? 7 : dx * 3 + dz + 7;
@@ -5403,11 +5468,11 @@
             return y + (low - floor) * (1 - t) + (high - ceil) * t;
           };
           // A band of wall texture between two heights; v runs down from vTop over vSize units.
-          const band = (name, y0, y1, vTop, vSize, ends) => {
+          const band = (name, y0, y1, vTop, vSize, ends, slanted) => {
             if (y1 - y0 < 0.01) return;
-            const v0 = (vTop - y0) / vSize, v1 = (vTop - y1) / vSize;
+            const v0 = (vTop - y0) / vSize, v1 = (vTop - y1) / vSize, va = slanted ? (vTop - ends[0]) / vSize : v1, vb = slanted ? (vTop - ends[1]) / vSize : v1;
             quad(name, covered, [[a[0], stretch(y0, a), a[1]], [b[0], stretch(y0, b), b[1]], [b[0], ends ? ends[1] : stretch(y1, b), b[1]], [a[0], ends ? ends[0] : stretch(y1, a), a[1]]], normal,
-              [[ua, v0], [ub, v0], [ub, v1], [ua, v1]], [shade(y0) * cornerA, shade(y0) * cornerB, shade(y1) * cornerB, shade(y1) * cornerA], facing);
+              [[ua, v0], [ub, v0], [ub, vb], [ua, va]], [shade(y0) * cornerA, shade(y0) * cornerB, shade(y1) * cornerB, shade(y1) * cornerA], facing);
           };
           // A bulkhead wall rising from `bottom` to `top`: kick plate and panels, upper cladding, then a lit crown.
           const bulkhead = (kind, bottom, top) => {
@@ -5423,25 +5488,32 @@
             band(def.crown || 'crown', crown, top, top, 4);
           };
           if (solid) {
-            const inside = nx >= 0 && nz >= 0 && nx < GRID_W && nz < GRID_D;
-            bulkhead(inside ? solidKind[n] : BULKHEAD, floor, ceil);
+            const inside = nx >= 0 && nz >= 0 && nx < GRID_W && nz < GRID_D, pillar = inside && ownerOf[n] ? shapes[ownerOf[n] - 1] : null;
             radarEdges.push([a[0], a[1], b[0], b[1]]);
+            for (const piece of facing && (pillar?.block || pillar?.solid) ? roundWall(pillar, a, b, ua, ub, facing) : [[a, b, ua, ub, facing]]) {
+              [a, b, ua, ub, facing] = piece;
+              bulkhead(inside ? solidKind[n] : BULKHEAD, floor, ceil);
+            }
             continue;
           }
           const neighborFloor = floorY[n], neighborCeil = ceilY[n];
           const overGround = capped[i] === 1 && groundCell(n), sameShell = ceilShape?.shell && ceilOf[i] === ceilOf[n];
-          // The walls of a cutting climb to the ground beside it.
-          const groundEnds = capped[i] === 2 && groundCell(n) ? [cornerOf(n, ...ia), cornerOf(n, ...ib)].map(y => Math.max(y, floor)) : null;
-          if (roofY[i] < Infinity && !overGround && neighborFloor > roofY[i] + 0.01) band(sideOf[n] || lower, roofY[i], neighborFloor, neighborFloor, TEXTURE_HEIGHT[sideOf[n]] || lowerSize);
+          // The walls of a cutting, or of an open room sunk into the ground, climb to the ground beside them.
+          const groundEnds = (capped[i] === 2 || (!covered && !groundCell(i))) && groundCell(n) ? [cornerOf(n, ...ia), cornerOf(n, ...ib)].map(y => Math.max(y, floor)) : null;
+          if (roofY[i] < Infinity && !overGround && groundCell(n)) {
+            const ends = [cornerOf(n, ...ia), cornerOf(n, ...ib)].map(y => Math.max(y, roofY[i]));
+            band(sideOf[n] || lower, roofY[i], Math.max(...ends), 0, 16, ends, true);
+          } else if (roofY[i] < Infinity && !overGround && neighborFloor > roofY[i] + 0.01) band(sideOf[n] || lower, roofY[i], neighborFloor, neighborFloor, TEXTURE_HEIGHT[sideOf[n]] || lowerSize);
           // Above a roof, a neighboring block that rises higher shows its side down to this roof (or its own underside).
           if (roofY[i] < Infinity && !overGround && !sameShell && roofY[n] < Infinity && roofY[n] > roofY[i] + 0.01) {
             const bottom = Math.max(roofY[i], neighborCeil);
             if (roofY[n] > bottom) band(sideOf[n] || 'crown', bottom, roofY[n], roofY[n], TEXTURE_HEIGHT[sideOf[n]] || 4);
           }
-          if (neighborFloor > floor + 0.01 && !(floorOf[i] && floorOf[i] === floorOf[n])) {
-            const top = Math.min(neighborFloor, ceil), side = sideOf[n], nextFloor = floorOf[n] ? shapes[floorOf[n] - 1] : null;
+          if ((neighborFloor > floor + 0.01 || groundEnds?.some(y => y > floor + 0.01)) && !(floorOf[i] && floorOf[i] === floorOf[n])) {
+            const top = groundEnds ? Math.max(...groundEnds) : Math.min(neighborFloor, ceil), side = sideOf[n], nextFloor = floorOf[n] ? shapes[floorOf[n] - 1] : null;
             const ends = groundEnds || (nextFloor ? [a, b].map(([x, z]) => Math.min(nextFloor.floorAt(x, z), ceil)) : null);
-            if (side) band(side, floor, top, top, TEXTURE_HEIGHT[side] || 10, ends);
+            if (groundEnds) band(side || def.terrain.side || 'wallMoon', floor, top, 0, 16, ends, true);
+            else if (side) band(side, floor, top, top, TEXTURE_HEIGHT[side] || 10, ends);
             else band(lower, floor, top, floor + lowerSize, lowerSize, ends);
             if (neighborFloor - floor > 3) radarEdges.push([a[0], a[1], b[0], b[1]]);
           }
