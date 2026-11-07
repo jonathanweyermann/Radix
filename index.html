@@ -120,6 +120,9 @@
     .menu .sectors button { display: flex; justify-content: space-between; gap: 10px; text-align: left; }
     .menu .sectors small { color: #f0a65c; font-size: 10px; white-space: nowrap; }
     .menu .sectors button:disabled small { color: inherit; }
+    .menu .sectors h3 { grid-column: 1 / -1; margin: 10px 0 2px; color: #65e9ff; font-size: 10px; font-weight: normal; letter-spacing: .24em; text-align: left; }
+    .menu .sectors h3:first-child { margin-top: 0; }
+    .menu .brief.episode-intro { margin-top: 10px; color: #f0d2a8; font-style: italic; }
     .menu .arsenal { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 6px; text-align: left; }
     .menu .tier { border: 1px solid #22404c; background: #08131c; padding: 6px 9px; color: #4d6470; }
     .menu .tier b { display: block; font-size: 11px; font-weight: normal; letter-spacing: .14em; }
@@ -242,8 +245,9 @@
   </div>
   <div class="menu" id="briefing" role="dialog" aria-label="Mission briefing">
     <div class="menu-box">
-      <h2 class="briefing-head">MISSION BRIEFING</h2>
+      <h2 class="briefing-head" id="briefingKicker">MISSION BRIEFING</h2>
       <h1 class="briefing-title" id="briefingTitle">SECTOR 1</h1>
+      <p class="brief episode-intro" id="episodeText" hidden></p>
       <canvas id="systemMap" aria-label="Map of the Nadir system"></canvas>
       <p class="brief" id="briefingText"></p>
       <div class="row" style="margin-top: 16px"><button class="primary" id="launchButton">LAUNCH</button></div>
@@ -424,6 +428,33 @@
         ...doors.map(([a, b, c, d, top]) => [a, b, c, d, material, floor, top, side, roof, null, under]),
       ];
     }
+    // A seeded random sequence for laying out generated set pieces, so a sector comes out the same every time it loads.
+    const layout = (seed) => { let n = seed >>> 0; return () => (n = (Math.imul(n, 1664525) + 1013904223) >>> 0) / 4294967296; };
+    // The towers of a city block: lots of varied size with alleys `gap` wide between them, `lo` to `hi` units tall.
+    function cityBlock([x0, z0, x1, z1], seed, lo, hi, gap = 8) {
+      const next = layout(seed), snap = (v) => Math.round(v / 4) * 4, rooms = [];
+      for (let z = z0; z < z1 - 8;) {
+        const depth = Math.min(z1 - z, snap(20 + next() * 24));
+        for (let x = x0; x < x1 - 8;) {
+          const span = Math.min(x1 - x, snap(16 + next() * 28)), height = Math.round(lo + (hi - lo) * next() ** 1.4);
+          rooms.push([x, z, x + span, z + depth, PLATE, BASE + height, SKY, next() < 0.7 ? 'wallWindows' : 'wallTech']);
+          x += span + gap;
+        }
+        z += depth + gap;
+      }
+      return rooms;
+    }
+    // Loose rocks [x, y, z, size, variant] for open space inside a box, kept apart and clear of each [x, y, z, radius] in `avoid`.
+    function rockField(count, seed, [x0, y0, z0, x1, y1, z1], sizes, avoid = []) {
+      const next = layout(seed), rocks = [];
+      for (let k = 0; rocks.length < count && k < count * 30; k++) {
+        const x = x0 + (x1 - x0) * next(), y = y0 + (y1 - y0) * next(), z = z0 + (z1 - z0) * next(), size = sizes[Math.floor(next() * sizes.length)];
+        if (avoid.some(([ax, ay, az, r]) => Math.hypot(x - ax, y - ay, z - az) < r + size) ||
+          rocks.some(([bx, by, bz, bs]) => Math.hypot(x - bx, y - by, z - bz) < bs + size + 6)) continue;
+        rocks.push([Math.round(x), Math.round(y), Math.round(z), size, rocks.length % 4]);
+      }
+      return rocks;
+    }
     const LEVELS = [
       {
         // The hub is a domed drum, the uplink a real dish, and the masts of the antenna field are round. The offices and
@@ -580,6 +611,82 @@
           { name: 'FLARE DECK', area: [-40, 664, 40, 720], barrels: 4, drones: 2, wardens: 1 },
         ],
       },
+      (() => {
+        // Delta-9's launch silos: four round shafts sunk deep into the slag plain, each ringed by a concrete collar with a
+        // gantry tower beside it, fed by a pipeline on stilts from the refinery to the south. The tanks are round with domed
+        // tops; the launch bunker and the ammunition shed are square concrete. Vents in the silo floors lift you back out.
+        const silos = [[60, 260], [160, 260], [60, 420], [160, 420]], pumps = [150, 330, 510];
+        return {
+          name: 'DELTA-9', title: 'LAUNCH SILOS', music: 'rivet', music2: 'acidbath', top: 100, roundBlocks: true, start: [0, 32, -24], yaw: 0, exit: [0, 31, 700, true],
+          since: 'episodes', canyon: true, crowd: 1,
+          brief: 'DESTROY THE FUEL PUMPS ALONG THE PIPELINE',
+          sky: { zenith: [0.05, 0.08, 0.04], fog: [0.24, 0.28, 0.17], sun: [0.75, 0.8, 0.55], sunDir: [0.35, 0.5, 0.75] },
+          walls: { lower: [['wallRust', 0.4], ['wallTech', 0.3], ['wallPipes', 0.3]], upper: [['wallRust', 0.5], ['wallUpper', 0.5]] },
+          rooms: [
+            [-256, -48, 256, 752, MOON, 20, SKY, 'wallRust'],
+            oval(0, -20, 20, 20, PAD, 22, undefined, { raise: true, side: 'wallTech' }),
+            // The pipeline's stilts and the pump pads beside it.
+            ...[72, 120, 168, 216, 264, 312, 360, 408, 456, 504, 552, 600].map(z => [-152, z, -148, z + 4, PLATE, 30, SKY, 'wallTech']),
+            ...pumps.map(z => [-140, z - 10, -120, z + 10, PAD, 26, SKY, 'wallTech']),
+            // The tank farm.
+            oval(-50, 226, 14, 14, PLATE, 44, undefined, { raise: true, side: 'wallRust', crown: 4 }),
+            oval(-14, 254, 11, 11, PLATE, 40, undefined, { raise: true, side: 'wallRust', crown: 3 }),
+            oval(-62, 276, 12, 12, PLATE, 38, undefined, { raise: true, side: 'wallRust', crown: 3 }),
+            // The silos: a collar round each shaft, the shaft itself with a vent in its floor, and a gantry tower.
+            ...silos.flatMap(([x, z]) => [
+              oval(x, z, 23, 23, PAD, 22, undefined, { raise: true, side: 'wallTech' }),
+              oval(x, z, 16, 16, GRATE, -50, undefined, { side: 'wallTech' }),
+              oval(x, z, 6, 6, VENT, -50, undefined, { raise: true }),
+              [x + 24, z - 4, x + 32, z + 4, PLATE, 70, SKY, 'wallTech'],
+            ]),
+            // Radar masts either side of the bunker.
+            [-84, 588, -80, 592, PLATE, 78, SKY, 'wallTech'], [80, 588, 84, 592, PLATE, 72, SKY, 'wallTech'],
+            // The launch bunker: a concrete block with a roofed hall inside and one door to the south.
+            [-48, 556, 48, 644, PLATE, 46, SKY, 'wallTech'], [-40, 564, 40, 636, PAD, 20, 38, null, 46], [-10, 556, 10, 564, PAD, 20, 34, null, 46],
+            // The ammunition shed, its door bricked up.
+            [180, 560, 220, 604, PLATE, 34, SKY, 'wallTech'], [184, 564, 216, 600, PAD, 20, 30, null, 34], [196, 560, 204, 564, PAD, 20, 28, null, 34],
+            oval(0, 700, 24, 20, PAD, 21, undefined, { raise: true, side: 'wallTech' }),
+          ],
+          // A low slag plain with sludge pools, walled east and west by ridges, graded flat round everything built on it.
+          terrain: {
+            side: 'wallRust', hills: 8, small: 14, boulders: 90, water: -6, liquid: 'floorSludge',
+            craters: [[-100, 80, 26, 6], [100, 40, 22, 5], [-10, 470, 24, 6]],
+            lakes: [[-70, 420, 46, 14], [175, 110, 38, 12], [-190, 700, 34, 12], [120, 520, 24, 11], [-200, 40, 30, 12]],
+            ridges: [[240, -48, 752, 24, 34], [-242, -48, 752, 22, 28]],
+            clear: [[-30, -48, 30, 10], [-160, 136, -112, 164], [-160, 316, -112, 344], [-160, 496, -112, 524], [24, 216, 200, 452], [-84, 198, 4, 300],
+              [-60, 548, 60, 652], [172, 548, 228, 612], [-34, 676, 34, 724], [-92, 580, 92, 610]],
+          },
+          stairs: [], blocks: [],
+          girders: [
+            [-152, 30, 60, -148, 34, 640], [-148, 30, 598, -48, 34, 602],
+            ...pumps.map(z => [-148, 30, z - 1.5, -140, 32, z + 1.5]),
+            ...silos.map(([x, z]) => [x + 6, 56, z - 1.5, x + 24, 59, z + 1.5]),
+            [-88, 60, 589, -76, 62, 591], [76, 56, 589, 88, 58, 591],
+          ],
+          gates: [[-10, 556, 10, 560, 'south', 'chain'], [196, 560, 204, 564, 'south', 'cracked']],
+          extras: {},
+          objectives: [
+            { kind: 'destroy', text: 'DESTROY THE FUEL PUMPS', targets: pumps.map(z => ['core', -130, 32, z, 'FUEL PUMP']) },
+            { kind: 'destroy', text: 'DIVE INTO THE SILOS AND KILL THE RACKED FIGHTERS', targets: silos.map(([x, z]) => ['core', x + 8, -45, z, 'RACKED FIGHTER']) },
+            { kind: 'gate', text: 'SHOOT THE LOCKS ON THE LAUNCH BUNKER', gate: 0 },
+            { kind: 'destroy', text: 'DESTROY THE LAUNCH CONTROL CORE', targets: [['core', 0, 27, 612, 'LAUNCH CONTROL']] },
+            { kind: 'exit', text: 'REACH THE LAUNCH GATE' },
+          ],
+          zones: [
+            { name: 'LANDING FIELD', area: [-60, -48, 60, 60], barrels: 4 },
+            { name: 'LAUNCH BUNKER', area: [-40, 564, 40, 636], barrels: 4, drones: 2, wardens: 1, health: 1 },
+            { name: 'AMMUNITION SHED', area: [184, 564, 216, 600], missile: 2, health: 1 },
+            ...silos.map(([x, z], k) => ({ name: `SILO ${k + 1}`, area: [x - 16, z - 16, x + 16, z + 16], hunters: 1 })),
+            { name: 'PIPELINE', area: [-200, 60, -100, 640], barrels: 6, drones: 4, hunters: 2, turrets: 2, health: 1, high: true },
+            { name: 'TANK FARM', area: [-100, 180, 20, 320], barrels: 10, drones: 3, strikers: 1, health: 1 },
+            { name: 'SILO FIELD', area: [20, 200, 220, 460], barrels: 8, drones: 4, hunters: 2, wardens: 1, turrets: 2, missile: 1, high: true },
+            { name: 'SLUDGE FLATS', area: [-256, 320, 20, 552], drones: 4, hunters: 2, health: 1, weapon: 1, high: true },
+            { name: 'EAST FLATS', area: [20, -48, 256, 200], barrels: 4, drones: 3, hunters: 2 },
+            { name: 'BUNKER APRON', area: [-120, 460, 256, 556], barrels: 6, drones: 3, strikers: 1, turrets: 1, missile: 1 },
+            { name: 'LAUNCH GATE', area: [-256, 644, 256, 752], drones: 3, hunters: 1, health: 1 },
+          ],
+        };
+      })(),
       {
         // The fighters sleep under barrel vaults. The well between the halls is a round shaft that goes down a long way, the
         // reservoir has a frozen shore, and the spire at the end is one tall bore.
@@ -943,6 +1050,65 @@
           { name: 'ANTENNA CROWN', area: [-64, 620, 64, 744], drones: 3, strikers: 2, lancers: 1, health: 1, high: true },
         ],
       },
+      (() => {
+        // Tau-3's storm reef: open sea under low cloud, broken by islands with terraced cliffs, sea stacks and an arch. The
+        // listening masts stand on concrete plinths on the four big islands, and the reef cache is dug into the central islet.
+        const masts = [[-300, 170], [280, 250], [-210, 470], [330, 560]];
+        const stacks = [[-150, 300, 9, 34], [220, 420, 8, 30], [-380, 360, 11, 40], [400, 120, 10, 36], [-60, 600, 8, 28], [160, 310, 9, 26], [-300, 620, 10, 38], [60, 160, 7, 24]];
+        return {
+          name: 'TAU-3', title: 'STORM REEF', music: 'tide', music2: 'docks', top: 100, width: 256, start: [0, 10, -24], yaw: 0, exit: [0, 4, 724, true],
+          since: 'episodes', canyon: true, crowd: 3, fog: [140, 820, 0.9], haze: 0.45, tint: [0.94, 1.0, 1.04],
+          brief: 'DESTROY THE LISTENING MASTS ON THE FOUR ISLANDS',
+          sky: { zenith: [0.1, 0.13, 0.17], fog: [0.36, 0.41, 0.45], sun: [0.65, 0.7, 0.78], sunDir: [-0.3, 0.6, 0.7] },
+          walls: { lower: [['wallTech', 0.5], ['wallRust', 0.5]], upper: [['wallTech', 0.6], ['wallUpper', 0.4]] },
+          rooms: [
+            [-512, -48, 512, 752, SAND, BASE, SKY, 'wallCliff'],
+            // The landing raft and the gate raft, standing in the sea.
+            oval(0, -18, 18, 18, PAD, -4, undefined, { raise: true, side: 'wallTech' }),
+            oval(0, 724, 22, 18, PAD, -4, undefined, { raise: true, side: 'wallTech' }),
+            // The arch, then the two stacks it joins, then the rest of the sea stacks.
+            [124, 114, 176, 126, WATER, -7, 9, 'wallCliff', 16, 'floorGrass'],
+            oval(118, 120, 10, 9, GRASS, 30, undefined, { raise: true, side: 'wallCliff', wobble: 3, grain: 12 }),
+            oval(182, 120, 10, 9, GRASS, 26, undefined, { raise: true, side: 'wallCliff', wobble: 3, grain: 12 }),
+            ...stacks.map(([x, z, r, h]) => oval(x, z, r, r * 0.9, GRASS, h, undefined, { raise: true, side: 'wallCliff', wobble: 3, grain: 12 })),
+            // Each mast: a plinth on its island's summit and a lattice tower.
+            ...masts.flatMap(([x, z]) => [[x - 12, z - 12, x + 12, z + 12, PAD, 30, SKY, 'wallTech'], [x - 2, z - 2, x + 2, z + 2, PLATE, 72, SKY, 'wallTech']]),
+            // The reef cache, a bunker in the central islet with a cracked door.
+            [-60, 368, -20, 396, PLATE, 38, SKY, 'wallTech'], [-56, 372, -24, 392, PAD, 25, 34, null, 38], [-44, 368, -36, 372, PAD, 25, 32, null, 38],
+            // The lighthouse on the outer reef.
+            oval(70, 680, 9, 9, PLATE, 52, undefined, { raise: true, side: 'wallTech' }),
+          ],
+          // The sea fills everything below its level; the islands are mounds on the sea floor, terraced into cliffs.
+          terrain: {
+            side: 'wallCliff', hills: 7, terrace: 6, terraceSoft: 0.35, boulders: 70, water: 4,
+            craters: [], lakes: [],
+            ridges: [[-300, 170, 170, 64, 28], [280, 250, 250, 58, 26], [-210, 470, 470, 66, 28], [330, 560, 560, 60, 27], [-40, 382, 382, 44, 22],
+              [-480, 60, 620, 40, 18], [480, 40, 560, 44, 20], [120, 430, 430, 26, 14], [-120, 120, 120, 24, 12], [70, 570, 570, 22, 12],
+              [-420, 662, 662, 40, 14], [-300, 690, 690, 40, 12], [-170, 670, 670, 36, 16], [170, 668, 668, 36, 16], [300, 690, 690, 40, 12], [420, 660, 660, 40, 14]],
+            clear: [[-24, -40, 24, 4], [-24, 706, 24, 742]],
+          },
+          stairs: [], blocks: [],
+          girders: masts.flatMap(([x, z]) => [[x - 12, 58, z - 1, x + 12, 60, z + 1], [x - 1, 50, z - 9, x + 1, 52, z + 9]]),
+          gates: [[-44, 368, -36, 372, 'south', 'cracked']],
+          extras: {},
+          objectives: [
+            { kind: 'destroy', text: 'DESTROY THE LISTENING MASTS', targets: masts.map(([x, z]) => ['core', x + 7, 37, z, 'LISTENING MAST']) },
+            { kind: 'destroy', text: 'SINK THE PICKET SHIPS IN THE LAGOON', targets: [['warden', -120, 3, 300, 'PICKET SHIP'], ['warden', 140, 3, 380, 'PICKET SHIP'], ['warden', 20, 3, 520, 'PICKET SHIP']] },
+            { kind: 'exit', text: 'REACH THE STORM GATE' },
+          ],
+          zones: [
+            { name: 'REEF CACHE', area: [-56, 372, -24, 392], health: 1, missile: 2, weapon: 1 },
+            { name: 'LANDING RAFT', area: [-24, -40, 24, 4], barrels: 2 },
+            { name: 'WEST MAST', area: [-360, 110, -240, 230], turrets: 1, drones: 1 },
+            { name: 'EAST MAST', area: [220, 190, 340, 310], turrets: 1, drones: 1 },
+            { name: 'NORTHWEST MAST', area: [-270, 410, -150, 530], turrets: 1, lancers: 1 },
+            { name: 'NORTHEAST MAST', area: [270, 500, 390, 620], turrets: 1, drones: 1 },
+            { name: 'SOUTH REEF', area: [-512, -48, 512, 260], drones: 3, skimmers: 2, hunters: 1, strikers: 1, health: 1, missile: 1, high: true },
+            { name: 'THE LAGOON', area: [-512, 260, 512, 540], drones: 3, skimmers: 2, lancers: 1, health: 1, missile: 1, high: true },
+            { name: 'OUTER REEF', area: [-512, 540, 512, 752], drones: 3, skimmers: 2, strikers: 1, health: 1, high: true },
+          ],
+        };
+      })(),
       {
         // Quays, cranes and container yards are straight. What isn't: the fuel tanks, the arched roof of the submarine pen, the
         // storm seawall curving round the outer harbour, and the lighthouse at the end of it.
@@ -1978,6 +2144,69 @@
           { name: 'INNER CYLINDER', area: [-512, -48, 512, 752], altitude: [BASE + 106, BASE + 140], drones: 6, skimmers: 4, phantoms: 2, lancers: 1 },
         ],
       },
+      (() => {
+        // Sigma-4's dune sea: rolling sand cut by long dune ridges, graded flat along the pipeline road and round the four
+        // derricks. The pump station at the road's north end is roofed concrete; the cache is dug into a sandstone butte.
+        const wells = [[-120, 150], [70, 270], [-50, 450], [170, 520]];
+        const feeders = [[-108, 18, 150], [22, 58, 270], [-38, 18, 450], [22, 158, 520]];
+        return {
+          name: 'SIGMA-4', title: 'DUNE WELLS', music: 'mesa', music2: 'anvil', top: 100, start: [20, 2, -26], yaw: 0, exit: [20, -1, 722, true],
+          since: 'episodes', canyon: true, tint: [1.05, 1.0, 0.92],
+          brief: 'CAP THE FOUR WELLHEADS IN THE DUNES',
+          sky: { zenith: [0.25, 0.3, 0.45], fog: [0.78, 0.62, 0.42], sun: [1.2, 0.95, 0.7], sunDir: [0.4, 0.5, 0.5] },
+          walls: { lower: [['wallTech', 0.5], ['wallRust', 0.5]], upper: [['wallTech', 0.7], ['wallUpper', 0.3]] },
+          rooms: [
+            [-256, -48, 256, 752, SAND, BASE, SKY, 'wallSandstone'],
+            oval(20, -24, 18, 18, PAD, BASE + 2, undefined, { raise: true, side: 'wallTech' }),
+            // The derricks: a pad, four corner legs and a domed tank beside each.
+            ...wells.flatMap(([x, z]) => [
+              [x - 12, z - 12, x + 12, z + 12, PAD, BASE + 2, SKY, 'wallTech'],
+              ...[[-8, -8], [4, -8], [-8, 4], [4, 4]].map(([dx, dz]) => [x + dx, z + dz, x + dx + 4, z + dz + 4, PLATE, BASE + 42, SKY, 'wallTech']),
+              oval(x + 22, z, 7, 7, PLATE, BASE + 14, undefined, { raise: true, side: 'wallRust', crown: 2 }),
+            ]),
+            // The pipeline's posts along the road.
+            ...[100, 140, 180, 220, 260, 300, 340, 380, 420, 460, 500, 540, 580].map(z => [18, z, 22, z + 4, PLATE, 4, SKY, 'wallTech']),
+            // The pump station, with a door at each end.
+            [-30, 620, 70, 690, PLATE, 24, SKY, 'wallTech'], [-22, 628, 62, 682, GRATE, BASE, 14, null, 24],
+            [12, 620, 28, 628, PAD, BASE, 10, null, 24], [12, 682, 28, 690, PAD, BASE, 10, null, 24],
+            oval(20, 722, 22, 18, PAD, BASE + 1, undefined, { raise: true, side: 'wallTech' }),
+            // The butte and the cache inside it.
+            [-236, 300, -188, 344, SAND, 26, SKY, 'wallSandstone'], [-230, 306, -194, 338, PAD, BASE, 4, 'wallSandstone', 26], [-216, 300, -208, 306, PAD, BASE, 2, 'wallSandstone', 26],
+          ],
+          terrain: {
+            side: 'wallSandstone', hills: 16, boulders: 50,
+            craters: [], lakes: [],
+            ridges: [[-190, -48, 752, 34, 22], [-90, 190, 380, 26, 14], [110, 0, 220, 30, 16], [125, 340, 460, 26, 15], [230, 120, 752, 28, 24], [-150, 540, 700, 30, 18]],
+            clear: [[6, 70, 34, 752], [-24, -48, 64, 10], ...wells.map(([x, z]) => [x - 30, z - 30, x + 30, z + 30]), ...feeders.map(([a, b, z]) => [Math.min(a, b) - 4, z - 8, Math.max(a, b) + 4, z + 8]),
+              [-44, 600, 84, 752], [-246, 286, -178, 354]],
+          },
+          stairs: [], blocks: [],
+          girders: [
+            [18, 4, 90, 22, 8, 600],
+            ...feeders.map(([a, b, z]) => [a, 4, z - 1.5, b, 7, z + 1.5]),
+            ...wells.flatMap(([x, z]) => [[x - 8, 27, z - 8, x + 8, 30, z - 6], [x - 8, 27, z + 6, x + 8, 30, z + 8], [x - 8, 27, z - 6, x - 6, 30, z + 6], [x + 6, 27, z - 6, x + 8, 30, z + 6],
+              [x - 8, 9, z - 8, x + 8, 11, z - 6], [x - 8, 9, z + 6, x + 8, 11, z + 8]]),
+          ],
+          gates: [[12, 620, 28, 624, 'south', 'chain'], [-216, 300, -208, 304, 'south', 'cracked']],
+          extras: {},
+          objectives: [
+            { kind: 'destroy', text: 'CAP THE WELLHEADS', targets: wells.map(([x, z]) => ['core', x, BASE + 8, z, 'WELLHEAD']) },
+            { kind: 'destroy', text: 'KILL THE SAND CRAWLER', targets: [['warden', -80, 4, 640, 'SAND CRAWLER']] },
+            { kind: 'gate', text: 'FORCE THE PUMP STATION DOOR', gate: 0 },
+            { kind: 'destroy', text: 'DESTROY THE PUMP CORES', targets: [['core', 0, -4, 656, 'PUMP CORE'], ['core', 40, -4, 656, 'PUMP CORE']] },
+            { kind: 'exit', text: 'FOLLOW THE PIPELINE OUT OF THE DUNES' },
+          ],
+          zones: [
+            { name: 'PUMP STATION', area: [-22, 628, 62, 682], drones: 2, wardens: 1, health: 1, missile: 1 },
+            { name: 'BUTTE CACHE', area: [-230, 306, -194, 338], health: 1, missile: 2, launcher: 1 },
+            { name: 'LANDING PAD', area: [-10, -48, 50, 10], barrels: 2 },
+            ...wells.map(([x, z], k) => ({ name: `WELL ${k + 1}`, area: [x - 12, z - 12, x + 12, z + 12], barrels: 2, turrets: 1 })),
+            { name: 'SOUTH DUNES', area: [-256, -48, 256, 250], drones: 3, skimmers: 2, strikers: 1, lancers: 1, health: 1, missile: 1, high: true },
+            { name: 'WELL FIELD', area: [-256, 250, 256, 560], drones: 3, skimmers: 2, hunters: 2, aegis: 1, health: 1, weapon: 1, high: true },
+            { name: 'NORTH DUNES', area: [-256, 560, 256, 752], drones: 3, skimmers: 1, wardens: 1, lancers: 1, health: 1, missile: 1, high: true },
+          ],
+        };
+      })(),
       {
         // A refinery cut into a sandstone hill. The terraces run round a spur of rock like contour lines, the pipe tunnel goes
         // through the spur, and the North Canyon is a real gorge. The stacks are round; the pipework and vaults are built square.
@@ -2356,6 +2585,69 @@
           { name: 'NORTH PLATEAU', area: [-256, 540, 120, 752], drones: 3, skimmers: 2, escorts: 1, health: 1 },
         ],
       },
+      (() => {
+        // The crown city on Omega: blocks of towers either side of a boulevard, with a monorail down its middle, three plazas
+        // where the shield emitters stand as round towers, and the citadel across the north end: a concrete keep with a domed
+        // hall inside it, and behind it the court where a round shaft drops toward the core.
+        const emitters = [[-136, 190, 96], [136, 330, 104], [-136, 478, 112]];
+        return {
+          name: 'OMEGA', title: 'CROWN CITY', music: 'spire', music2: 'omega', top: 150, start: [0, 0, -24], yaw: 0, exit: [0, -50, 716, true],
+          since: 'episodes', crowd: 1, fog: [120, 760, 0.9], haze: 0.25,
+          brief: 'BREAK THE THREE SHIELD EMITTERS ON THE TOWER TOPS',
+          sky: { zenith: [0.08, 0.04, 0.14], fog: [0.32, 0.22, 0.36], sun: [0.95, 0.6, 0.85], sunDir: [-0.4, 0.4, 0.7] },
+          walls: { lower: [['wallWindows', 0.3], ['wallTech', 0.4], ['wallComputer', 0.3]], upper: [['wallWindows', 0.6], ['wallTech', 0.4]] },
+          rooms: [
+            [-256, -48, 256, 752, PLATE, BASE, SKY, 'wallTech'],
+            oval(0, -20, 22, 22, PAD, BASE + 1, undefined, { raise: true, side: 'wallTech' }),
+            // The tower blocks.
+            ...cityBlock([-232, 20, -40, 104], 11, 16, 60), ...cityBlock([40, 20, 232, 104], 12, 16, 60),
+            ...cityBlock([40, 136, 232, 244], 13, 24, 80), ...cityBlock([-232, 276, -40, 384], 14, 24, 90),
+            ...cityBlock([40, 416, 140, 540], 15, 30, 100), ...cityBlock([-232, 556, -112, 640], 16, 20, 70), ...cityBlock([112, 556, 232, 640], 17, 20, 70),
+            // A tower with a sealed vault at its foot.
+            [156, 440, 216, 500, PLATE, BASE + 74, SKY, 'wallWindows'], [160, 444, 212, 496, PAD, BASE, 9, null, BASE + 74], [180, 440, 192, 444, PAD, BASE, 7, null, BASE + 74],
+            // The emitter plazas: a ring of steps, then the tower.
+            ...emitters.flatMap(([x, z, h]) => [
+              oval(x, z, 34, 34, PAD, BASE + 2, undefined, { raise: true, side: 'wallTech' }),
+              oval(x, z, 14, 14, PLATE, BASE + h, undefined, { raise: true, side: 'wallTech' }),
+            ]),
+            // The monorail's pylons down the boulevard.
+            ...[40, 120, 200, 280, 360, 440, 520].flatMap(z => [[-32, z, -28, z + 4, PLATE, 19, SKY, 'wallTech'], [28, z, 32, z + 4, PLATE, 19, SKY, 'wallTech']]),
+            // The citadel: its doors first, then the domed hall they open into, then the shaft court behind it.
+            [-100, 572, 100, 680, PLATE, 50, SKY, 'wallTech'],
+            [-12, 572, 12, 590, PAD, BASE, 9, null, 50], [-12, 656, 12, 680, PAD, BASE, 9, null, 50],
+            oval(0, 622, 80, 44, GRATE, BASE, 22, { dome: 20, roof: 50, power: 3 }),
+            oval(0, 622, 14, 14, PAD, BASE + 3, undefined, { raise: true, side: 'wallTech' }),
+            [-40, 680, 40, 752, PLATE, BASE, SKY, 'wallTech'],
+            oval(0, 716, 20, 20, GRATE, -62, undefined, { side: 'wallTech' }),
+          ],
+          stairs: [], blocks: [],
+          girders: [[-32, 19, 20, -28, 22, 560], [28, 19, 20, 32, 22, 560],
+            [-40, 44, 254, 40, 46, 258], [-40, 60, 396, 40, 62, 400], [-40, 36, 112, 40, 38, 116]],
+          spinners: emitters.map(([x, z, h]) => ({ kind: 'ring', at: [x, BASE + h + 18, z], axis: [0, 1, 0], radius: 16, inner: 13, length: 2, speed: 0.6, materials: ['wallTech', 'wallTech', 'wallTech'] })),
+          gates: [[-12, 572, 12, 576, 'south', 'chain'], [180, 440, 192, 444, 'south', 'secret']],
+          extras: {},
+          objectives: [
+            { kind: 'destroy', text: 'BREAK THE SHIELD EMITTERS', targets: emitters.map(([x, z, h]) => ['core', x, BASE + h + 7, z, 'SHIELD EMITTER']) },
+            { kind: 'gate', text: 'FORCE THE CITADEL GATE', gate: 0 },
+            { kind: 'destroy', text: 'KILL THE CORE LOCKS', targets: [['core', -40, -3, 622, 'CORE LOCK'], ['core', 40, -3, 622, 'CORE LOCK']] },
+            { kind: 'exit', text: 'TAKE THE SHAFT DOWN TO THE CORE' },
+          ],
+          zones: [
+            { name: 'LANDING PLAZA', area: [-40, -48, 40, 20], barrels: 4 },
+            { name: 'TOWER VAULT', area: [160, 444, 212, 496], health: 1, missile: 2, weapon: 1 },
+            { name: 'CITADEL HALL', area: [-80, 578, 80, 666], barrels: 4, drones: 2, wardens: 1, aegis: 1, health: 2, missile: 1 },
+            { name: 'SHAFT COURT', area: [-40, 680, 40, 752], barrels: 2, drones: 2 },
+            { name: 'WEST EMITTER PLAZA', area: [-232, 136, -40, 244], barrels: 4, drones: 3, aegis: 1, lancers: 1, health: 1 },
+            { name: 'EAST EMITTER PLAZA', area: [40, 276, 232, 384], barrels: 4, drones: 3, wardens: 1, lancers: 1, missile: 1 },
+            { name: 'NORTH EMITTER PLAZA', area: [-232, 416, -40, 540], barrels: 4, drones: 3, strikers: 1, lancers: 1, health: 1 },
+            { name: 'THE BOULEVARD', area: [-40, 20, 40, 560], barrels: 8, drones: 4, hunters: 2, turrets: 2, skimmers: 1 },
+            { name: 'SOUTH QUARTER', area: [-256, -48, 256, 120], drones: 3, hunters: 2, turrets: 1, health: 1, high: true },
+            { name: 'EAST QUARTER', area: [40, 120, 256, 560], drones: 4, skimmers: 2, strikers: 1, health: 1, high: true },
+            { name: 'WEST QUARTER', area: [-256, 120, -40, 560], drones: 4, lancers: 1, hunters: 2, high: true },
+            { name: 'CITADEL WALLS', area: [-256, 540, 256, 752], drones: 3, skimmers: 2, strikers: 1, escorts: 1, high: true },
+          ],
+        };
+      })(),
       {
         // The core arena is a round pit with a walkway round its rim and the core standing in the middle, the coolant core a long
         // round tank, and the throne room ends in a curve. The sentinel's crown hall sits under a barrel roof.
@@ -2416,6 +2708,51 @@
           { name: 'OMEGA THRONE', area: [-88, 640, 88, 744], drones: 3, strikers: 2, escorts: 1, lancers: 1, health: 1, high: true },
         ],
       },
+      (() => {
+        // The edge of the shroud: open space so thick with dust that the fog closes in fast, strewn with rock. The veil buoys
+        // hang in square frames under halos, and the waystation is a rounded hull module with a deck inside, like the belt's.
+        const buoys = [[-300, 30, 140], [260, -40, 220], [-120, 80, 380], [380, 60, 560], [-360, -20, 620]];
+        const layers = [[0, 40, 300], [-200, -30, 500], [200, 20, 460]];
+        return {
+          name: 'THE SHROUD', title: 'DUST VEIL', music: 'drift', music2: 'nadir', top: 200, width: 256, start: [0, 0, -30], yaw: 0, exit: [0, 20, 730, true],
+          since: 'episodes', space: true, roof: 'floorPlate', hull: 'floorPlate', ceiling: 'wallTech', rockMaterial: 'wallBasalt', fog: [80, 560, 0.96], haze: 0,
+          brief: 'DESTROY THE VEIL BUOYS BEFORE THE REQUIEM COMES THROUGH',
+          sky: { zenith: [0.03, 0.0, 0.05], fog: [0.12, 0.06, 0.16], sun: [0.9, 0.45, 0.4], sunDir: [0.2, 0.3, 0.9] },
+          walls: { lower: [['wallTech', 0.5], ['wallVoid', 0.5]] },
+          rooms: [
+            [-512, -48, 512, 752, VOID, -200],
+            [250, 360, 350, 480, PLATE, 30, SKY, 'wallTech', undefined, null, 0],
+            [292, 360, 308, 386, PLATE, 6, 18, null, 30, null, 0],
+            oval(300, 420, 34, 42, PLATE, 6, 16, inHull(30, 0, { dome: 8 })),
+          ],
+          hulls: [{ at: [300, 420], radii: [50, 60], top: [40, 32], bottom: [-12, -4], roof: 30, under: 0 }],
+          rocks: rockField(170, 0x7e11, [-500, -150, -20, 500, 150, 740], [4, 5, 6, 8, 10, 12, 16, 20, 26],
+            [[0, 0, -30, 70], [300, 15, 420, 80], [0, 20, 730, 50], ...buoys.map(([x, y, z]) => [x, y, z, 34]), ...layers.map(([x, y, z]) => [x, y, z, 24])]),
+          stairs: [], blocks: [],
+          girders: buoys.flatMap(([x, y, z]) => [[x - 12, y - 1, z - 12, x + 12, y + 1, z - 10], [x - 12, y - 1, z + 10, x + 12, y + 1, z + 12],
+            [x - 12, y - 1, z - 10, x - 10, y + 1, z + 10], [x + 10, y - 1, z - 10, x + 12, y + 1, z + 10], [x - 1, y - 16, z - 1, x + 1, y - 5, z + 1]]),
+          gates: [[292, 360, 308, 364, 'south', 'cracked']],
+          spinners: [
+            ...buoys.map(([x, y, z]) => ({ kind: 'ring', at: [x, y + 12, z], axis: [0, 1, 0], radius: 16, inner: 14, length: 1.5, speed: 0.5, materials: ['wallVoid', 'wallVoid', 'wallVoid'] })),
+            { kind: 'rock', variant: 0, at: [140, 40, 120], axis: [0.4, 1, 0.2], radius: 12, speed: 0.2, materials: ['wallBasalt', null, null] },
+            { kind: 'rock', variant: 1, at: [-220, -60, 300], axis: [-0.6, 1, 0.3], radius: 14, speed: -0.25, materials: ['wallBasalt', null, null] },
+            { kind: 'rock', variant: 2, at: [100, 90, 600], axis: [0.2, 1, -0.7], radius: 11, speed: 0.3, materials: ['wallBasalt', null, null] },
+            { kind: 'rock', variant: 3, at: [-60, -80, 480], axis: [0.9, 1, 0.1], radius: 13, speed: 0.2, materials: ['wallBasalt', null, null] },
+          ],
+          extras: {},
+          objectives: [
+            { kind: 'destroy', text: 'DESTROY THE VEIL BUOYS', targets: buoys.map(([x, y, z]) => ['core', x, y, z, 'VEIL BUOY']) },
+            { kind: 'destroy', text: 'KILL THE MINELAYERS', targets: layers.map(([x, y, z]) => ['miner', x, y, z, 'MINELAYER']) },
+            { kind: 'exit', text: 'LEAD THE REQUIEM THROUGH THE VEIL' },
+          ],
+          zones: [
+            { name: 'VEIL WAYSTATION', area: [266, 380, 334, 460], health: 1, missile: 1, weapon: 1 },
+            { name: 'OUTER VEIL', area: [-512, -48, 512, 260], altitude: [-140, 140], drones: 6, skimmers: 3, strikers: 2, phantoms: 1 },
+            { name: 'DEEP VEIL', area: [-512, 260, 512, 520], altitude: [-140, 140], drones: 5, phantoms: 3, lancers: 2, escorts: 1 },
+            { name: 'INNER EDGE', area: [-512, 520, 512, 752], altitude: [-140, 140], drones: 5, skimmers: 3, phantoms: 2, wardens: 1, lancers: 1 },
+          ],
+        };
+      })(),
       {
         // The first thing inside the Void: a world bored out to its core. The shafts are round, rough-edged and very deep, with
         // ledges left in their walls, and the tall crystals grow from their floors.
@@ -2835,6 +3172,65 @@
           { name: 'GLACIER LINK', area: [56, 456, 168, 472], hunters: 2 },
         ],
       },
+      (() => {
+        // Void-2B: a small dark moon with its near face graded flat and tiled with mirror dishes turned to Nadir. Four focus
+        // lenses stand on pylons among them, and the beam tower at the north end is a round tower with a chamber at its foot.
+        const lenses = [[-150, 200], [150, 200], [-150, 400], [150, 400]];
+        const dishes = [];
+        for (let row = 0; row < 7; row++) for (let col = 0; col < 7; col++) {
+          const x = -195 + col * 65 + (row % 2 ? 32 : 0), z = 100 + row * 60;
+          if (x < 226 && !lenses.some(([lx, lz]) => Math.hypot(x - lx, z - lz) < 36)) dishes.push([x, z]);
+        }
+        return {
+          name: 'VOID-2B', title: 'SUNCATCHER', music: 'canyon', music2: 'ascent', top: 140, start: [0, -4, -24], yaw: 0, exit: [0, -1, 700, true],
+          since: 'episodes', moon: { radius: 900 }, roof: 'floorPlate', ceiling: 'wallTech', tint: [1.04, 0.98, 1.02],
+          brief: 'SHATTER THE FOCUS LENSES AMONG THE MIRRORS',
+          sky: { zenith: [0.01, 0.0, 0.02], fog: [0.08, 0.05, 0.1], sun: [1.4, 0.8, 0.55], sunDir: [0.0, 0.35, 0.94] },
+          walls: { lower: [['wallTech', 0.6], ['wallComputer', 0.4]], upper: [['wallTech', 0.7], ['wallUpper', 0.3]] },
+          rooms: [
+            [-256, -48, 256, 752, MOON, BASE, SKY, 'wallBasalt'],
+            oval(0, -24, 20, 20, PAD, BASE + 1, undefined, { raise: true, side: 'wallTech' }),
+            // The mirror field.
+            ...dishes.map(([x, z]) => oval(x, z, 13, 13, ICE, BASE + 2, undefined, { raise: true, dish: 3, side: 'wallTech' })),
+            // The lenses: a plinth and a pylon each.
+            ...lenses.flatMap(([x, z]) => [oval(x, z, 16, 16, PAD, BASE + 3, undefined, { raise: true, side: 'wallTech' }), oval(x, z, 7, 7, PLATE, BASE + 52, undefined, { raise: true, side: 'wallTech' })]),
+            // The beam tower: plinth, tower, the door through its south face, then the chamber the door opens into.
+            oval(0, 590, 34, 34, PAD, BASE + 4, undefined, { raise: true, side: 'wallTech' }),
+            oval(0, 590, 22, 22, PLATE, BASE + 100, undefined, { raise: true, side: 'wallTech' }),
+            [-6, 566, 6, 578, PAD, BASE + 4, BASE + 14, null, BASE + 100],
+            oval(0, 590, 15, 15, GRATE, BASE + 4, BASE + 18, { dome: 8, roof: BASE + 100 }),
+            // The lens store, its door cracked shut.
+            [180, 600, 220, 636, PLATE, BASE + 14, SKY, 'wallTech'], [184, 604, 216, 632, PAD, BASE, BASE + 10, null, BASE + 14], [196, 600, 204, 604, PAD, BASE, BASE + 8, null, BASE + 14],
+            oval(0, 700, 24, 22, PAD, BASE + 1, undefined, { raise: true, side: 'wallTech' }),
+          ],
+          terrain: {
+            side: 'wallBasalt', hills: 6, small: 70, boulders: 140,
+            craters: [[-190, 20, 40, 10], [200, 60, 36, 9], [-200, 640, 50, 12], [120, 690, 30, 7], [230, 520, 28, 7], [-230, 520, 30, 8]],
+            ridges: [[-240, 60, 700, 22, 20], [240, 80, 460, 22, 18]],
+            clear: [[-30, -48, 30, 10], [-232, 70, 232, 490], [-44, 540, 44, 640], [170, 590, 230, 646], [-34, 676, 34, 724]],
+          },
+          shards: [...lenses.flatMap(([x, z]) => [[x - 11, z - 8, 3, 22], [x + 10, z + 10, 3, 18], [x + 4, z - 13, 2, 14]]),
+            [-60, 620, 3, 26], [70, 560, 3, 30], [-120, 560, 4, 34], [130, 650, 3, 24]],
+          stairs: [], blocks: [], girders: [],
+          spinners: [{ kind: 'ring', at: [0, BASE + 114, 590], axis: [0, 1, 0], radius: 28, inner: 24, length: 3, speed: 0.4, materials: ['crystal', 'crystal', 'crystal'] }],
+          gates: [[-6, 566, 6, 570, 'south', 'chain'], [196, 600, 204, 604, 'south', 'cracked']],
+          extras: {},
+          objectives: [
+            { kind: 'destroy', text: 'SHATTER THE FOCUS LENSES', targets: lenses.map(([x, z]) => ['core', x, BASE + 59, z, 'FOCUS LENS']) },
+            { kind: 'gate', text: 'OPEN THE BEAM TOWER', gate: 0 },
+            { kind: 'destroy', text: 'DESTROY THE BEAM EMITTER', targets: [['core', 0, BASE + 11, 590, 'BEAM EMITTER']] },
+            { kind: 'exit', text: 'REACH THE GATE BEYOND THE TOWER' },
+          ],
+          zones: [
+            { name: 'LANDING', area: [-40, -48, 40, 40], barrels: 2 },
+            { name: 'BEAM CHAMBER', area: [-15, 575, 15, 605], drones: 1, wardens: 1, health: 1 },
+            { name: 'LENS STORE', area: [184, 604, 216, 632], health: 1, missile: 2, launcher: 1 },
+            { name: 'SOUTH WASTE', area: [-256, -48, 256, 70], drones: 2, hunters: 2, health: 1 },
+            { name: 'MIRROR FIELD', area: [-256, 70, 256, 500], barrels: 6, drones: 3, skimmers: 2, phantoms: 1, lancers: 1, turrets: 2, health: 1, missile: 1, high: true },
+            { name: 'NORTH WASTE', area: [-256, 500, 256, 752], drones: 3, skimmers: 2, strikers: 1, escorts: 1, health: 1, weapon: 1, high: true },
+          ],
+        };
+      })(),
       {
         // The Crucible is a round pit with a true crucible at its heart, and the Mega Forge a great round pool of lava with a
         // walkway round its rim and the anvil standing in the middle. The yards and stores are built square.
@@ -2987,6 +3383,55 @@
           { name: 'THE BRIDGE', area: [-40, 680, 40, 752], escorts: 1, barrels: 2 },
         ],
       },
+      (() => {
+        // The trophy field: wrecks of other worlds' ships hung in rows round a great hulk in open space. The great wreck and the
+        // four husks are rounded hull modules with decks inside; the rest are tumbling shapes: a broken ring big enough to fly
+        // through, a long spine, spheres and containers.
+        const husks = [[-300, 140], [300, 180], [-320, 560], [280, 600]];
+        return {
+          name: 'VOID-4', title: 'TROPHY FIELD', music: 'belt', music2: 'archive', top: 200, width: 256, start: [0, 0, -30], yaw: 0, exit: [0, 20, 730, true],
+          since: 'episodes', space: true, roof: 'wallRust', hull: 'wallRust', ceiling: 'wallTech', rockMaterial: 'wallBasalt',
+          brief: 'NONE OF THESE WRECKS WERE BUILT BY THE CHOIR',
+          sky: { zenith: [0.0, 0.02, 0.03], fog: [0.04, 0.09, 0.1], sun: [0.7, 0.9, 0.95], sunDir: [-0.3, 0.5, 0.6] },
+          walls: { lower: [['wallRust', 0.4], ['wallChitin', 0.3], ['wallTech', 0.3]] },
+          rooms: [
+            [-512, -48, 512, 752, VOID, -200],
+            // The great wreck: its hull, the dock and the stern passage, then the hold they open into.
+            [-120, 300, 120, 500, PLATE, 40, SKY, 'wallRust', undefined, null, -16],
+            [-24, 300, 24, 304, PLATE, -10, 10, 'wallRust', 40, null, -16],
+            [-24, 304, 24, 336, PLATE, -10, 10, null, 40, null, -16], [-24, 464, 24, 500, PLATE, -10, 10, null, 40, null, -16],
+            oval(0, 400, 92, 76, GRATE, -12, 8, inHull(40, -16, { dome: 26 })),
+            oval(0, 400, 20, 20, PAD, -6, undefined, { raise: true, side: 'wallRust' }),
+            // The husks.
+            ...husks.flatMap(([x, z]) => podRooms([x - 36, z - 36, x + 36, z + 36], { floor: 0, ceil: 12, under: -10, roof: 20, side: 'wallChitin', doors: [[x - 8, z - 36, x + 8, z - 32, 10]] })),
+          ],
+          hulls: [{ at: [0, 400], radii: [120, 100], top: [56, 30], bottom: [-40, -20], roof: 40, under: -16 },
+            ...husks.map(([x, z]) => ({ at: [x, z], radii: [36, 36], top: [26, 18], bottom: [-14, -7], roof: 20, under: -10 }))],
+          rocks: rockField(40, 0x7a0f, [-500, -150, -20, 500, 150, 740], [3, 4, 5, 6, 8],
+            [[0, 0, -30, 60], [0, 10, 400, 140], [0, 20, 730, 40], ...husks.map(([x, z]) => [x, 5, z, 60]), [-200, 30, 300, 60], [250, 60, 380, 90]]),
+          stairs: [], blocks: [], girders: [],
+          spinners: [
+            { kind: 'ring', at: [-200, 30, 300], axis: [0.15, 0.2, 1], radius: 44, inner: 36, length: 12, speed: 0.04, materials: ['wallRust', 'wallChitin', 'wallRust'] },
+            { kind: 'core', at: [250, 60, 380], axis: [1, 0.1, 0.3], radius: 9, length: 150, speed: 0.03, materials: ['wallChitin', null, 'wallRust'] },
+            ...[80, 230, 530, 680].map((z, k) => ({ kind: 'sphere', at: [-170, k % 2 ? 40 : -30, z], axis: [0.2, 1, 0.1], radius: 14, speed: 0.05, materials: ['wallHive', null, null] })),
+            ...[100, 250, 550, 700].map((z, k) => ({ kind: 'cube', at: [170, k % 2 ? -40 : 30, z], axis: [0.3, 1, 0.2], radius: 8, speed: 0.15, materials: ['wallContainer', null, 'wallContainerB'] })),
+          ],
+          gates: [[-24, 300, 24, 304, 'south', 'chain']],
+          extras: {},
+          objectives: [
+            { kind: 'destroy', text: 'DESTROY THE WARD BEACONS', targets: husks.map(([x, z]) => ['core', x, 34, z, 'WARD BEACON']) },
+            { kind: 'gate', text: 'FORCE THE DOCK ON THE GREAT WRECK', gate: 0 },
+            { kind: 'reach', text: 'SEARCH THE GREAT WRECK\'S HOLD', at: [0, 0, 400], radius: 30 },
+            { kind: 'exit', text: 'FLY ON TO THE ARCHIVE' },
+          ],
+          zones: [
+            { name: 'THE HOLD', area: [-92, 324, 92, 476], drones: 3, wardens: 1, aegis: 1, health: 2, missile: 1, weapon: 1 },
+            ...husks.map(([x, z], k) => ({ name: `HUSK ${k + 1}`, area: [x - 32, z - 32, x + 32, z + 32], health: 1, ...(k === 2 ? { launcher: 1 } : { missile: 1 }) })),
+            { name: 'SOUTH ROWS', area: [-512, -48, 512, 300], altitude: [-140, 140], drones: 6, skimmers: 3, phantoms: 2, strikers: 1 },
+            { name: 'NORTH ROWS', area: [-512, 300, 512, 752], altitude: [-140, 140], drones: 6, phantoms: 3, lancers: 2, escorts: 1, skimmers: 2 },
+          ],
+        };
+      })(),
       {
         // The stacks are shelving and stay square. The Well is a round shaft with a landing at each door, climbing the wall as
         // it goes, the atrium is domed, and the Oracle sits under a true dome sixty units high.
@@ -3117,6 +3562,57 @@
           { name: 'OBSIDIAN RIDGE', area: [-252, 100, -200, 540], lancers: 3, drones: 2, aegis: 1, health: 1, high: true },
         ],
       },
+      (() => {
+        // The choir spires: eleven round spires in a ring round a sunken amphitheatre, rising like organ pipes from the shortest
+        // in the south, each with its singing tone at the top. A basalt plain with pools of void, ridged east and west.
+        const spires = Array.from({ length: 11 }, (_, k) => { const a = k / 11 * Math.PI * 2; return [Math.round(Math.sin(a) * 200), Math.round(380 - Math.cos(a) * 200), 52 + k * 6]; });
+        return {
+          name: 'VOID-6', title: 'CHOIR SPIRES', music: 'void', music2: 'spire', top: 140, roundBlocks: true, start: [0, 0, -24], yaw: 0, exit: [0, -1, 722, true],
+          since: 'episodes', canyon: true, tint: [1.0, 0.92, 1.08],
+          brief: 'SILENCE ALL ELEVEN VOICES OF THE CHOIR',
+          sky: { zenith: [0.06, 0.0, 0.09], fog: [0.24, 0.1, 0.28], sun: [0.95, 0.45, 0.95], sunDir: [0.0, 0.5, 0.86] },
+          walls: { lower: [['wallVoid', 0.7], ['wallBasalt', 0.3]], upper: [['wallVoid', 0.8], ['wallBasalt', 0.2]] },
+          rooms: [
+            [-256, -48, 256, 752, SLAG, BASE, SKY, 'wallBasalt'],
+            oval(0, -20, 20, 20, PAD, BASE + 1, undefined, { raise: true, side: 'wallVoid' }),
+            // The amphitheatre, stepping down to a pool with an updraft.
+            oval(0, 380, 104, 104, PLATE, BASE - 4, undefined, { raise: true, side: 'wallVoid' }),
+            oval(0, 380, 85, 85, PLATE, BASE - 10, undefined, { raise: true, side: 'wallVoid' }),
+            oval(0, 380, 66, 66, PLATE, BASE - 16, undefined, { raise: true, side: 'wallVoid' }),
+            oval(0, 380, 48, 48, VOID, BASE - 22, undefined, { raise: true, side: 'wallVoid' }),
+            oval(0, 380, 12, 12, VENT, BASE - 22, undefined, { raise: true }),
+            // The spires: a plinth and the spire itself.
+            ...spires.flatMap(([x, z, h]) => [oval(x, z, 16, 16, VOID, BASE + 4, undefined, { raise: true, side: 'wallVoid' }), oval(x, z, 8, 8, VOID, BASE + h, undefined, { raise: true, side: 'wallVoid' })]),
+            // The cantor's vault, dug into a block of rock in the north-east.
+            [176, 660, 236, 712, SLAG, 26, SKY, 'wallBasalt'], [182, 666, 230, 706, PAD, BASE, 6, 'wallBasalt', 26], [200, 660, 212, 666, PAD, BASE, 3, 'wallBasalt', 26],
+            oval(0, 722, 24, 22, PAD, BASE + 1, undefined, { raise: true, side: 'wallVoid' }),
+          ],
+          terrain: {
+            side: 'wallBasalt', hills: 10, terrace: 6, terraceSoft: 0.3, boulders: 90, small: 20, water: -6, liquid: 'floorVoid',
+            craters: [],
+            lakes: [[-180, 640, 50, 10], [190, 90, 40, 8], [-200, 80, 36, 8], [210, 560, 30, 8]],
+            ridges: [[-236, -48, 752, 22, 40], [236, -48, 752, 22, 44], [-120, 600, 700, 36, 30], [120, 610, 690, 36, 28]],
+            clear: [[-30, -48, 30, 20], [-110, 270, 110, 490], [-34, 690, 34, 750], [168, 652, 244, 720], ...spires.map(([x, z]) => [x - 18, z - 18, x + 18, z + 18])],
+          },
+          shards: [...spires.flatMap(([x, z], k) => [[x + (k % 2 ? 12 : -12), z + 6, 3, 18 + k], [x - 6, z + (k % 2 ? -12 : 12), 2, 12 + k]]),
+            [-60, 560, 4, 40], [70, 200, 3, 34], [-150, 690, 3, 28], [40, 640, 3, 30]],
+          stairs: [], blocks: [], girders: [],
+          gates: [[200, 660, 212, 664, 'south', 'cracked']],
+          extras: {},
+          objectives: [
+            { kind: 'destroy', text: 'SILENCE THE CHOIR TONES', targets: spires.map(([x, z, h]) => ['core', x, BASE + h + 7, z, 'CHOIR TONE']) },
+            { kind: 'exit', text: 'FOLLOW THE SILENCE TO THE HEART' },
+          ],
+          zones: [
+            { name: 'DROP POINT', area: [-30, -48, 30, 30], barrels: 2 },
+            { name: 'CANTOR\'S VAULT', area: [182, 666, 230, 706], health: 1, missile: 2, weapon: 1 },
+            { name: 'AMPHITHEATRE', area: [-100, 280, 100, 480], barrels: 6, wardens: 1, escorts: 1, health: 1 },
+            { name: 'SOUTH SLOPES', area: [-256, -48, 256, 170], drones: 3, phantoms: 1, skimmers: 2, lancers: 1, health: 1, high: true },
+            { name: 'CHOIR RING', area: [-256, 170, 256, 590], drones: 3, phantoms: 2, lancers: 2, aegis: 1, broods: 1, skimmers: 2, health: 2, missile: 1, high: true },
+            { name: 'NORTH SLOPES', area: [-256, 590, 256, 752], drones: 3, strikers: 1, miners: 1, escorts: 1, health: 1, missile: 1, high: true },
+          ],
+        };
+      })(),
       {
         // The middle of the shroud, where nothing runs straight: a broken ring over a drop, passages that wander, and the
         // Herald's chamber, a vast dome with living crystal growing up its walls.
@@ -3216,6 +3712,14 @@
       'MIRROR ARCHIVE': [[-0.45, 0.6, 0.66], [0.18, 0.4, 0.45], [0.55, 0.9, 0.9], 0.14],
       'ASH MESAS': [[-0.3, 0.3, 0.9], [0.5, 0.2, 0.08], [0.95, 0.6, 0.3], 0.26],
       'HEART OF THE VOID': [[0.0, 0.32, 0.95], [0.4, 0.08, 0.36], [0.95, 0.4, 0.85], 0.38],
+      'LAUNCH SILOS': [[0.45, 0.35, 0.82], [0.26, 0.34, 0.16], [0.6, 0.7, 0.38], 0.22],
+      'STORM REEF': [[0.4, 0.3, 0.86], [0.18, 0.33, 0.36], [0.5, 0.7, 0.7], 0.24],
+      'DUNE WELLS': [[-0.45, 0.4, 0.8], [0.5, 0.3, 0.18], [0.85, 0.62, 0.4], 0.24],
+      'CROWN CITY': [[0.35, 0.45, 0.82], [0.34, 0.14, 0.4], [0.76, 0.46, 0.82], 0.24],
+      'DUST VEIL': [[0.1, 0.25, 0.96], [0.24, 0.12, 0.36], [0.6, 0.4, 0.85], 0.12],
+      'SUNCATCHER': [[0.5, 0.25, 0.83], [0.4, 0.55, 0.7], [0.85, 0.95, 1.0], 0.34],
+      'TROPHY FIELD': [[-0.4, 0.3, 0.86], [0.18, 0.4, 0.45], [0.55, 0.9, 0.9], 0.2],
+      'CHOIR SPIRES': [[-0.2, 0.35, 0.92], [0.4, 0.08, 0.36], [0.95, 0.4, 0.85], 0.3],
     };
     for (const def of LEVELS) {
       def.sky.sunDir = normalize(def.sky.sunDir);
@@ -3790,13 +4294,13 @@
       skimmer: { hp: 3, radius: 2.0, scale: 0.9, tint: [0.55, 1.45, 0.55], eye: [0.5, 1.0, 0.4], ram: 16, radar: '#7dff6a', sight: 100, name: 'SKIMMER' },
       miner: { hp: 6, radius: 2.8, scale: 1.3, tint: [1.35, 0.8, 0.45], eye: [1.0, 0.55, 0.2], ram: 24, radar: '#ff9a4a', sight: 90, name: 'MINER', bump: true },
       mine: { hp: 1, radius: 1.4, scale: 0.6, tint: [1.4, 0.55, 0.35], eye: [1.0, 0.3, 0.1], ram: 20, radar: '#ff7040', sight: 60, name: 'MINE' },
-      sentinel: { hp: 60, radius: 7, scale: 2.6, tint: [1.3, 0.55, 0.9], eye: [1.0, 0.3, 0.6], ram: 30, radar: '#ff5a9a', sight: 170, name: 'SENTINEL', bump: true, boss: 'OMEGA SENTINEL' },
+      sentinel: { hp: 120, radius: 7, scale: 2.6, tint: [1.3, 0.55, 0.9], eye: [1.0, 0.3, 0.6], ram: 30, radar: '#ff5a9a', sight: 170, name: 'SENTINEL', bump: true, boss: 'OMEGA SENTINEL' },
       pylon: { hp: 6, radius: 2.6, scale: 1, tint: [0.6, 0.9, 1.5], eye: [0.4, 0.8, 1.0], ram: 20, radar: '#7fb8ff', sight: 85, name: 'PYLON', bump: true },
-      carrier: { hp: 90, radius: 7.5, scale: 2.8, tint: [0.85, 1.15, 0.7], eye: [0.6, 1.0, 0.4], ram: 30, radar: '#a8ff6a', sight: 170, name: 'CARRIER', bump: true, boss: 'VOID CARRIER' },
-      herald: { hp: 150, radius: 8, scale: 3.2, tint: [0.95, 0.5, 1.5], eye: [0.85, 0.4, 1.0], ram: 34, radar: '#e070ff', sight: 190, name: 'HERALD', bump: true, boss: 'VOID HERALD', lance: 22 },
-      overseer: { hp: 70, radius: 6, scale: 2.4, tint: [1.1, 1.0, 0.75], eye: [1.0, 0.85, 0.4], ram: 30, radar: '#ffd36a', sight: 160, name: 'OVERSEER', bump: true, boss: 'SPIRE OVERSEER', lance: 18 },
+      carrier: { hp: 180, radius: 7.5, scale: 2.8, tint: [0.85, 1.15, 0.7], eye: [0.6, 1.0, 0.4], ram: 30, radar: '#a8ff6a', sight: 170, name: 'CARRIER', bump: true, boss: 'VOID CARRIER' },
+      herald: { hp: 300, radius: 8, scale: 3.2, tint: [0.95, 0.5, 1.5], eye: [0.85, 0.4, 1.0], ram: 34, radar: '#e070ff', sight: 190, name: 'HERALD', bump: true, boss: 'VOID HERALD', lance: 22 },
+      overseer: { hp: 140, radius: 6, scale: 2.4, tint: [1.1, 1.0, 0.75], eye: [1.0, 0.85, 0.4], ram: 30, radar: '#ffd36a', sight: 160, name: 'OVERSEER', bump: true, boss: 'SPIRE OVERSEER', lance: 18 },
       relay: { hp: 6, radius: 2.4, scale: 1, tint: [1.2, 1.05, 0.6], eye: [1.0, 0.85, 0.3], ram: 20, radar: '#ffe58a', sight: 110, name: 'RELAY', bump: true },
-      queen: { hp: 80, radius: 6.5, scale: 2.8, tint: [1.3, 1.1, 0.35], eye: [0.9, 1.0, 0.3], ram: 30, radar: '#e6ff5a', sight: 150, name: 'QUEEN', bump: true, boss: 'HIVE QUEEN' },
+      queen: { hp: 160, radius: 6.5, scale: 2.8, tint: [1.3, 1.1, 0.35], eye: [0.9, 1.0, 0.3], ram: 30, radar: '#e6ff5a', sight: 150, name: 'QUEEN', bump: true, boss: 'HIVE QUEEN' },
       egg: { hp: 5, radius: 2.3, scale: 1.2, tint: [1.3, 1.05, 0.45], eye: [1.0, 0.9, 0.3], ram: 16, radar: '#f2ff9a', sight: 70, name: 'EGG SAC', bump: true },
       phantom: { hp: 3, radius: 2.0, scale: 1, tint: [0.65, 0.8, 1.3], eye: [0.6, 0.8, 1.0], ram: 18, radar: '#9fb0ff', sight: 100, name: 'PHANTOM' },
       core: { hp: 6, radius: 2.4, scale: 1.3, tint: [0.45, 1.4, 1.25], eye: [0.4, 1.0, 0.9], ram: 18, radar: '#5dfff0', sight: 0, name: 'DATA CORE', bump: true },
@@ -3808,8 +4312,9 @@
     const GUARD_HINTS = { sentinel: 'CORE SHIELDED // DESTROY THE PYLONS', herald: 'HERALD SHIELDED // DESTROY THE NODES', overseer: 'OVERSEER SHIELDED // DESTROY THE RELAYS', queen: 'QUEEN SHIELDED // BURST THE EGG SACS' };
     const GUARDS_DOWN = { pylon: 'CORE SHIELD DOWN', node: 'HERALD SHIELD DOWN', relay: 'OVERSEER SHIELD DOWN', egg: 'QUEEN SHIELD DOWN' };
     const guardsLeft = (boss) => enemies.filter(e => e.type === GUARDS[boss.type] && e.hp > 0).length;
-    // Enemies get a little tougher in each later sector; bosses and their parts, mites and mines do not.
-    const toughness = (type) => ENEMY_TYPES[type].boss || ['pylon', 'node', 'relay', 'egg', 'core', 'mite', 'mine'].includes(type) ? 1 : 1 + 0.05 * levelIndex;
+    // Enemies get a little tougher in each later sector, up to 2.35 times as tough in the last; bosses and their parts,
+    // mites and mines do not.
+    const toughness = (type) => ENEMY_TYPES[type].boss || ['pylon', 'node', 'relay', 'egg', 'core', 'mite', 'mine'].includes(type) ? 1 : 1 + 1.35 * levelIndex / (LEVELS.length - 1);
     // The sentinel cannot be hurt while any of its shield pylons stand.
     const pylonsLeft = () => enemies.filter(e => e.type === 'pylon' && e.hp > 0).length;
     const barrels = [], enemies = [], pickups = [];
@@ -6843,9 +7348,10 @@
     }
     if (!DIFFICULTIES[save.difficulty]) save.difficulty = 'normal';
     // From here on, records are kept by sector title, so sectors can be added anywhere without renumbering saves. The
-    // index-keyed records above refer to the sectors as they stood before the six marked `since: 'six'` were added.
+    // index-keyed records above refer to the sectors as they stood before any marked `since` (the six, then the eight
+    // added for the episodes) were added.
     if (!save.byTitle) {
-      const before = LEVELS.filter(def => def.since !== 'six'), sectors = {};
+      const before = LEVELS.filter(def => !def.since), sectors = {};
       for (const [key, value] of Object.entries(save.sectors)) if (before[Number(key)]) sectors[before[Number(key)].title] = value;
       save.sectors = sectors; save.lastTitle = before[save.last]?.title; save.byTitle = 1;
     }
@@ -6855,7 +7361,8 @@
     const writeSave = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch { /* storage may be blocked */ } };
     // The upgrade tree. A pilot earns one point for each sector cleared, so sector N is flown with N - 1 points, spent one rank
     // at a time at the end of a sector or kept for later. A power opens once the one above it in its branch is at rank 2, and
-    // the singularity charge once any two tier 3 powers are. There are more ranks than a campaign earns points, on purpose.
+    // the singularity charge once any two tier 3 powers are. Thirty ranks fill the tree, which a pilot can max out late in
+    // the third episode.
     // Each stat is [label, a value per rank, an optional format]; the game reads the same numbers through stat().
     const pct = (v) => `${Math.round(v * 100)}%`, secs = (v) => `${v} S`;
     const BRANCHES = ['FLIGHT', 'DEFENSE', 'SUPPORT'];
@@ -6958,7 +7465,9 @@
         item.append(head, body); return item;
       }));
       upgradeHead.textContent = `UPGRADES // ${ranksSpent()} OF ${levelIndex} POINTS SPENT`;
-      sectorList.replaceChildren(...LEVELS.map((def, i) => {
+      sectorList.replaceChildren(...LEVELS.flatMap((def, i) => {
+        const episode = EPISODES.find(e => e.from === i), head = episode && document.createElement('h3');
+        if (head) head.textContent = `${episode.name} // ${episode.title}`;
         const button = document.createElement('button'), kit = recordOf(i);
         const label = document.createElement('span'), detail = document.createElement('small');
         label.textContent = `${i + 1}. ${def.name} ${def.title}`;
@@ -6968,7 +7477,7 @@
           : test ? `TEST // ${WEAPONS[test.weapon - 1].name} / ${test.missiles} MSL` : i === 0 ? 'MK I / 0 MSL' : 'LOCKED';
         button.append(label, detail); button.disabled = !kit && i > 0 && !UNLOCK_ALL;
         button.addEventListener('click', () => { startSector(i); i ? showUpgrades(true) : showBriefing(); });
-        return button;
+        return head ? [head, button] : [button];
       }));
     }
     // The story page opens first (with the menu theme once a tap or key starts the audio) and leads to the menu.
@@ -6977,81 +7486,190 @@
     let screenOpen = 'intro', booted = false;
     const intro = document.getElementById('intro'), introButton = document.getElementById('introButton'), soundHint = document.getElementById('soundHint');
     const briefing = document.getElementById('briefing'), briefingTitle = document.getElementById('briefingTitle'), briefingText = document.getElementById('briefingText');
+    const briefingKicker = document.getElementById('briefingKicker'), episodeText = document.getElementById('episodeText');
     const launchButton = document.getElementById('launchButton'), systemMap = document.getElementById('systemMap'), systemCtx = systemMap.getContext('2d');
-    const BRIEFINGS = [
-      'The Requiem crossed fourteen months of dark and now hides in the shadow of an outer moon, unseen. Your first target is the relay station on Delta-9, which passes the Choir\'s signals between their worlds. Cut it, and they won\'t know what is hitting them for a while longer.',
-      'The Delta-9 relay is dark: they know something is wrong, but not what. The same moon\'s refinery turns its poison air into fuel for the swarm. Burn the tanks and vats, because every one is a fighter that never launches.',
-      'Delta-9\'s refinery is burning, and the fire can be seen from orbit. On Epsilon-5, the forge moon, finished fighters sleep in cryo vaults, waiting for the next world to be found. Destroy the vaults before they wake.',
-      'The cryo vaults are wrecked, but the cold that kept them came from Epsilon-5\'s glacier moon, a frozen world of crystal spires and buried ice. Shatter the cryo pylons in the spire fields, go down into the ice caves to wreck the thaw pumps, then break into the research base and destroy its core samples.',
-      'The glacier moon is dark, and no vault will be cooled again. Epsilon-5\'s magma works cast the swarm\'s hulls from rivers of molten slag. Break the foundry and the swarm stops growing.',
-      'The foundry is slag, but its fire still runs: a gorge a hundred units deep feeds the furnaces with lava from the moon\'s core. Destroy the smelter valves on its rims, dive into the gorge to wreck the pumps standing in the lava, silence the foundry guns, and fly out through the gate at the gorge\'s end.',
-      'The gorge has run cold. The last target on Epsilon-5 is the signal spire that runs its defenses, held by the Spire Overseer. Destroy its two relays, then the Overseer, and the forge moon goes deaf and blind.',
-      'Epsilon-5 is silent and its forges are cold. Tau-3 is an ocean moon whose docks load the swarm for the crossing between stars. Sink the docks, and watch for gold-marked enemies: they were at Earth.',
-      'The docks are burning, but Tau-3 farms its tides too: a drum of sea turns in orbit over the moon, its islands and harbours curving up round you to meet overhead. Destroy the harbour cranes, open the sea gate in the wall that rings the drum, cross to the far shore and destroy the desalination cores.',
-      'The tide drum is drained, and no swarm will load or feed there again. Under Tau-3\'s surface are the hive warrens where the Choir grow their pilots, ruled by the Hive Queen. Burst her egg sacs, then kill her, and the next generation of Earth-burners is never born.',
-      'The Hive Queen is dead, but her last brood had already launched: a living ark drifting out of Tau-3\'s orbit, its hold full of eggs round a brood mother as big as the queen was. Destroy the spore turrets on its hide, shoot open the maw, burst the egg sacs and kill the brood mother.',
-      'The brood ark is dead and Tau-3\'s nests are quiet. A tether anchored on Tau-3 lifts finished fighters up to the orbital yards. Cut it and the yards starve.',
-      'The tether is down, but the orbital yards have one more larder: a garden cylinder turning over Tau-3, a world rolled up inside a spinning drum, with meadows, lakes and a town that curve up round you and meet overhead. Destroy its seed towers, fly up to the sun line down its axis, cross to the far shore to wreck the irrigation pumps, and leave by the end-cap gate.',
-      'The garden is burning, and the yards it fed are next: a double drum turning over Tau-3, an industrial cylinder round a second inner one, where the swarm\'s hulls are pressed and fitted. Wreck the press controllers, break the yard bulkhead, climb through a gap into the inner cylinder, kill the spindle dynamos that turn it, and leave by the end-cap gate.',
-      'The yards are slag and Tau-3 is cut off. Sigma-4\'s refinery terraces are the last supply line feeding the crown world. Burn them and Omega stands alone.',
-      'The terraces are burning, but their last fuel already went up the line to Sigma-4\'s shepherd moon, a grey rock two kilometres across that ships it on to Omega. Its depot sits on open ground under a black sky. Find the tanker that went down, silence the comms mesa, break into the dome and kill its power cores, then get out through the extraction gate.',
-      'The shepherd moon is dark. Between it and Omega runs an ore belt where the crown world\'s hulls are mined: asteroids bored by drill rigs, strung together by conveyor trusses round a refinery. Destroy the drill rigs, force the refinery door and wreck its smelter cores, then hunt down the ore tug before it reaches Omega.',
-      'The ore belt is wreckage, and the fuel the moon shipped is stranded at Omega\'s high station, a fortress of hull and truss hanging in open space over the crown world. Strip its hull turrets, force the docking port, kill the control cores in its hub, then dive under it and burn the stabilizers round its reactor.',
-      'The high station is falling out of orbit. Below it, the only way to the crown world\'s core runs through the rift lands: a plateau split by a rift a hundred units deep. Destroy the beacons on its rims, dive into the rift, wreck the generators in the bunker on its floor, silence the guns on the east mesa, and follow the rift to its end.',
-      'The rift is quiet and the way down is open. The crown world\'s core is guarded by the Omega Sentinel and its four shield pylons. Bring the Sentinel down; this should end the song.',
-      'The Sentinel is dead, but the song did not stop: Omega was never the source. The signal comes from inside the Void, a shroud of dark dust around Nadir\'s inner worlds, and the Requiem is going in. Follow it down the Abyss Shaft, a world hollowed out to its core.',
-      'The shaft\'s updraft threw you out sideways, into a cavern under the Void\'s crust: a sea that has never seen a sun, under a roof hung with stalactites. Douse the void lanterns glowing on its shores, cross the water to the drowned shrine on its island, and silence the echo cores inside.',
-      'You crossed the sunless sea and came up deeper inside the Void than anyone has been. At the end of a crystal canyon a Void Carrier is docked, one of the ships that carried the swarm to Earth. Take it apart.',
-      'The carrier that burned Earth is wreckage. Deeper in, a foundry is building something far bigger than fighters. Climb it and tear it down before it is finished.',
-      'The foundry is down, but the ship it was building had already slipped its dock: the Choir\'s ark, a hull kilometres long, drifting deeper into the Void on its own reactor. Board it through the docking bay, kill the governors that spin its habitat drum, then the regulators that hold its reactor steady, and get off at the bridge before it tears itself apart.',
-      'The ark is dead and drifting, and whatever it was built to carry will never arrive. The Mirror Archive holds the Choir\'s records behind three data cores. Destroy the cores and find out what the song is for.',
-      'The archive listed 312 silenced worlds, and Earth was the latest; every one was found when the Herald heard its first radio voices. The ash plain ahead is world 311, and the Herald\'s listening array stands on it, aimed by three data cores. Destroy them and the Herald goes deaf to everything but you.',
-      'The array is blind: the Herald can only hear you now. It waits at the heart of the Void, shielded by three orbiting nodes. Silence it, and the swarm loses its voice everywhere.',
-    ];
-    // Where each sector is on the system map: worlds on tilted orbits around Nadir, the Void as a shroud around the star.
-    const PLACES = {
-      requiem: { name: 'REQUIEM', orbit: 1.02, angle: 2.6, color: '#9fdcff' },
-      delta: { name: 'DELTA-9', orbit: 0.9, angle: 3.3, color: '#9fc7a2' },
-      epsilon: { name: 'EPSILON-5', orbit: 0.74, angle: 4.1, color: '#ff9a52' },
-      tau: { name: 'TAU-3', orbit: 0.58, angle: 4.95, color: '#5fb8ff' },
-      sigma: { name: 'SIGMA-4', orbit: 0.43, angle: 0.1, color: '#d8b07a' },
-      omega: { name: 'OMEGA', orbit: 0.3, angle: 0.95, color: '#c08cff' },
-      void: { name: 'THE VOID', orbit: 0.15, angle: 3.6, color: '#e070ff' },
+    const BRIEFINGS = {
+      'RELAY STATION': 'The Requiem crossed fourteen months of dark and now hides in the shadow of an outer moon, unseen. Your first target is the relay station on Delta-9, which passes the Choir\'s signals between their worlds. Cut it, and they won\'t know what is hitting them for a while longer.',
+      'TOXIN REFINERY': 'The Delta-9 relay is dark: they know something is wrong, but not what. The same moon\'s refinery turns its poison air into fuel for the swarm. Burn the tanks and vats, because every one is a fighter that never launches.',
+      'LAUNCH SILOS': 'The refinery is burning, but the fuel it made already ran north along the pipeline to Delta-9\'s launch silos, where finished fighters are fuelled and fired into orbit. Destroy the fuel pumps along the pipeline, dive into the silos to kill the fighters racked at the bottom, then break into the launch bunker and wreck its control core.',
+      'CRYO VAULTS': 'Delta-9\'s silos are smoking holes, and the fire can be seen from orbit. On Epsilon-5, the forge moon, finished fighters sleep in cryo vaults, waiting for the next world to be found. Destroy the vaults before they wake.',
+      'GLACIER MOON': 'The cryo vaults are wrecked, but the cold that kept them came from Epsilon-5\'s glacier moon, a frozen world of crystal spires and buried ice. Shatter the cryo pylons in the spire fields, go down into the ice caves to wreck the thaw pumps, then break into the research base and destroy its core samples.',
+      'MAGMA WORKS': 'The glacier moon is dark, and no vault will be cooled again. Epsilon-5\'s magma works cast the swarm\'s hulls from rivers of molten slag. Break the foundry and the swarm stops growing.',
+      'MAGMA GORGE': 'The foundry is slag, but its fire still runs: a gorge a hundred units deep feeds the furnaces with lava from the moon\'s core. Destroy the smelter valves on its rims, dive into the gorge to wreck the pumps standing in the lava, silence the foundry guns, and fly out through the gate at the gorge\'s end.',
+      'SIGNAL SPIRE': 'The gorge has run cold. The last target on Epsilon-5 is the signal spire that runs its defenses, held by the Spire Overseer. Destroy its two relays, then the Overseer, and the forge moon goes deaf and blind.',
+      'STORM REEF': 'Epsilon-5 is deaf, but the Choir know now that something is loose among their worlds. Tau-3, the ocean moon, watches its sky from a reef of islands strung with listening masts, and the Requiem cannot slip into its shadow while they listen. Destroy the masts, sink the picket ships that patrol the lagoon, and leave through the storm gate.',
+      'DROWNED DOCKS': 'The reef has gone quiet and the Requiem is in Tau-3\'s shadow, unseen. The ocean moon\'s docks load the swarm for the crossing between stars. Sink the docks, and watch for gold-marked enemies: they were at Earth.',
+      'TIDE DRUM': 'The docks are burning, but Tau-3 farms its tides too: a drum of sea turns in orbit over the moon, its islands and harbours curving up round you to meet overhead. Destroy the harbour cranes, open the sea gate in the wall that rings the drum, cross to the far shore and destroy the desalination cores.',
+      'HIVE WARRENS': 'The tide drum is drained, and no swarm will load or feed there again. Under Tau-3\'s surface are the hive warrens where the Choir grow their pilots, ruled by the Hive Queen. Burst her egg sacs, then kill her, and the next generation of Earth-burners is never born.',
+      'BROOD ARK': 'The Hive Queen is dead, but her last brood had already launched: a living ark drifting out of Tau-3\'s orbit, its hold full of eggs round a brood mother as big as the queen was. Destroy the spore turrets on its hide, shoot open the maw, burst the egg sacs and kill the brood mother.',
+      'TETHER ANCHOR': 'The brood ark is dead and Tau-3\'s nests are quiet. A tether anchored on Tau-3 lifts finished fighters up to the orbital yards. Cut it and the yards starve.',
+      'ORBITAL GARDEN': 'The tether is down, but the orbital yards have one more larder: a garden cylinder turning over Tau-3, a world rolled up inside a spinning drum, with meadows, lakes and a town that curve up round you and meet overhead. Destroy its seed towers, fly up to the sun line down its axis, cross to the far shore to wreck the irrigation pumps, and leave by the end-cap gate.',
+      'ORBITAL YARDS': 'The garden is burning, and the yards it fed are next: a double drum turning over Tau-3, an industrial cylinder round a second inner one, where the swarm\'s hulls are pressed and fitted. Wreck the press controllers, break the yard bulkhead, climb through a gap into the inner cylinder, kill the spindle dynamos that turn it, and leave by the end-cap gate.',
+      'DUNE WELLS': 'The yards are slag and Tau-3 is cut off. The Requiem moves in on Sigma-4, whose refinery terraces are the last supply line to the crown world, and they draw their crude from wells sunk through the dunes below. Cap the wellheads, kill the sand crawler hauling the last load north, and follow the pipeline out of the dunes.',
+      'REFINERY TERRACES': 'The wells are burning and the pipeline has run dry. What crude reached the refinery terraces before it did is all Sigma-4 has left to send the crown world. Burn the terraces and Omega stands alone.',
+      'SHEPHERD MOON': 'The terraces are burning, but their last fuel already went up the line to Sigma-4\'s shepherd moon, a grey rock two kilometres across that ships it on to Omega. Its depot sits on open ground under a black sky. Find the tanker that went down, silence the comms mesa, break into the dome and kill its power cores, then get out through the extraction gate.',
+      'ORE BELT': 'The shepherd moon is dark. Between it and Omega runs an ore belt where the crown world\'s hulls are mined: asteroids bored by drill rigs, strung together by conveyor trusses round a refinery. Destroy the drill rigs, force the refinery door and wreck its smelter cores, then hunt down the ore tug before it reaches Omega.',
+      'HIGH STATION': 'The ore belt is wreckage, and the fuel the moon shipped is stranded at Omega\'s high station, a fortress of hull and truss hanging in open space over the crown world. Strip its hull turrets, force the docking port, kill the control cores in its hub, then dive under it and burn the stabilizers round its reactor.',
+      'RIFT LANDS': 'The high station is falling out of orbit. Below it, the only way to the crown world\'s core runs through the rift lands: a plateau split by a rift a hundred units deep. Destroy the beacons on its rims, dive into the rift, wreck the generators in the bunker on its floor, silence the guns on the east mesa, and follow the rift to its end.',
+      'CROWN CITY': 'The rift ends under the walls of the crown city, the one place in Nadir the Choir built to dwell in rather than to make war from. Three emitter towers stand over it and hold the shield that covers the core. Break the emitters on the tower tops, force the citadel gate, kill the core locks inside, and take the shaft down.',
+      'CORE BREACH': 'The crown city\'s shield is down and the shaft to the core is open. The core is guarded by the Omega Sentinel and its four shield pylons. Bring the Sentinel down; this should end the song.',
+      'DUST VEIL': 'The Sentinel is dead, but the song did not stop: Omega was never the source. The signal comes from inside the Void, a shroud of dark dust around Nadir\'s inner worlds, and the Requiem is going in. The shroud\'s edge is strung with veil buoys that would see it coming. Destroy the buoys, kill the minelayers seeding the passage, and lead the Requiem through.',
+      'ABYSS SHAFT': 'The Requiem is through the veil, deeper in than any survey has seen. The first world inside the Void has been hollowed out to its core, and the signal runs straight down through it. Follow it down the Abyss Shaft.',
+      'SUNLESS SEA': 'The shaft\'s updraft threw you out sideways, into a cavern under the Void\'s crust: a sea that has never seen a sun, under a roof hung with stalactites. Douse the void lanterns glowing on its shores, cross the water to the drowned shrine on its island, and silence the echo cores inside.',
+      'CRYSTAL CANYON': 'You crossed the sunless sea and came up deeper inside the Void than anyone has been. At the end of a crystal canyon a Void Carrier is docked, one of the ships that carried the swarm to Earth. Take it apart.',
+      'SUNCATCHER': 'The carrier that burned Earth is wreckage. The shroud lets no light out because the Choir catch it: Void-2B is a moon tiled with mirrors, turned to Nadir, beaming stolen sunlight to the foundries deeper in. Shatter the focus lenses across its face, then destroy the emitter in the beam tower, and the foundries go dark.',
+      'DRIFT FOUNDRY': 'The suncatcher is dark, and the foundry it lit is running on reserves. It is building something far bigger than fighters. Climb it and tear it down before it is finished.',
+      'REACTOR SPINE': 'The foundry is down, but the ship it was building had already slipped its dock: the Choir\'s ark, a hull kilometres long, drifting deeper into the Void on its own reactor. Board it through the docking bay, kill the governors that spin its habitat drum, then the regulators that hold its reactor steady, and get off at the bridge before it tears itself apart.',
+      'TROPHY FIELD': 'The ark is dead and drifting. Beyond it the Void opens on a field of wrecks hung in rows: hulls of every shape and none of them built by the Choir. Whoever made them is gone. Destroy the ward beacons that guard the field, force the dock on the great wreck at its heart, and fly on to the archive.',
+      'MIRROR ARCHIVE': 'The wrecks were ships from other worlds, and the archive at the heart of the field keeps the Choir\'s records behind three data cores. Destroy the cores and find out what the song is for.',
+      'ASH MESAS': 'The archive listed 312 silenced worlds, and Earth was the latest; every one was found when the Herald heard its first radio voices. The ash plain ahead is world 311, and the Herald\'s listening array stands on it, aimed by three data cores. Destroy them and the Herald goes deaf to everything but you.',
+      'CHOIR SPIRES': 'The array is blind, and the Herald can hear only you. Round the heart of the Void stand the choir spires, eleven of them, and each sings one tone of the chord Earth heard the night before the swarm came. Silence all eleven, and the Herald will sing alone.',
+      'HEART OF THE VOID': 'The choir is silent and the Herald sings alone. It waits at the heart of the Void, shielded by three orbiting nodes. Silence it, and the swarm loses its voice everywhere.',
     };
-    const SECTOR_PLACES = ['delta', 'delta', 'epsilon', 'epsilon', 'epsilon', 'epsilon', 'epsilon', 'tau', 'tau', 'tau', 'tau', 'tau', 'tau', 'tau', 'sigma', 'sigma', 'sigma', 'omega', 'omega', 'omega', 'void', 'void', 'void', 'void', 'void', 'void', 'void', 'void'];
+    // The campaign is three episodes of twelve sectors, each ending on a boss, and each with its own system map: the
+    // outer worlds, the crown worlds round Omega, and the inner system hidden inside the Void. A place with a `parent`
+    // is a moon or a station drawn `moon` pixels from it; `faint` places are shown but not yet in reach.
+    const EPISODES = [
+      { name: 'EPISODE I', title: 'LANDFALL', from: 0, view: 'outer', map: 'NADIR // THE OUTER WORLDS',
+        intro: 'Nadir\'s outer worlds are where the swarm is fuelled, cast, frozen and grown. Cut them off from each other, then burn them down one by one.',
+        orbits: [['delta', 0.9], ['epsilon', 0.68], ['tau', 0.47], ['sigma', 0.3, true], ['omega', 0.21, true]],
+        places: {
+          requiem: { name: 'REQUIEM', orbit: 1.04, angle: 2.45, color: '#9fdcff', ship: true },
+          delta: { name: 'DELTA-9', orbit: 0.9, angle: 3.2, color: '#9fc7a2' },
+          epsilon: { name: 'EPSILON-5', orbit: 0.68, angle: 4.15, color: '#ff9a52' },
+          glacier: { name: 'EPSILON-5B', parent: 'epsilon', moon: 30, angle: 5.9, color: '#bfe6ff' },
+          tau: { name: 'TAU-3', orbit: 0.47, angle: 5.15, color: '#5fb8ff' },
+          sigma: { name: 'SIGMA-4', orbit: 0.3, angle: 0.25, color: '#d8b07a', faint: true },
+          omega: { name: 'OMEGA', orbit: 0.21, angle: 2.75, color: '#c08cff', faint: true },
+        } },
+      { name: 'EPISODE II', title: 'THE CROWN', from: 12, view: 'crown', map: 'NADIR // THE CROWN WORLDS',
+        intro: 'The war climbs the gravity well: Tau-3\'s orbit and its yards, then the inner worlds that feed Omega, the crown world, where every defense in Nadir answers to the Sentinel.',
+        orbits: [['tau', 0.94], ['sigma', 0.68], ['belt', 0.52, 'belt'], ['omega', 0.36]],
+        places: {
+          requiem: { name: 'REQUIEM', orbit: 1.05, angle: 4.35, color: '#9fdcff', ship: true },
+          tau: { name: 'TAU-3', orbit: 0.94, angle: 5.25, color: '#5fb8ff' },
+          tauHigh: { name: 'TAU-3 ORBIT', parent: 'tau', moon: 24, angle: 3.6, color: '#9fd6ff' },
+          sigma: { name: 'SIGMA-4', orbit: 0.68, angle: 0.15, color: '#d8b07a' },
+          sigmaB: { name: 'SIGMA-4B', parent: 'sigma', moon: 24, angle: 5.5, color: '#b9b2a6' },
+          belt: { name: 'ORE BELT', orbit: 0.52, angle: 1.25, color: '#b68a5e' },
+          omega: { name: 'OMEGA', orbit: 0.36, angle: 2.35, color: '#c08cff' },
+          station: { name: 'HIGH STATION', parent: 'omega', moon: 22, angle: 3.9, color: '#e0c8ff', ship: true },
+        } },
+      { name: 'EPISODE III', title: 'BEYOND THE VOID', from: 24, view: 'void', map: 'INSIDE THE VOID',
+        intro: 'Inside the shroud, where no survey has ever looked, Nadir hides a second system of worlds, and somewhere at its heart the song is still being sung.',
+        orbits: [['void1', 0.78], ['void2', 0.63], ['void3', 0.5], ['void4', 0.38], ['void5', 0.28], ['void6', 0.18]],
+        places: {
+          requiem: { name: 'REQUIEM', orbit: 1.06, angle: 1.75, color: '#9fdcff', ship: true },
+          veil: { name: 'THE SHROUD', orbit: 0.93, angle: 2.15, color: '#b48cd8' },
+          void1: { name: 'VOID-1', orbit: 0.78, angle: 2.8, color: '#a58cff' },
+          void2: { name: 'VOID-2', orbit: 0.63, angle: 3.75, color: '#8fd8ff' },
+          void2b: { name: 'VOID-2B', parent: 'void2', moon: 24, angle: 3.3, color: '#ffe9a8' },
+          void3: { name: 'VOID-3', orbit: 0.5, angle: 4.75, color: '#ff8a5a' },
+          ark: { name: 'THE ARK', orbit: 0.44, angle: 5.55, color: '#c9dce4', ship: true },
+          void4: { name: 'VOID-4', orbit: 0.38, angle: 0.25, color: '#7fe8e0' },
+          void5: { name: 'VOID-5', orbit: 0.28, angle: 1.25, color: '#ff7a52' },
+          void6: { name: 'VOID-6', orbit: 0.18, angle: 2.6, color: '#e070ff' },
+        } },
+    ];
+    const episodeIndexOf = (index) => EPISODES.reduce((found, episode, k) => index >= episode.from ? k : found, 0);
+    const episodeEnd = (k) => k + 1 < EPISODES.length ? EPISODES[k + 1].from : LEVELS.length;
+    // Where each sector is on its episode's map.
+    const SECTOR_PLACES = {
+      'RELAY STATION': 'delta', 'TOXIN REFINERY': 'delta', 'LAUNCH SILOS': 'delta', 'CRYO VAULTS': 'epsilon', 'GLACIER MOON': 'glacier',
+      'MAGMA WORKS': 'epsilon', 'MAGMA GORGE': 'epsilon', 'SIGNAL SPIRE': 'epsilon', 'STORM REEF': 'tau', 'DROWNED DOCKS': 'tau', 'TIDE DRUM': 'tau',
+      'HIVE WARRENS': 'tau',
+      'BROOD ARK': 'tauHigh', 'TETHER ANCHOR': 'tau', 'ORBITAL GARDEN': 'tauHigh', 'ORBITAL YARDS': 'tauHigh', 'DUNE WELLS': 'sigma',
+      'REFINERY TERRACES': 'sigma', 'SHEPHERD MOON': 'sigmaB', 'ORE BELT': 'belt', 'HIGH STATION': 'station', 'RIFT LANDS': 'omega', 'CROWN CITY': 'omega',
+      'CORE BREACH': 'omega',
+      'DUST VEIL': 'veil', 'ABYSS SHAFT': 'void1', 'SUNLESS SEA': 'void1', 'CRYSTAL CANYON': 'void2', 'SUNCATCHER': 'void2b', 'DRIFT FOUNDRY': 'void3',
+      'REACTOR SPINE': 'ark', 'TROPHY FIELD': 'void4', 'MIRROR ARCHIVE': 'void4', 'ASH MESAS': 'void5', 'CHOIR SPIRES': 'void6', 'HEART OF THE VOID': 'void6',
+    };
     function drawSystemMap(now) {
       const ratio = window.devicePixelRatio || 1, w = systemMap.clientWidth, h = systemMap.clientHeight;
       if (!w || !h) return;
       if (systemMap.width !== Math.round(w * ratio) || systemMap.height !== Math.round(h * ratio)) { systemMap.width = Math.round(w * ratio); systemMap.height = Math.round(h * ratio); }
-      const m = systemCtx, cx = w / 2, cy = h / 2, rx = w * 0.46, ry = h * 0.42, pulse = 0.5 + 0.5 * Math.sin(now / 260);
+      const k = episodeIndexOf(levelIndex), episode = EPISODES[k], places = episode.places, view = episode.view;
+      const m = systemCtx, cx = w / 2, cy = h / 2 + 4, rx = w * 0.46, ry = h * 0.4, pulse = 0.5 + 0.5 * Math.sin(now / 260);
       m.setTransform(ratio, 0, 0, ratio, 0, 0); m.clearRect(0, 0, w, h);
-      for (let i = 0; i < 110; i++) { m.fillStyle = `rgba(200,220,255,${0.12 + hashInt(i, 3, 9) * 0.45})`; m.fillRect(hashInt(i, 1, 9) * w, hashInt(i, 2, 9) * h, 1.2, 1.2); }
-      // Nadir burning inside the Void's dark shroud.
-      m.save(); m.translate(cx, cy); m.scale(1, ry / rx);
-      const shroud = m.createRadialGradient(0, 0, 0, 0, 0, rx * 0.22);
-      shroud.addColorStop(0, 'rgba(255,190,120,1)'); shroud.addColorStop(0.12, 'rgba(255,90,40,0.9)'); shroud.addColorStop(0.3, 'rgba(70,12,80,0.95)');
-      shroud.addColorStop(0.8, 'rgba(40,8,52,0.75)'); shroud.addColorStop(1, 'rgba(40,8,52,0)');
-      m.fillStyle = shroud; m.beginPath(); m.arc(0, 0, rx * 0.22, 0, Math.PI * 2); m.fill(); m.restore();
-      m.strokeStyle = 'rgba(110,190,210,0.22)'; m.lineWidth = 1;
-      for (const key of ['delta', 'epsilon', 'tau', 'sigma', 'omega']) { m.beginPath(); m.ellipse(cx, cy, PLACES[key].orbit * rx, PLACES[key].orbit * ry, 0, 0, Math.PI * 2); m.stroke(); }
-      const at = (place) => [cx + Math.cos(place.angle) * place.orbit * rx, cy + Math.sin(place.angle) * place.orbit * ry];
-      const target = SECTOR_PLACES[levelIndex], origin = levelIndex ? SECTOR_PLACES[levelIndex - 1] : 'requiem';
-      const cleared = new Set(SECTOR_PLACES.slice(0, levelIndex).filter(key => key !== target));
-      m.font = '10px Consolas, "Courier New", monospace'; m.textAlign = 'center';
-      for (const [key, place] of Object.entries(PLACES)) {
-        if (key === 'requiem' && origin !== 'requiem') continue;
-        const [x, y] = at(place), done = cleared.has(key);
-        m.fillStyle = done ? '#4d6470' : place.color;
-        m.beginPath();
-        if (key === 'requiem') { m.moveTo(x + 8, y); m.lineTo(x - 6, y - 4); m.lineTo(x - 6, y + 4); m.closePath(); } else m.arc(x, y, key === 'void' ? 4 : 5, 0, Math.PI * 2);
-        m.fill();
-        m.fillStyle = done ? '#4d6470' : '#c9dce4'; m.fillText(place.name, x, y + 17);
-        if (done) { m.fillStyle = '#6a5a48'; m.fillText('CLEARED', x, y + 29); }
+      // Inside the Void the sky is the shroud itself, glowing faintly violet; outside it, plain stars.
+      if (view === 'void') {
+        const haze = m.createRadialGradient(cx, cy, 0, cx, cy, Math.max(w, h) * 0.7);
+        haze.addColorStop(0, 'rgba(70,20,70,0.55)'); haze.addColorStop(0.6, 'rgba(30,8,42,0.5)'); haze.addColorStop(1, 'rgba(10,2,16,0.9)');
+        m.fillStyle = haze; m.fillRect(0, 0, w, h);
       }
-      const [tx, ty] = at(PLACES[target]);
+      for (let i = 0; i < 110; i++) {
+        m.fillStyle = view === 'void' ? `rgba(220,170,255,${0.06 + hashInt(i, 3, 9 + k) * 0.25})` : `rgba(200,220,255,${0.12 + hashInt(i, 3, 9 + k) * 0.45})`;
+        m.fillRect(hashInt(i, 1, 9 + k) * w, hashInt(i, 2, 9 + k) * h, 1.2, 1.2);
+      }
+      m.save(); m.translate(cx, cy); m.scale(1, ry / rx);
+      if (view === 'void') {
+        // The shroud's inner wall: a ragged band of dust round the edge of the map.
+        for (let i = 0; i < 260; i++) {
+          const a = hashInt(i, 4, 21) * Math.PI * 2, r = rx * (0.9 + hashInt(i, 5, 21) * 0.2), s = 3 + hashInt(i, 6, 21) * 9;
+          m.fillStyle = `rgba(${90 + hashInt(i, 7, 21) * 60},40,${110 + hashInt(i, 8, 21) * 60},${0.08 + hashInt(i, 9, 21) * 0.14})`;
+          m.beginPath(); m.arc(Math.cos(a) * r, Math.sin(a) * r, s, 0, Math.PI * 2); m.fill();
+        }
+        // Nadir, seen close: a swollen red star with a corona.
+        const corona = m.createRadialGradient(0, 0, 0, 0, 0, rx * 0.16);
+        corona.addColorStop(0, 'rgba(255,220,160,1)'); corona.addColorStop(0.3, 'rgba(255,110,50,0.95)'); corona.addColorStop(0.6, 'rgba(200,40,40,0.4)'); corona.addColorStop(1, 'rgba(120,20,60,0)');
+        m.fillStyle = corona; m.beginPath(); m.arc(0, 0, rx * 0.16, 0, Math.PI * 2); m.fill();
+      } else {
+        // Nadir burning inside the Void's dark shroud, larger as the map closes in.
+        const size = view === 'outer' ? 0.16 : 0.24, shroud = m.createRadialGradient(0, 0, 0, 0, 0, rx * size);
+        shroud.addColorStop(0, 'rgba(255,190,120,1)'); shroud.addColorStop(0.12, 'rgba(255,90,40,0.9)'); shroud.addColorStop(0.3, 'rgba(70,12,80,0.95)');
+        shroud.addColorStop(0.8, 'rgba(40,8,52,0.75)'); shroud.addColorStop(1, 'rgba(40,8,52,0)');
+        m.fillStyle = shroud; m.beginPath(); m.arc(0, 0, rx * size, 0, Math.PI * 2); m.fill();
+      }
+      m.restore();
+      m.font = '10px Consolas, "Courier New", monospace'; m.textAlign = 'center';
+      if (view !== 'void') { m.fillStyle = '#6d4a80'; m.fillText('THE VOID', cx, cy + rx * (view === 'outer' ? 0.16 : 0.24) * ry / rx + 12); }
+      for (const [, orbit, style] of episode.orbits) {
+        if (style === 'belt') {
+          // A belt is a ring of rubble, not a line.
+          for (let i = 0; i < 180; i++) {
+            const a = i / 180 * Math.PI * 2 + hashInt(i, 1, 33) * 0.03, r = orbit * (0.96 + hashInt(i, 2, 33) * 0.08);
+            m.fillStyle = `rgba(182,138,94,${0.25 + hashInt(i, 3, 33) * 0.4})`; m.fillRect(cx + Math.cos(a) * r * rx, cy + Math.sin(a) * r * ry, 1.4, 1.4);
+          }
+          continue;
+        }
+        m.strokeStyle = style ? 'rgba(110,190,210,0.09)' : view === 'void' ? 'rgba(200,150,230,0.2)' : 'rgba(110,190,210,0.22)'; m.lineWidth = 1;
+        m.setLineDash(style ? [3, 5] : []); m.beginPath(); m.ellipse(cx, cy, orbit * rx, orbit * ry, 0, 0, Math.PI * 2); m.stroke(); m.setLineDash([]);
+      }
+      const at = (key) => {
+        const place = places[key];
+        if (place.parent) { const [px, py] = at(place.parent); return [px + Math.cos(place.angle) * place.moon, py + Math.sin(place.angle) * place.moon * 0.7]; }
+        return [cx + Math.cos(place.angle) * place.orbit * rx, cy + Math.sin(place.angle) * place.orbit * ry];
+      };
+      const from = episode.from, to = episodeEnd(k), placeOf = (i) => SECTOR_PLACES[LEVELS[i].title];
+      const target = placeOf(levelIndex), origin = levelIndex > from ? placeOf(levelIndex - 1) : 'requiem';
+      const visited = [], cleared = new Set();
+      for (let i = from; i < levelIndex; i++) { visited.push(placeOf(i)); cleared.add(placeOf(i)); }
+      cleared.delete(target);
+      // The route flown so far this episode, as a faint trail.
+      if (visited.length > 1) {
+        m.strokeStyle = 'rgba(240,166,92,0.28)'; m.lineWidth = 1; m.beginPath(); m.moveTo(...at(visited[0]));
+        for (const key of visited.slice(1)) m.lineTo(...at(key));
+        m.stroke();
+      }
+      for (const [key, place] of Object.entries(places)) {
+        if (key === 'requiem' && origin !== 'requiem') continue;
+        const [x, y] = at(key), done = cleared.has(key), faint = place.faint;
+        if (place.parent) { const [px, py] = at(place.parent); m.strokeStyle = 'rgba(110,190,210,0.16)'; m.beginPath(); m.ellipse(px, py, place.moon, place.moon * 0.7, 0, 0, Math.PI * 2); m.stroke(); }
+        m.fillStyle = done || faint ? '#4d6470' : place.color;
+        m.beginPath();
+        if (place.ship) { m.moveTo(x + 7, y); m.lineTo(x - 5, y - 4); m.lineTo(x - 5, y + 4); m.closePath(); } else m.arc(x, y, place.parent ? 3 : 5, 0, Math.PI * 2);
+        m.fill();
+        // Moons and stations are labelled beside their dot, on the side away from their parent, so the two labels never meet.
+        const side = place.parent ? (Math.cos(place.angle) < 0 ? -1 : 1) : 0, lx = x + side * 8, ly = side ? y + 3 : y + 15;
+        m.textAlign = side < 0 ? 'right' : side > 0 ? 'left' : 'center';
+        m.fillStyle = done || faint ? '#4d6470' : '#c9dce4'; m.fillText(place.name, lx, ly);
+        if (done) { m.fillStyle = '#6a5a48'; m.fillText('CLEARED', lx, ly + 11); }
+        m.textAlign = 'center';
+      }
+      const [tx, ty] = at(target);
       if (origin !== target) {
         // The route from the last target, dashes flowing toward the next one.
-        const [ox, oy] = at(PLACES[origin]), angle = Math.atan2(ty - oy, tx - ox), stop = 12;
+        const [ox, oy] = at(origin), angle = Math.atan2(ty - oy, tx - ox), stop = 12;
         m.strokeStyle = '#ffb347'; m.lineWidth = 1.6; m.setLineDash([6, 5]); m.lineDashOffset = -now / 40;
         m.beginPath(); m.moveTo(ox, oy); m.lineTo(tx - Math.cos(angle) * stop, ty - Math.sin(angle) * stop); m.stroke(); m.setLineDash([]);
         m.fillStyle = '#ffb347'; m.beginPath();
@@ -7059,14 +7677,16 @@
         m.lineTo(tx - Math.cos(angle) * (stop + 9) + Math.cos(angle + Math.PI / 2) * 5, ty - Math.sin(angle) * (stop + 9) + Math.sin(angle + Math.PI / 2) * 5);
         m.lineTo(tx - Math.cos(angle) * (stop + 9) - Math.cos(angle + Math.PI / 2) * 5, ty - Math.sin(angle) * (stop + 9) - Math.sin(angle + Math.PI / 2) * 5);
         m.closePath(); m.fill();
-        const [ox2, oy2] = at(PLACES[origin]);
-        m.strokeStyle = '#65e9ff'; m.lineWidth = 1.2; m.beginPath(); m.arc(ox2, oy2, 9, 0, Math.PI * 2); m.stroke();
-        m.fillStyle = '#65e9ff'; m.fillText(origin === 'requiem' ? 'START' : 'LAST TARGET', ox2, oy2 - 14);
+        m.strokeStyle = '#65e9ff'; m.lineWidth = 1.2; m.beginPath(); m.arc(ox, oy, 9, 0, Math.PI * 2); m.stroke();
+        // Next to the target (a moon and its planet), the label goes under the last target so the two never overlap.
+        const near = Math.hypot(tx - ox, ty - oy) < 70;
+        m.fillStyle = '#65e9ff'; m.fillText(origin === 'requiem' ? 'START' : 'LAST TARGET', ox, near ? oy + 38 : oy - 14);
       }
       m.strokeStyle = `rgba(255,179,71,${0.4 + pulse * 0.6})`; m.lineWidth = 2;
       m.beginPath(); m.arc(tx, ty, 10 + pulse * 5, 0, Math.PI * 2); m.stroke();
       m.fillStyle = '#ffb347'; m.fillText(origin === target ? `NEXT TARGET // SECTOR ${levelIndex + 1}` : `SECTOR ${levelIndex + 1}`, tx, ty - 20);
-      m.textAlign = 'left'; m.fillStyle = '#8a9ca6'; m.fillText('NADIR SYSTEM', 10, 16);
+      m.textAlign = 'left'; m.fillStyle = '#8a9ca6'; m.fillText(episode.map, 10, 16);
+      m.textAlign = 'right'; m.fillText(`${episode.name} // ${levelIndex - from + 1} OF ${to - from}`, w - 10, 16);
     }
     function introReady() {
       booted = true; introButton.disabled = false; introButton.textContent = 'ENTER'; introButton.focus();
@@ -7144,7 +7764,9 @@
       if (document.pointerLockElement) document.exitPointerLock();
       upgradeFloor = testing ? {} : { ...ranks };
       document.getElementById('upgradeKicker').textContent = testing ? 'TEST LOADOUT' : 'UPGRADE BAY';
-      document.getElementById('upgradeTitle').textContent = testing ? `SECTOR ${levelIndex + 1} // ${levelIndex} POINTS` : `SECTOR ${levelIndex} CLEAR // 1 POINT EARNED`;
+      const closed = !testing && levelIndex === EPISODES[episodeIndexOf(levelIndex)].from && EPISODES[episodeIndexOf(levelIndex) - 1];
+      document.getElementById('upgradeTitle').textContent = testing ? `SECTOR ${levelIndex + 1} // ${levelIndex} POINTS`
+        : closed ? `${closed.name} COMPLETE // ${closed.title} // 1 POINT EARNED` : `SECTOR ${levelIndex} CLEAR // 1 POINT EARNED`;
       document.getElementById('upgradeNote').textContent = testing ? `A pilot reaching this sector has earned ${levelIndex}. Assign them before it begins.` : 'Spend it now or keep it for later. Points spent here are fixed.';
       upgradesScreen.classList.add('show'); upgradesScreen.scrollTop = 0;
       renderUpgrades(); upgradeDone.focus(); setTrack('menu');
@@ -7160,8 +7782,12 @@
       menuOpen = false; menu.classList.remove('show');
       screenOpen = 'briefing'; paused = true; mouseFiring = false; keys.clear(); releaseTouch();
       if (document.pointerLockElement) document.exitPointerLock();
+      const episode = EPISODES[episodeIndexOf(levelIndex)];
+      briefingKicker.textContent = `${episode.name} // ${episode.title} // MISSION BRIEFING`;
       briefingTitle.textContent = `SECTOR ${levelIndex + 1} // ${level.name} ${level.title}`;
-      briefingText.textContent = BRIEFINGS[levelIndex] || '';
+      // The first sector of an episode opens with a few lines on the episode as a whole.
+      episodeText.hidden = levelIndex !== episode.from; episodeText.textContent = episode.intro;
+      briefingText.textContent = BRIEFINGS[level.title] || '';
       briefing.classList.add('show'); launchButton.focus(); setTrack('menu');
     }
     function launch() {
@@ -7403,6 +8029,13 @@
           billboard(enemy.position, 3.2 * pulse, core, 1.6 + enemy.flash * 2);
           billboard(enemy.position, 9 * pulse, mul(core, 0.8), 0.3 + enemy.flash);
           if (GUARDS[enemy.type] && guardsLeft(enemy) > 0) billboard(enemy.position, 13, [0.3, 0.6, 1.0], 0.22 + (enemy.shieldHit || 0) * 0.5);
+          if (enemy.blinkFlash > 0) {
+            // A blink: a flash collapsing where it was and one bursting open where it came back.
+            const left = enemy.blinkFlash / 0.6;
+            billboard(enemy.blinkFrom, 16 * left, [0.85, 0.6, 1.0], 1.6 * left);
+            billboard(enemy.position, 6 + 16 * (1 - left), [0.85, 0.6, 1.0], 1.4 * left);
+          }
+          if (enemy.phased > 0) billboard(enemy.position, 12, [0.7, 0.5, 1.0], 0.35 + 0.25 * Math.sin(time * 30));
           if (enemy.charge > 0) {
             const due = 1 - enemy.charge / 1.25, end = add(enemy.position, mul(normalize(sub(enemy.aimPoint, enemy.position)), 220));
             streak(enemy.position, end, 0.1 + due * 0.3, [1.0, 0.2, 0.6], 0.5 + due * 1.4 + (Math.sin(time * 40) > 0 ? 0.3 : 0));
@@ -7967,6 +8600,28 @@
       ctx.textAlign = 'left'; ctx.fillStyle = '#65e9ff'; ctx.fillText(`MAP // SECTOR ${levelIndex + 1} // ${level.name} ${level.title}`, left + 14, top + 20);
       ctx.textAlign = 'right'; ctx.fillStyle = '#8a9ca6'; ctx.fillText(`${objectives.length ? 'YELLOW: OBJECTIVE   ' : ''}ORANGE: CLOSED GATE   GREEN: EXIT${exitOpen() ? '' : ' (LOCKED)'}${cores.length ? `   TEAL: DATA CORE (${cores.length} LEFT)` : ''}   TAB: CLOSE`, right - 14, top + 20);
     }
+    // A boss under fire blinks: it vanishes in a flash and comes back somewhere else in its arena, at least 18 units from
+    // where it was and clear of the ship, with room for its usual drift round the new spot and in sight of where it began.
+    // It is out of phase for a moment after, and its blink takes seven seconds to recharge (four and a half once it is
+    // badly hurt), longer on Easy and shorter on Hard.
+    function blinkBoss(enemy) {
+      const home = enemy.home ||= enemy.base.slice(), pad = ENEMY_TYPES[enemy.type].radius + 2, drift = enemy.position.map((v, k) => v - enemy.base[k]);
+      for (let k = 0; k < 48; k++) {
+        const a = Math.random() * Math.PI * 2, r = 14 + Math.random() * 30;
+        const base = add(home, [Math.cos(a) * r, (Math.random() - 0.4) * 10, Math.sin(a) * r]), spot = add(base, drift);
+        if (Math.hypot(...sub(spot, enemy.position)) < 18 || Math.hypot(...sub(spot, ship.position)) < 26) continue;
+        const room = [[0, 0, 0], [24, 0, 0], [-24, 0, 0], [0, 0, 10], [0, 0, -10], [0, 7, 0]].every(d => { const p = add(base, d); return freeAt(...p, pad) && !insideGirder(p, pad); });
+        if (!room || !lineOfSight(base, home) || !lineOfSight(spot, home)) continue;
+        sparks(enemy.position, 40, [0.9, 0.6, 1.0], 26);
+        enemy.blinkFrom = enemy.position.slice(); enemy.blinkFlash = 0.6; enemy.phased = 0.7;
+        enemy.base = base; enemy.position = spot; enemy.velocity = [0, 0, 0];
+        sparks(spot, 40, [0.9, 0.6, 1.0], 26); playBlink();
+        enemy.blinkAt = time + (enemy.hp <= enemy.maxHp * 0.4 ? 4.5 : 7) / DIFFICULTIES[save.difficulty].evade;
+        return true;
+      }
+      enemy.blinkAt = time + 1;
+      return false;
+    }
     function hurtEnemy(enemy, amount) {
       if (enemy.hp <= 0) return;
       if (GUARDS[enemy.type] && guardsLeft(enemy) > 0) {
@@ -7978,6 +8633,13 @@
       if (enemy.shieldedBy && enemy.shieldedBy.hp > 0) {
         enemy.flash = 0.3; enemy.shieldHit = 1; if (!enemy.active) alert(enemy);
         registerHit('AEGIS SHIELD // DESTROY THE AEGIS'); return;
+      }
+      if (ENEMY_TYPES[enemy.type].boss) {
+        // Fresh from a blink a boss is out of phase, and shots pass through it. Otherwise, once its blink has recharged,
+        // the hit that finds it sets it off instead of landing. The first blink comes a few seconds into the fight.
+        if (enemy.phased > 0) { enemy.flash = 0.3; registerHit(`${ENEMY_TYPES[enemy.type].name} OUT OF PHASE`); return; }
+        if (enemy.blinkAt === undefined) enemy.blinkAt = time + 3;
+        if (time >= enemy.blinkAt && enemy.hp > amount && blinkBoss(enemy)) { registerHit(`${ENEMY_TYPES[enemy.type].name} BLINKED`); return; }
       }
       enemy.hp = Math.max(0, enemy.hp - amount); enemy.flash = 1;
       if (!enemy.active) alert(enemy);
@@ -8085,6 +8747,11 @@
       const at = audioContext.currentTime;
       (type === 'health' ? [523, 659, 784] : [392, 523, 784, 1046]).forEach((note, i) => synth(note, note * 1.01, 0.2, 0.05, 'triangle', at + i * 0.07));
     }
+    function playBlink() {
+      if (!audioContext || audioContext.state !== 'running') return;
+      const at = audioContext.currentTime;
+      synth(1800, 160, 0.28, 0.05, 'sine', at); synth(160, 2200, 0.32, 0.035, 'triangle', at + 0.12);
+    }
     function playWarp() {
       if (!audioContext || audioContext.state !== 'running') return;
       const at = audioContext.currentTime;
@@ -8187,6 +8854,7 @@
       const home = sub(enemy.base, enemy.position), away = Math.hypot(...home);
       const tether = (wanted, reach) => away > reach ? add(wanted, mul(home, 10 / away)) : wanted;
       if (EVASION[enemy.type] && enemy.active && visible) evade(enemy, distance, sight, dt);
+      if (enemy.phased > 0 || enemy.blinkFlash > 0) { enemy.phased = Math.max(0, enemy.phased - dt); enemy.blinkFlash = Math.max(0, enemy.blinkFlash - dt); }
       // While its shield is up, a bearer that flies keeps in its cover: straight behind the shield as seen from the ship.
       if (enemy.guard && enemy.guardUp > 0 && COVER_PADS[enemy.type]) {
         const spot = add(enemy.guardCenter, mul(normalize(sub(enemy.guardCenter, ship.position)), ENEMY_TYPES[enemy.type].radius + 1.6));
