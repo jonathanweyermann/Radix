@@ -157,7 +157,12 @@
     return null;
   }
   // Line of sight, taken the short way round in a cylinder.
-  const los = (point, from) => R.lineOfSight(add(from, sub(point, from)), from);
+  const los = (point, from) => {
+    const d = sub(point, from), len = Math.hypot(...d);
+    return len < 3 || R.lineOfSight(add(from, mul(d, (len - 2.5) / len)), from);
+  };
+  // The ship can't pitch past about 77 degrees, so a firing spot must not look too steeply up or down at the target.
+  const shallow = (p, at) => { const d = sub(at, p); return Math.abs(d[1]) < Math.hypot(d[0], d[2]) * 2.5; };
   const segmentClear = (a, b) => {
     const steps = Math.ceil(dist(a, b) / 1.5);
     for (let i = 1; i <= steps; i++) if (!flyable(add(a, mul(sub(b, a), i / steps)))) return false;
@@ -211,13 +216,14 @@
     if (live(target.shieldedBy)) return { kind: 'shoot', target: target.shieldedBy, label: 'AEGIS SHIELDING ' + (target.title || target.type) };
     return { kind: 'shoot', target, label: target.title || target.type.toUpperCase() };
   }
-  const shootRange = (task) => task.lock ? 26 : task.close ? 16 : 34;
+  // Not too close either: the side barrels' bolts cross about 60 units out, so up close they pass either side of a small target.
+  const shootRange = (task) => task.lock ? 26 : task.close ? 22 : 34;
   const towardTask = (task) => task.kind === 'reach'
     ? (p) => Math.max(0, dist(p, task.at) - task.radius)
     : (p) => Math.max(0, dist(p, task.target.position) - shootRange(task));
   const goalTest = (task) => task.kind === 'reach'
     ? (p) => dist(p, task.at) < task.radius
-    : (p) => { const at = task.target.position; return dist(p, at) < shootRange(task) && dist(p, at) > 5 && los(at, p); };
+    : (p) => { const at = task.target.position; return dist(p, at) < shootRange(task) && dist(p, at) > 12 && shallow(p, at) && los(at, p); };
 
   // When the goal can't be reached, the way is probably shut by a chain gate: break the nearest one the ship can get to.
   function lockTask() {
@@ -235,6 +241,20 @@
     return { kind: 'shoot', target: lock, lock: true, label: 'CHAIN GATE LOCK', path, detour: true };
   }
 
+  // A reinforced wall gives way only to missiles: go to a spot facing one and fire missiles at it.
+  function crackTask() {
+    if (!R.missileAmmo) return null;
+    const walls = R.gates.filter(g => g.kind === 'cracked' && !g.opening).map(g => ({ gate: g, position: [(g.door.x0 + g.door.x1) / 2, (g.door.y0 + g.door.y1) / 2, (g.door.z0 + g.door.z1) / 2] }));
+    if (!walls.length) return null;
+    const near = (p, w) => dist(p, w.position) < 24 && dist(p, w.position) > 8 && shallow(p, w.position) && los(w.position, p);
+    const toward = (p) => Math.max(0, Math.min(...walls.map(w => dist(p, w.position))) - 24);
+    let path = plan(ship().position, (p) => walls.some(w => near(p, w)), toward, 600000)?.path;
+    if (!path) path = finePlan(ship().position, (p) => walls.some(w => near(p, w)), toward, 400000);
+    if (!path) return null;
+    const end = path[path.length - 1], wall = walls.filter(w => near(end, w)).sort((a, b) => dist(end, a.position) - dist(end, b.position))[0];
+    const target = { position: wall.position, get hp() { return wall.gate.opening ? 0 : 1; } };
+    return { kind: 'shoot', target, crack: true, label: 'REINFORCED WALL', path };
+  }
   function replan(why) {
     const task = goalTask();
     S.task = task; S.path = null; S.wp = 0; S.bestLeft = Infinity; S.progressAt = S.t; S.firedAt = 0; S.planAt = task.target ? task.target.position.slice() : null;
@@ -256,6 +276,8 @@
     if (squeeze?.path) { S.noRouteAt = 0; S.path = squeeze.path; event('squeeze', { toward: task.label }); return true; }
     const fine = finePlan(ship().position, goalTest(task), towardTask(task));
     if (fine) { S.noRouteAt = 0; S.path = fine; event('squeeze', { toward: task.label, fine: true }); return true; }
+    const crack = crackTask();
+    if (crack) { S.noRouteAt = 0; S.task = crack; S.path = crack.path; event('detour', { why: 'reinforced wall', toward: task.label }); return true; }
     // A gate still swinging open may be the way through: wait for it.
     if (R.gates.some(g => g.opening && g.open < 1)) { S.task = { kind: 'wait', label: 'GATE OPENING' }; return true; }
     // Nothing yet: a boss's gate can open a moment after it dies. Wait a little, planning again, before giving up.
@@ -301,18 +323,28 @@
     if (left < S.bestLeft - 2) { S.bestLeft = left; S.progressAt = S.t; }
     return S.wp >= path.length - 1 && dist(s.position, aim) < 3.5;
   }
+  const seen = (p) => (R.level.moon || R.level.cylinder) && R.bend ? R.bend(add(ship().position, sub(p, ship().position)), ship().position) : p;
   function leadPoint(enemy) {
     const s = ship(), t = dist(enemy.position, s.position) / BOLT_SPEED, v = enemy.velocity || [0, 0, 0];
     return add(enemy.position, mul(v, t));
   }
   // Point at the target, hold still and fire when the nose is on it.
   function attack(target) {
-    const s = ship(), aimAt = target.velocity ? leadPoint(target) : target.position, d = sub(aimAt, s.position);
+    // Bolts fly straight in the bent view of a moon or cylinder, so aim at where the target appears, not where it is on the map.
+    const s = ship(), aimAt = seen(target.velocity ? leadPoint(target) : target.position), d = sub(aimAt, s.position);
     const yawTo = Math.atan2(d[0], d[2]), pitchTo = Math.atan2(d[1], Math.hypot(d[0], d[2]));
+    if (Math.abs(pitchTo) > 1.15) {
+      // Straight above or below it: slide out to a shallower angle first.
+      const flat = Math.hypot(d[0], d[2]) || 1, away = flat > 0.5 ? [-d[0] / flat, 0, -d[2] / flat] : [1, 0, 0];
+      R.firing = false; steer(add(target.position, add(mul(away, 16), [0, -Math.sign(d[1]) * 6, 0])), 6);
+      return false;
+    }
     const ey = wrap(yawTo - s.yaw), ep = pitchTo - s.pitch;
     R.touch.steerX = clamp(ey * 3, -1, 1); R.touch.steerY = clamp(-ep * 3, -1, 1);
     const gap = dist(target.position, s.position), want = gap > 30 ? 6 : gap < 10 ? 0 : 2;
     R.touch.thrust = s.speed < want - 0.5; R.touch.brake = s.speed > want + 0.5;
+    // Too close: back off by sliding up and away while keeping the nose on it.
+    R.keys.delete('s'); if (gap < 10) R.keys.add('s');
     const onTarget = Math.abs(ey) < Math.max(0.03, 1.2 / gap) && Math.abs(ep) < Math.max(0.03, 1.2 / gap) && los(target.position, s.position);
     R.firing = onTarget;
     return onTarget;
@@ -329,7 +361,7 @@
     for (let i = 0; i < 4; i++) { const key = order[(start + i) % 4]; if (roomFor(key)) { R.keys.add(key); return; } }
   }
   function fight(foe) {
-    const s = ship(), aimAt = leadPoint(foe), d = sub(aimAt, s.position);
+    const s = ship(), aimAt = seen(leadPoint(foe)), d = sub(aimAt, s.position);
     const ey = wrap(Math.atan2(d[0], d[2]) - s.yaw), ep = Math.atan2(d[1], Math.hypot(d[0], d[2])) - s.pitch;
     R.touch.steerX = clamp(ey * 3, -1, 1); R.touch.steerY = clamp(-ep * 3, -1, 1);
     const gap = dist(foe.position, s.position), want = gap > 35 ? 10 : gap < 15 ? 0 : 4;
@@ -414,6 +446,8 @@
             else if (S.t - S.progressAt > 2) replan('no clear shot');
           } else if (task.kind === 'shoot' && (inPlace || arrived)) {
             const onTarget = attack(task.target);
+            R.keys.delete('c');
+            if (onTarget && task.crack && Math.round(S.t * 60) % 45 === 0) R.keys.add('c');
             if (onTarget) {
               if (!S.firedAt) { S.firedAt = S.t; S.foeHp = task.target.hp; }
               if (!S.aimedAt.has(task.target)) {

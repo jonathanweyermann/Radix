@@ -19,7 +19,7 @@
     .hull .meter span { width: 100%; background: #69e4c2; box-shadow: 0 0 12px #69e4c2; }
     .stats { text-align: right; color: #b1ecf8; font-size: 12px; line-height: 1.7; letter-spacing: .13em; }
     .stats strong { color: white; }
-    .mission { color: #f5b76b; font-size: 11px; letter-spacing: .2em; text-align: right; text-shadow: 0 0 4px #000, 0 0 8px #000c; }
+    .mission { color: #f5b76b; font-size: 11px; letter-spacing: .2em; text-align: right; text-shadow: 0 0 4px #000, 0 0 8px #000c; background: #0008; padding: 4px 8px; border-radius: 3px; }
     .objective { color: #ffe066; margin-top: 7px; letter-spacing: .14em; text-shadow: 0 0 8px #ffd23a66; }
     .objective:empty { display: none; }
     .cockpit { position: absolute; left: 0; right: 0; bottom: 0; height: 206px; padding: 15px 28px 38px; display: grid; grid-template-columns: minmax(180px,1fr) 250px minmax(180px,1fr); gap: 20px; background: linear-gradient(#28374355,#0d172133 25%,#101d2866 75%,#050a10cc); border-top: 5px solid #697d88aa; box-shadow: inset 0 1px #b5c3c666; }
@@ -356,7 +356,7 @@
     //     boss gates open when the sector's boss is destroyed; core gates when every data core in the sector is;
     //     cracked walls only give way to missiles, plasma and the rail.
     //   brief: an objective shown a few seconds into the sector
-    //   objectives: goals completed in order, each { text, kind } where kind is 'reach' (fly within `radius` of `at`),
+    //   objectives: goals completed in order, each { text, kind, done } (done: a line of story shown when it completes) where kind is 'reach' (fly within `radius` of `at`),
     //     'destroy' (kill every enemy in `targets`, given as [type, x, y, z]), 'gate' (open gates[`gate`]) or 'exit' (fly
     //     through the exit gate, which stays locked until every goal before it is done)
     //   moon: { radius } wraps the sector around a small moon with no walls at its edge, airless sky and open ground beyond
@@ -1610,7 +1610,9 @@
           [-28, 620, -20, 628, COLUMN], [20, 620, 28, 628, COLUMN],
           [196, 272, 212, 288, REACTOR], [208, 332, 224, 348, REACTOR], [32, 684, 40, 692, COLUMN], [-40, 724, -32, 732, COLUMN],
         ],
-        girders: [[-128, 12, 110, 128, 15, 114], [-128, 16, 352, 128, 19, 356], [-128, 4, 386, 128, 7, 390], [-128, 16, 412, 128, 19, 416],
+        // The first four girders brace the tether out to its clamps, so the clamps visibly hold it.
+        girders: [[9, 24, 399, 19, 25.5, 401], [-19, 24, 399, -9, 25.5, 401], [-1, 24, 381, 1, 25.5, 391], [-1, 24, 409, 1, 25.5, 419],
+          [-128, 12, 110, 128, 15, 114], [-128, 16, 352, 128, 19, 356], [-128, 4, 386, 128, 7, 390], [-128, 16, 412, 128, 19, 416],
           [160, 17, 320, 248, 20, 324], [-56, 41, 700, 56, 44, 704]],
         gates: [
           [-12, 224, 12, 228, 'south', 'chain'], [-124, 224, -104, 228, 'south', 'chain'], [128, 152, 132, 168, 'west', 'chain'],
@@ -1620,8 +1622,8 @@
         lasers: [[200, 460, 216, 460, 22, 32.3, 3.2, 0]],
         objectives: [
           { kind: 'destroy', text: 'DESTROY THE TETHER CLAMPS IN THE ANCHOR WELL', targets: [[20, 400], [-20, 400], [0, 380], [0, 420]].map(([x, z]) => ['core', x, 26, z, 'TETHER CLAMP']) },
-          { kind: 'destroy', text: 'DESTROY THE LIFT CAR GRIPS IN THE CRADLE', targets: [['core', -12, 35, 600, 'CAR GRIP'], ['core', 12, 35, 600, 'CAR GRIP']] },
-          { kind: 'gate', text: 'SHOOT THE LOCKS ON THE DOCKING BORE', gate: 8 },
+          { kind: 'destroy', text: 'DESTROY THE LIFT CAR GRIPS IN THE CRADLE', targets: [['core', -12, 30.7, 600, 'CAR GRIP'], ['core', 12, 30.7, 600, 'CAR GRIP']] },
+          { kind: 'gate', text: 'SHOOT THE LOCKS ON THE LIFT ACCESS', gate: 8 },
           { kind: 'exit', text: 'REACH THE GATE IN THE LIFT' },
         ],
         // The tether, turning slowly, with the collars that guide it.
@@ -1693,9 +1695,9 @@
         gates: [],
         extras: { barrels: [[-10, 300], [6, 360], [-20, 422], [30, 420]] },
         objectives: [
-          { kind: 'destroy', text: 'DESTROY THE SEED TOWERS', targets: [['core', 0, BASE + 49, 180, 'SEED TOWER'], ['core', 170, BASE + 49, 470, 'SEED TOWER'], ['core', -170, BASE + 49, 560, 'SEED TOWER']] },
+          { kind: 'destroy', text: 'DESTROY THE SEED TOWERS', targets: [['core', 0, BASE + 43.7, 180, 'SEED TOWER'], ['core', 170, BASE + 43.7, 470, 'SEED TOWER'], ['core', -170, BASE + 43.7, 560, 'SEED TOWER']] },
           { kind: 'reach', text: 'FLY UP TO THE SUN LINE', at: [0, BASE + 74, 520], radius: 18 },
-          { kind: 'destroy', text: 'DESTROY THE IRRIGATION PUMPS', targets: [['core', 220, BASE + 10, 260, 'PUMP'], ['core', -236, BASE + 10, 330, 'PUMP']] },
+          { kind: 'destroy', text: 'DESTROY THE IRRIGATION PUMPS', targets: [['core', 220, BASE + 5.7, 260, 'PUMP'], ['core', -236, BASE + 5.7, 330, 'PUMP']] },
           { kind: 'exit', text: 'REACH THE END-CAP GATE' },
         ],
         zones: [
@@ -2225,9 +2227,9 @@
         ],
         extras: { barrels: [[-8, 30], [10, 40], [-20, 220], [20, 470], [-30, 600], [44, 700], [300, 120], [-380, 420], [180, 620]] },
         objectives: [
-          { kind: 'destroy', text: 'DESTROY THE PRESS CONTROLLERS', targets: [['core', -60, BASE + 36, 120, 'PRESS CONTROLLER'], ['core', 220, BASE + 46, 80, 'PRESS CONTROLLER'], ['core', -220, BASE + 32, 190, 'PRESS CONTROLLER'], ['core', 420, BASE + 40, 160, 'PRESS CONTROLLER']] },
+          { kind: 'destroy', text: 'DESTROY THE PRESS CONTROLLERS', targets: [['core', -60, BASE + 36, 120, 'PRESS CONTROLLER'], ['core', 220, BASE + 41.7, 80, 'PRESS CONTROLLER'], ['core', -220, BASE + 27.7, 190, 'PRESS CONTROLLER'], ['core', 420, BASE + 35.7, 160, 'PRESS CONTROLLER']] },
           { kind: 'gate', text: 'SHOOT THE LOCKS ON THE FIRST BULKHEAD', gate: 0 },
-          { kind: 'destroy', text: 'DESTROY THE COOLANT PUMPS', targets: [['core', -140, BASE + 26, 320, 'COOLANT PUMP'], ['core', 156, BASE + 30, 400, 'COOLANT PUMP'], ['core', 376, BASE + 24, 300, 'COOLANT PUMP']] },
+          { kind: 'destroy', text: 'DESTROY THE COOLANT PUMPS', targets: [['core', -140, BASE + 21.7, 320, 'COOLANT PUMP'], ['core', 156, BASE + 25.7, 400, 'COOLANT PUMP'], ['core', 376, BASE + 19.7, 300, 'COOLANT PUMP']] },
           { kind: 'gate', text: 'SHOOT THE LOCKS ON THE SECOND BULKHEAD', gate: 1 },
           { kind: 'reach', text: 'CLIMB INTO THE INNER CYLINDER', at: [52, BASE + 112, 640], radius: 20 },
           { kind: 'destroy', text: 'DESTROY THE SPINDLE DYNAMOS', targets: [['core', 0, BASE + 118, 560, 'SPINDLE DYNAMO'], ['core', 256, BASE + 118, 600, 'SPINDLE DYNAMO'], ['core', -256, BASE + 118, 640, 'SPINDLE DYNAMO'], ['core', 472, BASE + 118, 580, 'SPINDLE DYNAMO']] },
@@ -2287,10 +2289,10 @@
           gates: [[12, 620, 28, 624, 'south', 'chain'], [-216, 300, -208, 304, 'south', 'cracked']],
           extras: {},
           objectives: [
-            { kind: 'destroy', text: 'CAP THE WELLHEADS', targets: wells.map(([x, z]) => ['core', x, BASE + 8, z, 'WELLHEAD']) },
+            { kind: 'destroy', text: 'CAP THE WELLHEADS', targets: wells.map(([x, z]) => ['core', x, BASE + 3.7, z, 'WELLHEAD']) },
             { kind: 'destroy', text: 'KILL THE SAND CRAWLER', targets: [['warden', -80, 4, 640, 'SAND CRAWLER']] },
             { kind: 'gate', text: 'FORCE THE PUMP STATION DOOR', gate: 0 },
-            { kind: 'destroy', text: 'DESTROY THE PUMP CORES', targets: [['core', 0, -4, 656, 'PUMP CORE'], ['core', 40, -4, 656, 'PUMP CORE']] },
+            { kind: 'destroy', text: 'DESTROY THE PUMP CORES', targets: [['core', 0, -9.3, 656, 'PUMP CORE'], ['core', 40, -9.3, 656, 'PUMP CORE']] },
             { kind: 'exit', text: 'FOLLOW THE PIPELINE OUT OF THE DUNES' },
           ],
           zones: [
@@ -2353,9 +2355,9 @@
         gates: [[160, 364, 164, 380, 'west', 'cracked'], [-212, 184, -208, 200, 'east', 'chain'], [-212, 328, -208, 344, 'west', 'cracked'], [-16, 540, 16, 544, 'south', 'chain']],
         lasers: [[-168, 388, -168, 404, 38, 48.3, 3.2, 0]],
         objectives: [
-          { kind: 'destroy', text: 'BLOW THE CRACKING COLUMNS ON THE TERRACES', targets: [['core', -132, 20, 212, 'CRACKING COLUMN'], ['core', 126, 17, 212, 'CRACKING COLUMN'], ['core', 150, 20, 288, 'CRACKING COLUMN']] },
+          { kind: 'destroy', text: 'BLOW THE CRACKING COLUMNS ON THE TERRACES', targets: [['core', -132, 15.7, 212, 'CRACKING COLUMN'], ['core', 126, 12.5, 212, 'CRACKING COLUMN'], ['core', 150, 15.6, 288, 'CRACKING COLUMN']] },
           { kind: 'gate', text: 'SHOOT THE LOCKS ON THE FLARE STACK DOOR', gate: 3 },
-          { kind: 'destroy', text: 'PUT OUT THE FLARE BURNERS', targets: [['core', -30, 27, 600, 'FLARE BURNER'], ['core', 30, 27, 620, 'FLARE BURNER']] },
+          { kind: 'destroy', text: 'PUT OUT THE FLARE BURNERS', targets: [['core', -30, 22.7, 600, 'FLARE BURNER'], ['core', 30, 22.7, 620, 'FLARE BURNER']] },
           { kind: 'exit', text: 'REACH THE GATE ON THE STACK' },
         ],
         stairs: [
@@ -2370,7 +2372,7 @@
           [-28, 488, -20, 496, COLUMN], [20, 488, 28, 496, COLUMN],
           [48, 580, 56, 588, REACTOR], [-56, 616, -48, 624, REACTOR], [-244, 272, -236, 280, REACTOR],
         ],
-        girders: [[-44, 0, 90, 44, 3, 94], [-156, 10, 196, 156, 13, 200], [-188, 12, 260, -84, 15, 264], [84, 18, 240, 188, 21, 244], [-120, 20, 396, 120, 23, 400], [-96, 33, 596, 96, 36, 600]],
+        girders: [[-44, 0, 90, 44, 3, 94], [-156, 10, 196, 156, 13, 200], [-188, 12, 260, -84, 15, 264], [84, 30, 240, 188, 33, 244], [-120, 20, 396, 120, 23, 400], [-96, 33, 596, 96, 36, 600]],
         zones: [
           { name: 'PIPE TUNNEL', area: [-8, 220, 8, 320], barrels: 2, hunters: 2 },
           { name: 'START BASIN', area: [-32, -32, 32, 40], barrels: 4 },
@@ -2452,7 +2454,7 @@
           { kind: 'reach', text: 'INVESTIGATE THE DOWNED TANKER', at: [140, BASE - 6, 180], radius: 26 },
           { kind: 'destroy', text: 'DESTROY THE COMMS MESA TURRETS', targets: [['sentry', -180, BASE + 20.4, 224], ['sentry', -140, BASE + 20.4, 224], ['sentry', -180, BASE + 20.4, 260], ['sentry', -140, BASE + 20.4, 260]] },
           { kind: 'gate', text: 'SHOOT THE LOCKS ON THE DOME BLAST DOOR', gate: 0 },
-          { kind: 'destroy', text: 'DESTROY THE DOME POWER CORES', targets: [['core', -46, BASE + 9, 522], ['core', 0, BASE + 9, 522], ['core', 46, BASE + 9, 522]] },
+          { kind: 'destroy', text: 'DESTROY THE DOME POWER CORES', targets: [['core', -46, BASE + 3.7, 522, 'POWER CORE'], ['core', 0, BASE + 3.7, 522, 'POWER CORE'], ['core', 46, BASE + 3.7, 522, 'POWER CORE']] },
           { kind: 'exit', text: 'REACH THE EXTRACTION GATE' },
         ],
         zones: [
@@ -2521,7 +2523,7 @@
         objectives: [
           { kind: 'destroy', text: 'DESTROY THE DRILL RIGS', targets: [['core', -160, 78, 330, 'DRILL RIG'], ['core', 60, 4, 220, 'DRILL RIG'], ['core', 380, 102, 260, 'DRILL RIG'], ['core', -380, 16, 500, 'DRILL RIG']] },
           { kind: 'gate', text: 'FORCE THE REFINERY DOOR', gate: 0 },
-          { kind: 'destroy', text: 'DESTROY THE SMELTER CORES', targets: [['core', 180, 0, 500, 'SMELTER CORE'], ['core', 260, 0, 500, 'SMELTER CORE'], ['core', 220, 2, 560, 'SMELTER CORE']] },
+          { kind: 'destroy', text: 'DESTROY THE SMELTER CORES', targets: [['core', 180, -10.3, 500, 'SMELTER CORE'], ['core', 260, -10.3, 500, 'SMELTER CORE'], ['core', 220, -10.3, 560, 'SMELTER CORE']] },
           { kind: 'destroy', text: 'DESTROY THE ORE TUG', targets: [['warden', -200, 40, 640, 'ORE TUG']] },
           { kind: 'exit', text: 'REACH THE BELT GATE' },
         ],
@@ -2624,8 +2626,8 @@
         objectives: [
           { kind: 'destroy', text: 'DESTROY THE HULL TURRETS', targets: [['sentry', -70, 58.7, 330], ['sentry', 70, 54.9, 590], ['sentry', 36, 73.2, 470], ['sentry', -223, 69.6, 420], ['sentry', 223, 7.2, 400]] },
           { kind: 'gate', text: 'SHOOT THE LOCKS ON THE DOCKING PORT', gate: 0 },
-          { kind: 'destroy', text: 'SHUT DOWN LIFE SUPPORT', targets: [['core', -112, -8, 342, 'LIFE SUPPORT'], ['core', -126, 0, 500, 'LIFE SUPPORT'], ['core', 108, 0, 500, 'LIFE SUPPORT']] },
-          { kind: 'destroy', text: 'DESTROY THE HUB CONTROL CORES', targets: [['core', -36, -6, 480, 'CONTROL CORE'], ['core', 36, -6, 480, 'CONTROL CORE'], ['core', 0, -6, 515, 'CONTROL CORE']] },
+          { kind: 'destroy', text: 'SHUT DOWN LIFE SUPPORT', targets: [['core', -112, -18.3, 342, 'LIFE SUPPORT'], ['core', -126, -14.3, 500, 'LIFE SUPPORT'], ['core', 108, 0, 500, 'LIFE SUPPORT']] },
+          { kind: 'destroy', text: 'DESTROY THE HUB CONTROL CORES', targets: [['core', -36, -16.3, 480, 'CONTROL CORE'], ['core', 36, -16.3, 480, 'CONTROL CORE'], ['core', 0, -16.3, 515, 'CONTROL CORE']] },
           { kind: 'reach', text: 'TAKE THE COMMAND BRIDGE', at: [0, 4, 630], radius: 18 },
           { kind: 'destroy', text: 'DESTROY THE REACTOR STABILIZERS', targets: [['core', 60, -120, 450, 'STABILIZER'], ['core', -30, -120, 502, 'STABILIZER'], ['core', -30, -120, 398, 'STABILIZER']] },
           { kind: 'exit', text: 'REACH THE DEPARTURE GATE' },
@@ -2660,7 +2662,7 @@
           // Rim beacon pads.
           [66, 116, 74, 124, PAD, 34, SKY, 'wallTech'], [-124, 296, -116, 304, PAD, 34, SKY, 'wallTech'], [106, 466, 114, 474, PAD, 34, SKY, 'wallTech'],
           // The generator bunker on the rift floor, raised above the river, with its door to the south.
-          ...[[0, 424, 40, 456, PLATE, -44, SKY, 'wallTech'], [4, 428, 36, 452, PLATE, -66, -52, 'wallTech', -44], [16, 424, 24, 428, PLATE, -66, -56, 'wallTech', -44]],
+          ...[[0, 424, 40, 456, PLATE, -44, SKY, 'wallTech'], [4, 428, 36, 452, PLATE, -66, -52, 'wallTech', -44], [8, 424, 32, 428, PLATE, -66, -56, 'wallTech', -44]],
           // Gun pads on the east mesa.
           [146, 596, 154, 604, PAD, 64, SKY, 'wallTech'], [171, 646, 179, 654, PAD, 64, SKY, 'wallTech'],
           // The exit platform at the rift's north end.
@@ -2680,9 +2682,9 @@
         gates: [],
         extras: {},
         objectives: [
-          { kind: 'destroy', text: 'DESTROY THE RIM BEACONS', targets: [['core', 70, 42, 120, 'RIM BEACON'], ['core', -120, 42, 300, 'RIM BEACON'], ['core', 110, 42, 470, 'RIM BEACON']] },
+          { kind: 'destroy', text: 'DESTROY THE RIM BEACONS', targets: [['core', 70, 35.7, 120, 'RIM BEACON'], ['core', -120, 35.7, 300, 'RIM BEACON'], ['core', 110, 35.7, 470, 'RIM BEACON']] },
           { kind: 'reach', text: 'DIVE INTO THE RIFT', at: [-60, -55, 320], radius: 24 },
-          { kind: 'destroy', text: 'DESTROY THE BUNKER GENERATORS', targets: [['core', 12, -60, 442, 'GENERATOR'], ['core', 28, -60, 442, 'GENERATOR']] },
+          { kind: 'destroy', text: 'DESTROY THE BUNKER GENERATORS', targets: [['core', 12, -64.3, 442, 'GENERATOR'], ['core', 28, -64.3, 442, 'GENERATOR']] },
           { kind: 'destroy', text: 'DESTROY THE MESA GUNS', targets: [['sentry', 150, 67.4, 600], ['sentry', 175, 67.4, 650]] },
           { kind: 'exit', text: 'REACH THE GATE AT THE RIFT\'S END' },
         ],
@@ -2738,7 +2740,7 @@
           gates: [[-12, 572, 12, 576, 'south', 'chain'], [180, 440, 192, 444, 'south', 'secret']],
           extras: {},
           objectives: [
-            { kind: 'destroy', text: 'BREAK THE SHIELD EMITTERS', targets: emitters.map(([x, z, h]) => ['core', x, BASE + h + 7, z, 'SHIELD EMITTER']) },
+            { kind: 'destroy', text: 'BREAK THE SHIELD EMITTERS', targets: emitters.map(([x, z, h]) => ['core', x, BASE + h + 1.7, z, 'SHIELD EMITTER']) },
             { kind: 'gate', text: 'FORCE THE CITADEL GATE', gate: 0 },
             { kind: 'destroy', text: 'KILL THE CORE LOCKS', targets: [['core', -40, -3, 622, 'CORE LOCK'], ['core', 40, -3, 622, 'CORE LOCK']] },
             { kind: 'exit', text: 'TAKE THE SHAFT DOWN TO THE CORE' },
@@ -2797,14 +2799,14 @@
           [-56, 680, -48, 688, REACTOR], [48, 700, 56, 708, REACTOR],
         ],
         shards: [[-172, 164, 3, 50], [-204, 220, 3, 56]],
-        girders: [[-8, -7, 70, 8, -4, 74], [-96, 14, 160, 96, 17, 164], [-96, 4, 270, 96, 7, 274], [-80, 8, 456, 80, 11, 460], [-232, 17, 228, -136, 20, 232], [-88, 33, 690, 88, 36, 694]],
+        girders: [[-8, -7, 70, 8, -4, 74], [-96, 14, 160, 96, 17, 164], [-96, 4, 270, 96, 7, 274], [-80, 18, 456, 80, 21, 460], [-232, 17, 228, -136, 20, 232], [-88, 33, 690, 88, 36, 694]],
         gates: [[-12, 520, 12, 524, 'south', 'boss'], [-100, 200, -96, 216, 'east', 'chain'], [-236, 192, -232, 208, 'east', 'cracked'], [-16, 640, 16, 644, 'south', 'chain']],
         lasers: [[-200, 380, -184, 380, 10, 20.3, 3.2, 0]],
         extras: {},
         objectives: [
           { kind: 'destroy', text: 'DESTROY THE CORE FEEDERS', targets: [[36, 216], [-36, 216], [0, 180], [0, 252]].map(([x, z]) => ['core', x, 4, z, 'CORE FEEDER']) },
           { kind: 'destroy', text: 'DESTROY THE SHIELD PYLONS', targets: [['pylon', -52, 1, 468], ['pylon', 52, 1, 468], ['pylon', -52, 1, 500], ['pylon', 52, 1, 500]] },
-          { kind: 'destroy', text: 'DESTROY THE OMEGA SENTINEL', targets: [['sentinel', 0, 12, 484, 'OMEGA SENTINEL']] },
+          { kind: 'destroy', text: 'DESTROY THE OMEGA SENTINEL', targets: [['sentinel', 0, 12, 484, 'OMEGA SENTINEL']], done: 'SENTINEL DOWN // THE SONG CONTINUES // IT COMES FROM INSIDE THE VOID // GET OUT' },
           { kind: 'exit', text: 'REACH THE ESCAPE GATE PAST THE THRONE' },
         ],
         zones: [
@@ -2832,7 +2834,7 @@
         const layers = [[0, 40, 300], [-200, -30, 500], [200, 20, 460]];
         return {
           name: 'THE SHROUD', title: 'DUST VEIL', music: 'drift', music2: 'nadir', top: 200, width: 256, start: [0, 0, -30], yaw: 0, exit: [0, 20, 730, true],
-          since: 'episodes', space: true, roof: 'floorPlate', hull: 'floorPlate', ceiling: 'wallTech', rockMaterial: 'wallBasalt', fog: [80, 560, 0.96], haze: 0,
+          since: 'episodes', space: true, roof: 'floorPlate', hull: 'floorPlate', ceiling: 'wallTech', rockMaterial: 'wallBasalt', fog: [50, 380, 0.97], haze: 0,
           brief: 'DESTROY THE VEIL BUOYS BEFORE THE REQUIEM COMES THROUGH',
           sky: { zenith: [0.03, 0.0, 0.05], fog: [0.12, 0.06, 0.16], sun: [0.9, 0.45, 0.4], sunDir: [0.2, 0.3, 0.9] },
           walls: { lower: [['wallTech', 0.5], ['wallVoid', 0.5]] },
@@ -2933,7 +2935,7 @@
           { kind: 'core', at: [30, -30, 250], axis: [0.4, 0, 1], radius: 3.5, inner: 0, length: 20, speed: 2, materials: ['wallPipes', null, 'crown'] },
         ],
         objectives: [
-          { kind: 'destroy', text: 'FOLLOW THE SIGNAL DOWN // DESTROY ITS RELAYS', targets: [['core', -80, 31, 150, 'SIGNAL RELAY'], ['core', 76, 11, 200, 'SIGNAL RELAY'], ['core', 8, -9, 182, 'SIGNAL RELAY'], ['core', -48, -21, 240, 'SIGNAL RELAY']] },
+          { kind: 'destroy', text: 'FOLLOW THE SIGNAL DOWN // DESTROY ITS RELAYS', targets: [['core', -80, 26.7, 150, 'SIGNAL RELAY'], ['core', 76, 6.7, 200, 'SIGNAL RELAY'], ['core', 8, -13.3, 182, 'SIGNAL RELAY'], ['core', -48, -25.3, 240, 'SIGNAL RELAY']] },
           { kind: 'gate', text: 'SHOOT THE LOCKS ON THE DEEP TUNNEL', gate: 2 },
           { kind: 'reach', text: 'RIDE THE UPDRAFT TO THE LANDING', at: [0, 43, 442], radius: 22 },
           { kind: 'exit', text: 'REACH THE GATE ABOVE THE SKYWELL' },
@@ -3219,8 +3221,9 @@
         ],
         extras: {},
         objectives: [
-          { kind: 'destroy', text: 'DOUSE THE VOID LANTERNS', targets: [['core', -312, BASE + 30, 140, 'VOID LANTERN'], ['core', 276, BASE + 30, 196, 'VOID LANTERN'], ['core', -336, BASE + 36, 568, 'VOID LANTERN'], ['core', 364, BASE + 36, 624, 'VOID LANTERN']] },
+          { kind: 'destroy', text: 'DOUSE THE NEAR-SHORE LANTERNS', targets: [['core', -312, BASE + 30, 140, 'VOID LANTERN'], ['core', 276, BASE + 30, 196, 'VOID LANTERN']] },
           { kind: 'reach', text: 'CROSS THE SUNLESS SEA', at: [0, BASE + 10, 380], radius: 22 },
+          { kind: 'destroy', text: 'DOUSE THE FAR-SHORE LANTERNS', targets: [['core', -336, BASE + 36, 568, 'VOID LANTERN'], ['core', 364, BASE + 36, 624, 'VOID LANTERN']] },
           { kind: 'gate', text: 'OPEN THE DROWNED SHRINE', gate: 0 },
           { kind: 'destroy', text: 'SILENCE THE ECHO CORES', targets: [['core', -24, BASE + 6, 460, 'ECHO CORE'], ['core', 24, BASE + 6, 460, 'ECHO CORE'], ['core', 0, BASE + 6, 430, 'ECHO CORE']] },
           { kind: 'exit', text: 'REACH THE GATE ON THE FAR SHORE' },
@@ -3334,7 +3337,7 @@
             // The mirror field.
             ...dishes.map(([x, z]) => oval(x, z, 13, 13, ICE, BASE + 2, undefined, { raise: true, dish: 3, side: 'wallTech' })),
             // The lenses: a plinth and a pylon each.
-            ...lenses.flatMap(([x, z]) => [oval(x, z, 16, 16, PAD, BASE + 3, undefined, { raise: true, side: 'wallTech' }), oval(x, z, 7, 7, PLATE, BASE + 52, undefined, { raise: true, side: 'wallTech' })]),
+            ...lenses.flatMap(([x, z]) => [oval(x, z, 16, 16, PAD, BASE + 3, undefined, { raise: true, side: 'wallTech' }), oval(x, z, 7, 7, PLATE, BASE + 34, undefined, { raise: true, side: 'wallTech' })]),
             // The beam tower: plinth, tower, the door through its south face, then the chamber the door opens into.
             oval(0, 590, 34, 34, PAD, BASE + 4, undefined, { raise: true, side: 'wallTech' }),
             oval(0, 590, 22, 22, PLATE, BASE + 100, undefined, { raise: true, side: 'wallTech' }),
@@ -3353,13 +3356,13 @@
           shards: [...lenses.flatMap(([x, z]) => [[x - 11, z - 8, 3, 22], [x + 10, z + 10, 3, 18], [x + 4, z - 13, 2, 14]]),
             [-60, 620, 3, 26], [70, 560, 3, 30], [-120, 560, 4, 34], [130, 650, 3, 24]],
           stairs: [], blocks: [], girders: [],
-          spinners: [{ kind: 'ring', at: [0, BASE + 114, 590], axis: [0, 1, 0], radius: 28, inner: 24, length: 3, speed: 0.4, materials: ['crystal', 'crystal', 'crystal'] }],
+          spinners: [{ kind: 'ring', at: [0, BASE + 104, 590], axis: [0, 1, 0], radius: 28, inner: 24, length: 3, speed: 0.4, materials: ['crystal', 'crystal', 'crystal'] }],
           gates: [[-6, 566, 6, 570, 'south', 'chain'], [196, 600, 204, 604, 'south', 'cracked']],
           extras: {},
           objectives: [
-            { kind: 'destroy', text: 'SHATTER THE FOCUS LENSES', targets: lenses.map(([x, z]) => ['core', x, BASE + 59, z, 'FOCUS LENS']) },
+            { kind: 'destroy', text: 'SHATTER THE FOCUS LENSES', targets: lenses.map(([x, z]) => ['core', x, BASE + 41, z, 'FOCUS LENS']) },
             { kind: 'gate', text: 'OPEN THE BEAM TOWER', gate: 0 },
-            { kind: 'destroy', text: 'DESTROY THE BEAM EMITTER', targets: [['core', 0, BASE + 11, 590, 'BEAM EMITTER']] },
+            { kind: 'destroy', text: 'DESTROY THE BEAM EMITTER', targets: [['core', 0, BASE + 5.7, 590, 'BEAM EMITTER']] },
             { kind: 'exit', text: 'REACH THE GATE BEYOND THE TOWER' },
           ],
           zones: [
@@ -3419,14 +3422,14 @@
         ],
         girders: [[-72, 17, 136, 72, 20, 140], [-48, 33, 176, 48, 36, 180], [-4, 1, 120, 0, 4, 216], [-72, 57, 200, 72, 60, 204], [-56, 45, 344, 56, 48, 348],
           // The empty berth: launch rails over the anvil, with nothing on them.
-          [-36, 38, 572, -32, 40, 652], [32, 38, 572, 36, 40, 652]],
+          [-36, 54, 558, -32, 56, 680], [32, 54, 558, 36, 56, 680]],
         gates: [[-12, 232, 12, 236, 'south', 'chain'], [-12, 392, 12, 396, 'south', 'chain'], [-60, 336, -56, 352, 'east', 'secret'],
           [-16, 520, 16, 524, 'south', 'chain'], [104, 336, 108, 352, 'west', 'chain'], [224, 236, 240, 240, 'north', 'cracked']],
         lasers: [[-12, 256, 12, 256, 42.8, 53.2, 3, 0], [-12, 276, 12, 276, 42.8, 53.2, 3, 1.5], [122, 336, 122, 352, 10, 20.3, 3.2, 0]],
         objectives: [
-          { kind: 'destroy', text: 'WRECK THE SMELTING CORES IN THE ATRIUM', targets: [['core', -60, 15, 176, 'SMELTING CORE'], ['core', 60, 31, 160, 'SMELTING CORE'], ['core', 0, 47, 224, 'SMELTING CORE']] },
-          { kind: 'destroy', text: 'DESTROY THE CRUCIBLE CORES', targets: [['core', -20, 43, 330, 'CRUCIBLE CORE'], ['core', 20, 43, 358, 'CRUCIBLE CORE']] },
-          { kind: 'reach', text: 'FIND THE BERTH IN THE MEGA FORGE', at: [0, 40, 612], radius: 26 },
+          { kind: 'destroy', text: 'WRECK THE SMELTING CORES IN THE ATRIUM', targets: [['core', -60, 10.7, 176, 'SMELTING CORE'], ['core', 60, 26.7, 160, 'SMELTING CORE'], ['core', 0, 42.7, 224, 'SMELTING CORE']] },
+          { kind: 'destroy', text: 'DESTROY THE CRUCIBLE CORES', targets: [['core', -20, 38.7, 330, 'CRUCIBLE CORE'], ['core', 20, 38.7, 358, 'CRUCIBLE CORE']] },
+          { kind: 'reach', text: 'FIND THE BERTH IN THE MEGA FORGE', at: [0, 54, 626], radius: 14, done: 'THE BERTH IS EMPTY // WHATEVER WAS BUILT HERE HAS ALREADY LEFT' },
           { kind: 'exit', text: 'PICK UP THE TRAIL AT THE LAUNCH CRADLE' },
         ],
         zones: [
@@ -3513,10 +3516,12 @@
           { kind: 'cube', at: [0, BASE - 20, 220], axis: [0.3, 1, 0.2], radius: 9, length: 0, speed: 0.4, materials: ['wallComputer', null, 'wallTech'] },
         ],
         extras: { barrels: [[-20, 0], [24, -20], [-12, 30], [20, 36]] },
+        // The bridge's stations, down both sides of the room, leaving the lane to the gate clear.
+        dressing: [[-30, 724], [-30, 740], [30, 724], [30, 740], [-18, 748], [18, 748]].map(([x, z]) => ['console', x, BASE + 15.7, z, x < 0 ? Math.PI / 2 : -Math.PI / 2]),
         objectives: [
           { kind: 'gate', text: 'SHOOT THE DOCKING CLAMP LOCKS', gate: 0 },
-          { kind: 'destroy', text: 'DESTROY THE GRAVITY GOVERNORS', targets: [['core', -80, BASE + 6, 400, 'GOVERNOR'], ['core', 80, BASE + 6, 400, 'GOVERNOR'], ['core', 0, BASE - 26, 467, 'GOVERNOR']] },
-          { kind: 'destroy', text: 'DESTROY THE REACTOR REGULATORS', targets: [['core', 0, BASE + 14, 660, 'REGULATOR'], ['core', -60, BASE + 14, 556, 'REGULATOR'], ['core', 60, BASE + 14, 556, 'REGULATOR']] },
+          { kind: 'destroy', text: 'DESTROY THE GRAVITY GOVERNORS', targets: [['core', -80, BASE - 0.3, 400, 'GOVERNOR'], ['core', 80, BASE - 0.3, 400, 'GOVERNOR'], ['core', 0, BASE - 30.3, 467, 'GOVERNOR']] },
+          { kind: 'destroy', text: 'DESTROY THE REACTOR REGULATORS', targets: [['core', 0, BASE + 7.7, 660, 'REGULATOR'], ['core', -60, BASE + 7.7, 556, 'REGULATOR'], ['core', 60, BASE + 7.7, 556, 'REGULATOR']] },
           { kind: 'exit', text: 'REACH THE BRIDGE GATE' },
         ],
         zones: [
@@ -3542,7 +3547,7 @@
           since: 'episodes', space: true, roof: 'wallRust', hull: 'wallRust', ceiling: 'wallTech', rockMaterial: 'wallBasalt',
           brief: 'NONE OF THESE WRECKS WERE BUILT BY THE CHOIR',
           sky: { zenith: [0.0, 0.02, 0.03], fog: [0.04, 0.09, 0.1], sun: [0.7, 0.9, 0.95], sunDir: [-0.3, 0.5, 0.6] },
-          walls: { lower: [['wallRust', 0.4], ['wallChitin', 0.3], ['wallTech', 0.3]] },
+          walls: { lower: [['wallRust', 0.4], ['wallContainer', 0.3], ['wallTech', 0.3]] },
           rooms: [
             [-512, -48, 512, 752, VOID, -200],
             // The great wreck: its hull, the dock and the stern passage, then the hold they open into.
@@ -3552,7 +3557,7 @@
             oval(0, 400, 92, 76, GRATE, -12, 8, inHull(40, -16, { dome: 26 })),
             oval(0, 400, 20, 20, PAD, -6, undefined, { raise: true, side: 'wallRust' }),
             // The husks.
-            ...husks.flatMap(([x, z]) => podRooms([x - 36, z - 36, x + 36, z + 36], { floor: 0, ceil: 12, under: -10, roof: 20, side: 'wallChitin', doors: [[x - 8, z - 36, x + 8, z - 32, 10]] })),
+            ...husks.flatMap(([x, z]) => podRooms([x - 36, z - 36, x + 36, z + 36], { floor: 0, ceil: 12, under: -10, roof: 20, side: 'wallRust', doors: [[x - 8, z - 36, x + 8, z - 32, 10]] })),
           ],
           hulls: [{ at: [0, 400], radii: [120, 100], top: [56, 30], bottom: [-40, -20], roof: 40, under: -16 },
             ...husks.map(([x, z]) => ({ at: [x, z], radii: [36, 36], top: [26, 18], bottom: [-14, -7], roof: 20, under: -10 }))],
@@ -3560,15 +3565,15 @@
             [[0, 0, -30, 60], [0, 10, 400, 140], [0, 20, 730, 40], ...husks.map(([x, z]) => [x, 5, z, 60]), [-200, 30, 300, 60], [250, 60, 380, 90]]),
           stairs: [], blocks: [], girders: [],
           spinners: [
-            { kind: 'ring', at: [-200, 30, 300], axis: [0.15, 0.2, 1], radius: 44, inner: 36, length: 12, speed: 0.04, materials: ['wallRust', 'wallChitin', 'wallRust'] },
-            { kind: 'core', at: [250, 60, 380], axis: [1, 0.1, 0.3], radius: 9, length: 150, speed: 0.03, materials: ['wallChitin', null, 'wallRust'] },
-            ...[80, 230, 530, 680].map((z, k) => ({ kind: 'sphere', at: [-170, k % 2 ? 40 : -30, z], axis: [0.2, 1, 0.1], radius: 14, speed: 0.05, materials: ['wallHive', null, null] })),
+            { kind: 'ring', at: [-200, 30, 300], axis: [0.15, 0.2, 1], radius: 44, inner: 36, length: 12, speed: 0.04, materials: ['wallRust', 'wallTech', 'wallRust'] },
+            { kind: 'core', at: [250, 60, 380], axis: [1, 0.1, 0.3], radius: 9, length: 150, speed: 0.03, materials: ['wallTech', null, 'wallRust'] },
+            ...[80, 230, 530, 680].map((z, k) => ({ kind: 'sphere', at: [-170, k % 2 ? 40 : -30, z], axis: [0.2, 1, 0.1], radius: 14, speed: 0.05, materials: ['wallRust', null, null] })),
             ...[100, 250, 550, 700].map((z, k) => ({ kind: 'cube', at: [170, k % 2 ? -40 : 30, z], axis: [0.3, 1, 0.2], radius: 8, speed: 0.15, materials: ['wallContainer', null, 'wallContainerB'] })),
           ],
           gates: [[-24, 300, 24, 304, 'south', 'chain']],
           extras: {},
           objectives: [
-            { kind: 'destroy', text: 'DESTROY THE WARD BEACONS', targets: husks.map(([x, z]) => ['core', x, 34, z, 'WARD BEACON']) },
+            { kind: 'destroy', text: 'DESTROY THE WARD BEACONS', targets: husks.map(([x, z]) => ['core', x, 27.7, z, 'WARD BEACON']) },
             { kind: 'gate', text: 'FORCE THE DOCK ON THE GREAT WRECK', gate: 0 },
             { kind: 'reach', text: 'SEARCH THE GREAT WRECK\'S HOLD', at: [0, 0, 400], radius: 30 },
             { kind: 'exit', text: 'FLY ON TO THE ARCHIVE' },
@@ -3637,8 +3642,10 @@
         ],
         extras: {},
         objectives: [
-          { kind: 'destroy', text: 'DESTROY THE DATA CORES THAT SEAL THE ARCHIVE', targets: [['core', 196, -5, 228], ['core', -148, 15, 300], ['core', 148, 31, 160]] },
-          { kind: 'exit', text: 'READ THE ARCHIVE IN THE ORACLE' },
+          { kind: 'destroy', text: 'DESTROY THE DATA CORES THAT SEAL THE ARCHIVE', targets: [['core', 196, -5, 228, 'LOW EAST SEAL'], ['core', -148, 15, 300, 'WEST SEAL'], ['core', 148, 31, 160, 'HIGH EAST SEAL']] },
+          { kind: 'reach', text: 'READ THE ARCHIVE IN THE ORACLE', at: [0, 30, 636], radius: 16,
+            done: 'THE ARCHIVE // 312 SILENCED WORLDS // EACH FOUND WHEN THE HERALD HEARD ITS FIRST RADIO VOICES // THE LATEST: EARTH' },
+          { kind: 'exit', text: 'TAKE THE GATE ON THE ORACLE\'S DAIS' },
         ],
         // The catalog under the Oracle's dome: bands of lit worlds turning slowly, and one light apart from them, the latest.
         spinners: [
@@ -3692,7 +3699,7 @@
           [90, 600, 104, 612, SLAG, 18, SKY, 'wallWindows'], [-100, 520, -88, 534, SLAG, 26, SKY, 'wallWindows'], [-110, 236, -98, 248, SLAG, 10, SKY, 'wallWindows'],
           // The bunker and its tunnel, under the west mesa.
           [-168, 294, -108, 318, SLAG, 12, SKY, 'wallBasalt'],
-          [-196, 288, -164, 324, PAD, BASE, 9, 'wallBasalt', 40], [-164, 300, -108, 312, PLATE, BASE, 1, 'wallBasalt', 40],
+          [-196, 288, -164, 324, PAD, BASE, 9, 'wallBasalt', 40], [-164, 296, -108, 316, PLATE, BASE, 5, 'wallBasalt', 40],
           // The gorge vault and the exit hangar, each dug into a block of rock.
           [200, 76, 256, 124, SLAG, 40, SKY, 'wallBasalt'], [204, 80, 252, 120, PAD, BASE, 1, 'wallBasalt', 50], [220, 116, 236, 128, PAD, BASE, 1, 'wallBasalt', 50],
           [-40, 632, 40, 708, SLAG, 26, SKY, 'wallBasalt'], [-32, 640, 32, 700, PAD, BASE, 21, 'wallBasalt', 70], [-32, 632, 32, 640, PAD, BASE, 21, 'wallBasalt', 70],
@@ -3712,7 +3719,7 @@
         blocks: [[-20, 672, -12, 680, COLUMN], [12, 672, 20, 680, COLUMN]],
         shards: [[-96, 104, 3, 24], [44, 212, 3, 30], [-76, 364, 4, 34], [84, 472, 3, 26], [-16, 604, 3, 24], [-232, 204, 3, 24], [-216, 404, 3, 24]],
         girders: [],
-        gates: [[-32, 640, 32, 644, 'south', 'core'], [-116, 300, -112, 312, 'east', 'cracked'], [220, 116, 236, 120, 'north', 'cracked']],
+        gates: [[-32, 640, 32, 644, 'south', 'core'], [-116, 296, -112, 316, 'east', 'cracked'], [220, 116, 236, 120, 'north', 'cracked']],
         extras: {},
         objectives: [
           { kind: 'destroy', text: 'DESTROY THE TUNING CORES OF THE ARRAY', targets: [['core', 156, 52, 205, 'TUNING CORE'], ['core', -180, -3, 308, 'TUNING CORE'], ['core', 25, 8, 480, 'TUNING CORE']] },
@@ -3733,7 +3740,7 @@
       (() => {
         // The choir spires: eleven round spires in a ring round a sunken amphitheatre, rising like organ pipes from the shortest
         // in the south, each with its singing tone at the top. A basalt plain with pools of void, ridged east and west.
-        const spires = Array.from({ length: 11 }, (_, k) => { const a = k / 11 * Math.PI * 2; return [Math.round(Math.sin(a) * 200), Math.round(380 - Math.cos(a) * 200), 52 + k * 6]; });
+        const spires = Array.from({ length: 11 }, (_, k) => { const a = k / 11 * Math.PI * 2; return [Math.round(Math.sin(a) * 200), Math.round(380 - Math.cos(a) * 200), 52 + Math.round((1 - Math.cos(a)) * 30)]; });
         return {
           name: 'VOID-6', title: 'CHOIR SPIRES', music: 'void', music2: 'spire', top: 140, roundBlocks: true, start: [0, 0, -24], yaw: 0, exit: [0, -1, 722, true],
           since: 'episodes', canyon: true, tint: [1.0, 0.92, 1.08],
@@ -3754,6 +3761,7 @@
             // The cantor's vault, dug into a block of rock in the north-east.
             [176, 660, 236, 712, SLAG, 26, SKY, 'wallBasalt'], [182, 666, 230, 706, PAD, BASE, 6, 'wallBasalt', 26], [200, 660, 212, 666, PAD, BASE, 3, 'wallBasalt', 26],
             oval(0, 722, 24, 22, PAD, BASE + 1, undefined, { raise: true, side: 'wallVoid' }),
+            oval(-30, 722, 5, 5, VOID, BASE + 30, undefined, { raise: true, side: 'wallVoid' }), oval(30, 722, 5, 5, VOID, BASE + 30, undefined, { raise: true, side: 'wallVoid' }),
           ],
           terrain: {
             side: 'wallBasalt', hills: 10, terrace: 6, terraceSoft: 0.3, boulders: 90, small: 20, water: -6, liquid: 'floorVoid',
@@ -3873,7 +3881,7 @@
       'MAGMA GORGE': [[0.5, 0.3, 0.8], [0.45, 0.14, 0.07], [0.92, 0.46, 0.2], 0.3],
       'TIDE DRUM': [[0.2, 0.9, 0.3], [0.18, 0.33, 0.36], [0.5, 0.7, 0.7], 0.1],
       'BROOD ARK': [[-0.3, -0.5, 0.8], [0.18, 0.33, 0.36], [0.5, 0.7, 0.7], 0.5],
-      'ORE BELT': [[0.35, -0.3, 0.88], [0.5, 0.3, 0.18], [0.85, 0.62, 0.4], 0.45],
+      'ORE BELT': [[0.35, -0.3, 0.88], [0.5, 0.3, 0.18], [0.85, 0.62, 0.4], 0.28],
       'SUNLESS SEA': [[0.2, 0.9, 0.3], [0.24, 0.12, 0.36], [0.6, 0.4, 0.85], 0.1],
       'REFINERY TERRACES': [[-0.5, 0.35, -0.8], [0.5, 0.3, 0.18], [0.85, 0.62, 0.4], 0.2],
       'SHEPHERD MOON': [[-0.35, 0.42, 0.84], [0.5, 0.3, 0.18], [0.85, 0.62, 0.4], 0.36],
@@ -4546,7 +4554,9 @@
       if (!done) return;
       objectiveIndex++;
       const next = objectives[objectiveIndex];
-      notice(next ? `OBJECTIVE COMPLETE // NEXT: ${next.text}` : 'ALL OBJECTIVES COMPLETE', 4);
+      // A goal with a `done` line tells the story at that moment instead of the plain completion notice.
+      if (goal.done) notice(goal.done, 7);
+      else notice(next ? `OBJECTIVE COMPLETE // NEXT: ${next.text}` : 'ALL OBJECTIVES COMPLETE', 4);
       playPickup('weapon');
     }
     function spawnLevel(def) {
@@ -6816,6 +6826,49 @@
         place(prism(8, 0.35, 0.1), { size: [1, 1, 0.45], at: [0, -1.3, 0], turn: [0, Math.PI / 2, 0] });
       }),
     });
+    Object.assign(TARGET_LOOKS, {
+      // A generator: a fat drum wound with glowing coils, on a bed, cables running off it.
+      generator: lookOf([0.5, 0.85, 1.3], ({ place, pair }) => {
+        place(box, { size: [1.6, 0.3, 1.1], at: [0, -1.3, 0] });
+        place(prism(12, 1.0, 1.0), { size: [1, 1, 1.2], at: [0, -0.05, 0], turn: ACROSS });
+        for (const x of [-0.7, 0, 0.7]) place(prism(12, 1.06, 1.06), { size: [1, 1, 0.12], at: [x, -0.05, 0], turn: ACROSS, lit: true });
+        pair(prism(10, 0.45, 0.45), { size: [1, 1, 0.2], at: [1.35, -0.05, 0], turn: ACROSS });
+        place(box, { size: [0.08, 0.6, 0.08], at: [0, 1.3, 0] });
+      }),
+      // A drill rig: a lattice derrick over a turning drill string, its bit glowing hot where it bites.
+      drill: lookOf([1.0, 0.6, 0.25], ({ place, pair }) => {
+        place(box, { size: [1.4, 0.2, 1.4], at: [0, -1.4, 0] });
+        for (const [x, z] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) place(box, { size: [0.08, 1.6, 0.08], at: [x * 0.9 * 0.7, 0.2, z * 0.9 * 0.7], turn: [0, 0, x * 0.12] });
+        for (const y of [-0.5, 0.6]) place(box, { size: [0.7, 0.05, 0.7], at: [0, y, 0] });
+        place(prism(6, 0.18, 0.18), { size: [1, 1, 1.7], at: [0, 0.2, 0], turn: UPRIGHT });
+        place(box, { size: [0.35, 0.2, 0.35], at: [0, 1.8, 0] });
+        place(prism(8, 0.35, 0.02), { size: [1, 1, 0.5], at: [0, -1.65, 0], turn: [0, Math.PI / 2, 0], lit: true });
+      }, true),
+      // A stabilizer: a glowing core inside two crossed gimbal rings on a pylon.
+      gyro: lookOf([0.6, 0.85, 1.3], ({ place }) => {
+        place(prism(8, 0.5, 0.3), { size: [1, 1, 0.5], at: [0, -1.1, 0], turn: UPRIGHT });
+        place(prism(18, 1.2, 1.2), { size: [1, 1, 0.08], at: [0, 0.4, 0], turn: [0, 0, 0] });
+        place(prism(18, 1.2, 1.2), { size: [1, 1, 0.08], at: [0, 0.4, 0], turn: [Math.PI / 2, 0, 0] });
+        place(prism(18, 1.3, 1.3), { size: [1, 1, 0.06], at: [0, 0.4, 0], turn: UPRIGHT });
+        place(ball, { size: [0.55, 0.55, 0.55], at: [0, 0.4, 0], lit: true });
+      }),
+      // A cracking column: a tall banded tower with a ladder of glowing sight glasses and a flare pipe at its head.
+      cracker: lookOf([1.0, 0.55, 0.15], ({ place }) => {
+        place(prism(12, 0.95, 0.95), { size: [1, 1, 1.55], at: [0, 0, 0], turn: UPRIGHT });
+        for (const y of [-1.1, -0.35, 0.4, 1.15]) place(prism(12, 1.05, 1.05), { size: [1, 1, 0.08], at: [0, y, 0], turn: UPRIGHT });
+        for (const y of [-0.7, 0.05, 0.8]) place(box, { size: [0.22, 0.14, 0.05], at: [0, y, 0.97], lit: true });
+        place(prism(6, 0.18, 0.12), { size: [1, 1, 0.6], at: [0.6, 1.9, 0], turn: UPRIGHT });
+        place(ball, { size: [1.0, 0.4, 1.0], at: [0, 1.55, 0] });
+      }, true),
+      // A tether clamp: two heavy jaws closed on a cable, with glowing hydraulic rams.
+      clamp: lookOf([1.0, 0.7, 0.3], ({ place, pair }) => {
+        place(prism(8, 0.35, 0.35), { size: [1, 1, 1.7], at: [0, 0, 0], turn: UPRIGHT });
+        pair(box, { size: [0.5, 0.9, 0.9], at: [0.75, 0, 0] });
+        pair(prism(8, 0.18, 0.18), { size: [1, 1, 0.5], at: [1.5, 0.45, 0], turn: ACROSS, lit: true });
+        pair(prism(8, 0.18, 0.18), { size: [1, 1, 0.5], at: [1.5, -0.45, 0], turn: ACROSS, lit: true });
+        place(box, { size: [1.6, 0.15, 0.5], at: [0, -1.1, 0] });
+      }),
+    });
     // Variants: the same build in another trim and glow.
     const variant = (base, glow, material, burn = false) => ({ ...TARGET_LOOKS[base], glow, material, burn });
     Object.assign(TARGET_LOOKS, {
@@ -6824,15 +6877,31 @@
       listening: variant('mast', [0.5, 0.9, 1.1], 'wallTech'),
       desal: variant('scrubber', [0.35, 0.75, 1.3], 'wallTech'),
       turretRelay: variant('mast', [1.0, 0.8, 0.3], 'wallTech'),
+      beacon: variant('mast', [1.2, 0.3, 0.25], 'wallTech'),
+      seed: variant('sample', [0.6, 1.2, 0.4], 'wallTech'),
+      lifeSupport: variant('scrubber', [0.5, 1.2, 0.5], 'wallTech'),
+      regulator: variant('valve', [0.6, 0.9, 1.2], 'wallTech'),
+      governor: variant('console', [1.0, 0.75, 0.35], 'wallTech'),
+      feeder: variant('pump', [0.8, 0.5, 1.3], 'wallTech'),
+      burner: variant('emitter', [1.0, 0.5, 0.15], 'wallRust', true),
+      shieldEmitter: variant('emitter', [0.4, 0.7, 1.4], 'wallTech'),
     });
     // Machines are built of the station's own plate; the racked fighter keeps the swarm's hull.
     for (const [name, material] of Object.entries({ vat: 'wallRust', pump: 'wallRust', mast: 'wallTech', console: 'wallTech', emitter: 'wallTech', scrubber: 'wallPipes',
-      pod: 'wallTech', sample: 'wallTech', crucible: 'wallRust', mould: 'wallRust', valve: 'wallRust', charge: 'wallTech', hoist: 'wallRust' })) TARGET_LOOKS[name].material = material;
+      pod: 'wallTech', sample: 'wallTech', crucible: 'wallRust', mould: 'wallRust', valve: 'wallRust', charge: 'wallTech', hoist: 'wallRust',
+      generator: 'wallTech', drill: 'wallRust', gyro: 'wallTech', cracker: 'wallRust', clamp: 'wallTech' })) TARGET_LOOKS[name].material ??= material;
     const LOOK_OF_TITLE = { 'FUEL VAT': 'vat', 'FUEL PUMP': 'pump', 'RACKED FIGHTER': 'racked', 'MAST RELAY': 'mast', 'RELAY CONTROL': 'console',
       'LAUNCH CONTROL': 'console', 'UPLINK EMITTER': 'emitter', 'SCRUBBER CORE': 'scrubber',
       'SLEEPING FIGHTER': 'sleeping', 'CRYO POD': 'pod', 'COOLANT PUMP': 'coolant', 'CORE SAMPLE': 'sample', 'SMELTER CORE': 'crucible', 'CASTING MOULD': 'mould',
       'SMELTER VALVE': 'valve', 'MAGMA PUMP': 'pump', 'LISTENING MAST': 'listening', 'KEEL CHARGE': 'charge', 'LOADING CRANE': 'hoist', 'HARBOR CRANE': 'hoist',
-      'DESALINATION CORE': 'desal' };
+      'DESALINATION CORE': 'desal',
+      // Episode II and III machines. The Choir's own song and signal tech (tuning and echo cores, the choir tone, void
+      // lanterns, veil buoys, the focus lens and core locks) stays crystal.
+      'SPINDLE DYNAMO': 'generator', 'GENERATOR': 'generator', 'POWER CORE': 'generator', 'SIGNAL RELAY': 'listening', 'PRESS CONTROLLER': 'console', 'CONTROL CORE': 'console',
+      'GOVERNOR': 'governor', 'DRILL RIG': 'drill', 'STABILIZER': 'gyro', 'SMELTING CORE': 'crucible', 'CRUCIBLE CORE': 'crucible', 'SEED TOWER': 'seed',
+      'RIM BEACON': 'beacon', 'WARD BEACON': 'beacon', 'REGULATOR': 'regulator', 'WELLHEAD': 'regulator', 'LIFE SUPPORT': 'lifeSupport',
+      'CRACKING COLUMN': 'cracker', 'PUMP CORE': 'pump', 'PUMP': 'pump', 'CORE FEEDER': 'feeder', 'FLARE BURNER': 'burner', 'CAR GRIP': 'clamp',
+      'TETHER CLAMP': 'clamp', 'SHIELD EMITTER': 'shieldEmitter', 'BEAM EMITTER': 'emitter' };
     const LOOK_OF_TYPE = { relay: 'turretRelay' };
     design('egg', ({ place, pair }) => {
       place(ball, { size: [1.25, 1.55, 1.2], at: [0, 0.35, 0] });
@@ -7638,6 +7707,7 @@
       ensureMaterials(spinners.flatMap(spinner => spinner.materials));
       ensureMaterials(Object.values(TARGET_LOOKS).map(look => look.material).filter(Boolean));
       ship.position = level.start.slice(); ship.yaw = level.yaw; ship.pitch = 0; ship.roll = 0; ship.speed = 8; ship.strafe = [0, 0];
+      hudTimer = 0; // the HUD shows the new sector's objective and counts on the first frame, not the last sector's
       health = startHealth; levelWeapon = weaponLevel; levelMissiles = missileAmmo; levelLauncher = launcherLevel; rails.length = 0; railCount = 0; shield = SHIELD_MAX; shieldDelay = 0;
       missiles.length = 0; enemyMissiles.length = 0; lockTarget = null; lockTimer = 0;
       barrelsDestroyed = 0; kills = 0; destroyed = false; finished = false; sludgeCooldown = 0; paused = menuOpen || !!screenOpen; mouseFiring = false;
@@ -7855,13 +7925,13 @@
       'REFINERY TERRACES': 'The wells are capped and the pipeline has run dry. The crude that got through before they went out is being cracked into fuel on Sigma-4\'s refinery terraces, cut into a hill above the dunes, and it is all the fuel Omega has left coming. Blow the cracking columns on the terraces, then climb to the flare stack and put out its burners.',
       'SHEPHERD MOON': 'The terraces are burning, but their last fuel already went up the line to Sigma-4\'s shepherd moon, a grey rock two kilometres across that ships it on to Omega. Its depot sits on open ground under a black sky. Find the tanker that went down, silence the comms mesa, break into the dome and kill its power cores, then get out through the extraction gate.',
       'ORE BELT': 'The shepherd moon is dark and Omega has no more fuel coming, so it is digging in. Between the moon and the crown world runs an ore belt, asteroids bored by drill rigs and strung together by conveyor trusses round a refinery, and its plate is going to armour Omega\'s high station against you. Destroy the drill rigs, force the refinery door and wreck its smelter cores, then hunt down the ore tug before it delivers the last load.',
-      'HIGH STATION': 'The ore tug never arrived, and Omega\'s high station is only half armoured: a fortress of hull and truss hanging in open space over the crown world, holding the last fuel the shepherd moon shipped. Strip its hull turrets, force the docking port, kill the control cores in its hub, then dive under it and burn the stabilizers round its reactor.',
+      'HIGH STATION': 'The ore tug never arrived, and Omega\'s high station is only half armoured: a fortress of hull and truss hanging in open space over the crown world, holding the last fuel the shepherd moon shipped. Strip its hull turrets, force the docking port, shut down its life support, kill the control cores in its hub, take the command bridge, then dive under it and burn the stabilizers round its reactor.',
       'RIFT LANDS': 'The high station is falling out of orbit. Below it, the only way to the crown world\'s core runs through the rift lands: a plateau split by a rift a hundred units deep. Destroy the beacons on its rims, dive into the rift, wreck the generators in the bunker on its floor, silence the guns on the east mesa, and follow the rift to its end.',
       'CROWN CITY': 'The rift ends under the walls of the crown city, the one place in Nadir the Choir built to dwell in rather than to make war from. Three emitter towers stand over it and hold the shield that covers the core. Break the emitters on the tower tops, force the citadel gate, kill the core locks inside, and take the shaft down.',
       'CORE BREACH': 'The crown city\'s shield is down and the shaft to the core is open. The core powers Omega\'s defenses: destroy the feeders round it, then the four pylons that shield the Omega Sentinel, then the Sentinel itself. Bring it down; this should end the song.',
       'DUST VEIL': 'The Sentinel is dead, but the song did not stop: Omega was never the source. The signal comes from inside the Void, a shroud of dark dust around Nadir\'s inner worlds, and the Requiem is going in. The shroud\'s edge is strung with veil buoys that would see it coming. Destroy the buoys, kill the minelayers seeding the passage, and lead the Requiem through.',
       'ABYSS SHAFT': 'The Requiem is through the veil, deeper in than any survey has seen, and now you can see where the shroud came from: Void-1 has been mined hollow to its core, and its rock ground into the dust that hides Nadir\'s inner worlds. The signal runs straight down the shaft at its centre. Follow it down, destroying the relays that carry it, then ride the updraft back out.',
-      'SUNLESS SEA': 'The shaft\'s updraft threw you out sideways, into the cavern where the mining stopped: a sea that has never seen a sun, under a roof hung with stalactites. The signal you followed ends at a drowned shrine on its island, where echo cores pass the song up the shaft and out through the shroud. Douse the void lanterns on its shores, cross the water to the shrine, and silence the echo cores inside.',
+      'SUNLESS SEA': 'The shaft\'s updraft threw you out sideways, into the cavern where the mining stopped: a sea that has never seen a sun, under a roof hung with stalactites. The signal you followed ends at a drowned shrine on its island, where echo cores pass the song up the shaft and out through the shroud. Douse the void lanterns on the near shore, cross the water, douse those on the far shore, then open the shrine and silence the echo cores inside.',
       'CRYSTAL CANYON': 'You crossed the sunless sea and came up deeper inside the Void than anyone has been. At the end of a crystal canyon, behind a dam of Void plating, a Void Carrier is docked, one of the ships that carried the swarm to Earth. Break the dam and take the carrier apart.',
       'SUNCATCHER': 'The carrier that burned Earth is wreckage. The shroud lets no light out because the Choir catch it: Void-2B is a moon tiled with mirrors, turned to Nadir, beaming stolen sunlight to the foundries deeper in. Shatter the focus lenses across its face, then destroy the emitter in the beam tower, and the foundries go dark.',
       'DRIFT FOUNDRY': 'The suncatcher is dark, and the foundry its beam was feeding is down to reserve power. Void-3\'s drift foundry does not make fighters: its assembly yard holds a berth kilometres long, and the berth is empty. Whatever was built here has already left. Fight through the foundry from the intake bay to the crucible, wreck it so it never builds another, and pick up the trail.',
@@ -9329,7 +9399,7 @@
           enemy.owner ||= enemies.find(e => e.type === 'herald');
           if (!enemy.owner || enemy.owner.hp <= 0) return bob(enemy, 1.3, 1.1);
           const slot = enemies.filter(e => e.type === 'node').indexOf(enemy), a = time * 0.7 + slot * Math.PI * 2 / 3;
-          enemy.position = add(enemy.owner.position, [Math.cos(a) * 17, Math.sin(a * 2) * 4, Math.sin(a) * 17]);
+          enemy.position = add(enemy.owner.position, [Math.cos(a) * 24, Math.sin(a * 2) * 4, Math.sin(a) * 24]);
           return;
         }
         default: return bob(enemy, 1.3, 1.1);
@@ -10294,7 +10364,7 @@
         debugFlags, touch, keys, shipFits, lineOfSight, objectiveSpot, sealed, zoneAt, get objectives() { return objectives; }, get levelIndex() { return levelIndex; },
         get grid() { return { x0: GRID_X0, z0: GRID_Z0, w: GRID_W, d: GRID_D, cell: CELL, top: WALL_TOP, spaceFloor }; }, get shield() { return shield; },
         get destroyed() { return destroyed; }, get warping() { return warpTimer > 0; }, get sectorTime() { return sectorTime; }, get kills() { return kills; },
-        get weaponLevel() { return weaponLevel; }, get notice() { return statusText.textContent; },
+        get weaponLevel() { return weaponLevel; }, get missileAmmo() { return missileAmmo; }, get notice() { return statusText.textContent; },
         fly() { menuOpen = false; menu.classList.remove('show'); intro.classList.remove('show'); briefing.classList.remove('show'); upgradesScreen.classList.remove('show'); screenOpen = null; started = true; paused = false; } };
     let perfSums = [0, 0, 0, 0], perfFrames = 0, perfStart = 0;
     const perfParts = { combat: 0, reveal: 0, music: 0 }, slowFactor = Number(new URLSearchParams(location.search).get('slow')) || 1;
