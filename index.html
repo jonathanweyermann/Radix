@@ -309,6 +309,8 @@
     const keys = new Set();
     const ship = { position: [0, -4, 0], yaw: 0, pitch: 0, roll: 0, speed: 8, strafe: [0, 0] };
     let shipVelocity = [0, 0, 0];
+    // ?debug test switches: hold stops the frame loop advancing the game (a test steps it instead), god turns off damage.
+    const debugFlags = { hold: false, god: false };
     const STRAFE_SPEED = 14;
     let width = 0, height = 0, dpr = 1, lastTime = performance.now(), time = 0, paused = false, impactTimer = 0, hitTimer = 0, muzzleTimer = 0, fireCooldown = 0, lastFired = -9, wallCooldown = 0, health = 100, barrelsDestroyed = 0, kills = 0, destroyed = false, mouseFiring = false, audioContext = null, musicBus = null, musicOn = true, musicStep = 0, musicNextTime = 0;
     let musicIn = null, reverbIn = null, delayIn = null, driveIn = null, pumpIn = null, noiseBuffer = null, musicIntensity = 0;
@@ -483,7 +485,7 @@
           // The antenna field and the uplink dish.
           oval(0, 552, 118, 48, GRATE, 1, undefined, { power: 4 }),
           oval(-92, 536, 14, 18, GRATE, 9, undefined, { raise: true, side: 'wallTech' }), oval(96, 576, 16, 18, GRATE, 17, undefined, { raise: true, side: 'wallTech' }),
-          oval(0, 660, 50, 40, PAD, 9, undefined, { dish: 8 }),
+          oval(0, 660, 50, 40, PAD, 9, undefined, { dish: 12 }),
         ],
         stairs: [[-12, 456, 12, 504, PLATE, BASE, 1, 'z', 12], [-16, 600, 16, 620, PAD, 1, 9, 'z', 14]],
         blocks: [
@@ -506,10 +508,11 @@
         ],
         extras: { enemies: [['drone', 0, BASE + 8, 150]] },
         objectives: [
-          { kind: 'destroy', text: 'SHUT DOWN THE RELAY CONTROL', targets: [['core', 0, 1, 140, 'RELAY CONTROL']] },
-          { kind: 'destroy', text: 'DESTROY THE MAST RELAYS', targets: [['core', -110, 15, 520, 'MAST RELAY'], ['core', 96, 23, 576, 'MAST RELAY'], ['core', 0, 7, 520, 'MAST RELAY']] },
+          // Machine targets stand on their floors: each look's base sits 1.7 design units below its centre.
+          { kind: 'destroy', text: 'SHUT DOWN THE RELAY CONTROL', targets: [['core', 0, -3.3, 140, 'RELAY CONTROL']] },
+          { kind: 'destroy', text: 'DESTROY THE MAST RELAYS', targets: [['core', -92, 10.7, 536, 'MAST RELAY', 2.2], ['core', 96, 18.7, 576, 'MAST RELAY', -1.2], ['core', 0, 2.7, 520, 'MAST RELAY', Math.PI]] },
           { kind: 'gate', text: 'SHOOT THE LOCKS ON THE DISH STAIR', gate: 6 },
-          { kind: 'destroy', text: 'DESTROY THE UPLINK EMITTER', targets: [['core', 0, 15, 648, 'UPLINK EMITTER']] },
+          { kind: 'destroy', text: 'DESTROY THE UPLINK EMITTER', targets: [['core', 0, -1.3, 660, 'UPLINK EMITTER']] },
           { kind: 'exit', text: 'REACH THE GATE ON THE DISH' },
         ],
         lasers: [[-24, 344, 24, 344, -10, 6, 4, 0], [160, 400, 176, 400, -10.4, 5, 4, 1]],
@@ -560,6 +563,8 @@
           // The refinery hall, under a barrel roof.
           oval(0, 280, 72, 40, GRATE, BASE, 23, { power: 8, dome: 22, arch: 'x' }),
           oval(-40, 280, 16, 24, SLUDGE, BASE, undefined, { raise: true }), oval(40, 280, 16, 24, SLUDGE, BASE, undefined, { raise: true }),
+          // Rusted rims round the two vats.
+          oval(-40, 280, 18, 26, PLATE, -7, undefined, { raise: true, hole: 0.86, side: 'wallRust' }), oval(40, 280, 18, 26, PLATE, -7, undefined, { raise: true, hole: 0.86, side: 'wallRust' }),
           // The outflow pool: a clarifier with a walkway round its rim and a pad on its north side.
           oval(0, 440, 48, 40, SLUDGE),
           oval(0, 440, 50, 42, PLATE, -5, undefined, { raise: true, hole: 0.82, side: 'wallRust' }), oval(0, 488, 60, 34, PAD, -3, undefined, { raise: true, side: 'wallRust' }),
@@ -595,12 +600,20 @@
         lasers: [[-8, 212, 8, 212, -10, 3, 3.4, 0], [176, 460, 192, 460, -10.4, 5, 4, 0.5]],
         // Air intakes: fans turning round the scrubber towers, drawing in Delta-9's poison air.
         spinners: [
-          { kind: 'ring', at: [-56, 34, 552], axis: [0, 1, 0], radius: 13, inner: 9, length: 3, speed: 0.8, materials: ['wallPipes', 'reactor', 'crown'] },
-          { kind: 'ring', at: [56, 34, 564], axis: [0, 1, 0], radius: 13, inner: 9, length: 3, speed: -0.8, materials: ['wallPipes', 'reactor', 'crown'] },
+          { kind: 'ring', at: [-56, 14, 552], axis: [0, 1, 0], radius: 13, inner: 9, length: 3, speed: 0.8, materials: ['wallPipes', 'reactor', 'crown'] },
+          { kind: 'ring', at: [56, 32, 564], axis: [0, 1, 0], radius: 13, inner: 9, length: 3, speed: -0.8, materials: ['wallPipes', 'reactor', 'crown'] },
+          // The filter room's plumbing: risers in two corners and headers along the long walls.
+          { kind: 'core', at: [170, 4, 102], axis: [0, 1, 0], radius: 2, inner: 0, length: 30, speed: 0, materials: ['wallPipes', null, 'crown'] },
+          { kind: 'core', at: [118, 4, 186], axis: [0, 1, 0], radius: 2, inner: 0, length: 30, speed: 0, materials: ['wallPipes', null, 'crown'] },
+          { kind: 'core', at: [144, 14, 99], axis: [1, 0, 0], radius: 1.5, inner: 0, length: 56, speed: 0, materials: ['wallPipes', null, 'crown'] },
+          { kind: 'core', at: [144, 14, 189], axis: [1, 0, 0], radius: 1.5, inner: 0, length: 40, speed: 0, materials: ['wallPipes', null, 'crown'] },
+          // The flare chimney: rusted ribs up the stack and a lip glowing with the heat of the flare.
+          ...[16, 30, 44, 58].map(y => ({ kind: 'ring', at: [0, y, 644], axis: [0, 1, 0], radius: 23.8, inner: 21.8, length: 2, speed: 0, materials: ['wallRust', 'wallRust', 'crown'] })),
+          { kind: 'ring', at: [0, 70, 644], axis: [0, 1, 0], radius: 23.8, inner: 21.5, length: 2.5, speed: 0, materials: ['reactor', 'reactor', 'reactor'] },
         ],
         objectives: [
-          { kind: 'destroy', text: 'BURN THE FUEL VATS IN THE REFINERY HALL', targets: [['core', -40, -5, 280, 'FUEL VAT'], ['core', 40, -5, 280, 'FUEL VAT']] },
-          { kind: 'destroy', text: 'DESTROY THE SCRUBBER CORES', targets: [['core', -80, 13, 560, 'SCRUBBER CORE'], ['core', 88, 25, 572, 'SCRUBBER CORE']] },
+          { kind: 'destroy', text: 'BURN THE FUEL VATS IN THE REFINERY HALL', targets: [['core', -40, -9.3, 280, 'FUEL VAT'], ['core', 40, -9.3, 280, 'FUEL VAT']] },
+          { kind: 'destroy', text: 'DESTROY THE SCRUBBER CORES', targets: [['core', -80, 8.7, 560, 'SCRUBBER CORE', 0.3], ['core', 88, 20.7, 572, 'SCRUBBER CORE', -0.3]] },
           { kind: 'exit', text: 'RIDE THE FLARE STACK UP TO THE GATE' },
         ],
         zones: [
@@ -658,8 +671,12 @@
             ]),
             // Radar masts either side of the bunker.
             [-84, 588, -80, 592, PLATE, 78, SKY, 'wallTech'], [80, 588, 84, 592, PLATE, 72, SKY, 'wallTech'],
+            // The launch gantry over the gate.
+            [-32, 696, -28, 704, PLATE, 64, SKY, 'wallTech'], [28, 696, 32, 704, PLATE, 64, SKY, 'wallTech'],
             // The launch bunker: a concrete block with a roofed hall inside and one door to the south.
             [-48, 556, 48, 644, PLATE, 46, SKY, 'wallTech'], [-40, 564, 40, 636, PAD, 20, 38, null, 46], [-10, 556, 10, 564, PAD, 20, 34, null, 46],
+            // Console banks down both walls and across the back, round the launch control.
+            [-40, 584, -34, 628, PLATE, 25, 38, 'wallComputer', 46], [34, 584, 40, 628, PLATE, 25, 38, 'wallComputer', 46], [-20, 630, 20, 636, PLATE, 25, 38, 'wallComputer', 46],
             // The ammunition shed, its door bricked up.
             [180, 560, 220, 604, PLATE, 34, SKY, 'wallTech'], [184, 564, 216, 600, PAD, 20, 30, null, 34], [196, 560, 204, 564, PAD, 20, 28, null, 34],
             oval(0, 700, 24, 20, PAD, 21, undefined, { raise: true, side: 'wallTech' }),
@@ -668,7 +685,7 @@
           terrain: {
             side: 'wallRust', hills: 8, small: 14, boulders: 90, water: -6, liquid: 'floorSludge',
             craters: [[-100, 80, 26, 6], [100, 40, 22, 5], [-10, 470, 24, 6]],
-            lakes: [[-70, 420, 46, 14], [175, 110, 38, 12], [-190, 700, 34, 12], [120, 520, 24, 11], [-200, 40, 30, 12]],
+            lakes: [[-70, 420, 46, 14], [175, 110, 38, 12], [-190, 700, 34, 12], [120, 520, 24, 11], [-200, 40, 30, 12], [-20, 515, 16, 8], [-190, 455, 20, 10]],
             ridges: [[240, -48, 752, 24, 34], [-242, -48, 752, 22, 28]],
             clear: [[-30, -48, 30, 10], [-160, 136, -112, 164], [-160, 316, -112, 344], [-160, 496, -112, 524], [24, 216, 200, 452], [-84, 198, 4, 300],
               [-60, 548, 60, 652], [172, 548, 228, 612], [-34, 676, 34, 724], [-92, 580, 92, 610]],
@@ -676,17 +693,28 @@
           stairs: [], blocks: [],
           girders: [
             [-152, 30, 60, -148, 34, 640], [-148, 30, 598, -48, 34, 602],
-            ...pumps.map(z => [-148, 30, z - 1.5, -140, 32, z + 1.5]),
             ...silos.map(([x, z]) => [x + 6, 56, z - 1.5, x + 24, 59, z + 1.5]),
+            // Launch rails up each silo wall beside the racked fighter, and the gantry beam over the launch gate.
+            ...silos.flatMap(([x, z]) => [[x + 14, -50, z - 3.5, x + 15, 20, z - 2.5], [x + 14, -50, z + 2.5, x + 15, 20, z + 3.5]]),
+            [-32, 58, 698, 32, 61, 702],
             [-88, 60, 589, -76, 62, 591], [76, 56, 589, 88, 58, 591],
           ],
           gates: [[-10, 556, 10, 560, 'south', 'chain'], [196, 560, 204, 564, 'south', 'cracked']],
+          // The fuel line itself, lying on the stilted truss and turning east to the bunker, with a drop and a branch to each pump.
+          spinners: [
+            { kind: 'core', at: [-150, 36, 350], axis: [0, 0, 1], radius: 2, inner: 0, length: 580, speed: 0, materials: ['wallPipes', null, 'crown'] },
+            { kind: 'core', at: [-98, 36, 600], axis: [1, 0, 0], radius: 2, inner: 0, length: 100, speed: 0, materials: ['wallPipes', null, 'crown'] },
+            ...pumps.flatMap(z => [
+              { kind: 'core', at: [-147.2, 31, z], axis: [0, 1, 0], radius: 1, inner: 0, length: 9, speed: 0, materials: ['wallPipes', null, 'crown'] },
+              { kind: 'core', at: [-139.6, 26.8, z], axis: [1, 0, 0], radius: 1, inner: 0, length: 15.2, speed: 0, materials: ['wallPipes', null, 'crown'] },
+            ]),
+          ],
           extras: {},
           objectives: [
-            { kind: 'destroy', text: 'DESTROY THE FUEL PUMPS', targets: pumps.map(z => ['core', -130, 32, z, 'FUEL PUMP']) },
-            { kind: 'destroy', text: 'DIVE INTO THE SILOS AND KILL THE RACKED FIGHTERS', targets: silos.map(([x, z]) => ['core', x + 8, -45, z, 'RACKED FIGHTER']) },
+            { kind: 'destroy', text: 'DESTROY THE FUEL PUMPS', targets: pumps.map(z => ['core', -130, 27.7, z, 'FUEL PUMP']) },
+            { kind: 'destroy', text: 'DIVE INTO THE SILOS AND KILL THE RACKED FIGHTERS', targets: silos.map(([x, z]) => ['core', x + 10, -48.3, z, 'RACKED FIGHTER', Math.PI / 2]) },
             { kind: 'gate', text: 'SHOOT THE LOCKS ON THE LAUNCH BUNKER', gate: 0 },
-            { kind: 'destroy', text: 'DESTROY THE LAUNCH CONTROL CORE', targets: [['core', 0, 27, 612, 'LAUNCH CONTROL']] },
+            { kind: 'destroy', text: 'DESTROY THE LAUNCH CONTROL CORE', targets: [['core', 0, 21.7, 620, 'LAUNCH CONTROL']] },
             { kind: 'exit', text: 'REACH THE LAUNCH GATE' },
           ],
           zones: [
@@ -4443,7 +4471,8 @@
     const toughness = (type) => ENEMY_TYPES[type].boss || ['pylon', 'node', 'relay', 'egg', 'core', 'mite', 'mine'].includes(type) ? 1 : 1 + 1.35 * levelIndex / (LEVELS.length - 1);
     // The sentinel cannot be hurt while any of its shield pylons stand.
     const pylonsLeft = () => enemies.filter(e => e.type === 'pylon' && e.hp > 0).length;
-    const barrels = [], enemies = [], pickups = [];
+    // wrecks: fuel vats and pumps left burning where they were destroyed.
+    const barrels = [], enemies = [], pickups = [], wrecks = [];
     // The chance each type carries a shield, and, for those that fly, how much room they need when moving into its cover.
     const SHIELD_BEARERS = { warden: 0.6, sentry: 0.45, striker: 0.4, lancer: 0.4, drone: 0.2 };
     const COVER_PADS = { warden: 4, striker: 2.6, drone: 2.2 };
@@ -4499,8 +4528,12 @@
       for (const [x, z] of def.extras?.barrels || []) addBarrel(x, z);
       for (const [type, x, y, z] of def.extras?.enemies || []) addEnemy(type, x, y, z);
       objectiveIndex = 0;
-      objectives = (def.objectives || []).map(goal => ({ ...goal, enemies: (goal.targets || []).map(([type, x, y, z, title]) => Object.assign(addEnemy(type, x, y, z), { title, target: true })) }));
+      objectives = (def.objectives || []).map(goal => ({ ...goal, enemies: (goal.targets || []).map(([type, x, y, z, title, lookYaw = 0]) =>
+        Object.assign(addEnemy(type, x, y, z), { title, target: true, look: type === 'core' ? LOOK_OF_TITLE[title] : undefined, lookYaw })) }));
+      wrecks.length = 0;
       const fromStart = (x, z) => Math.hypot(x - def.start[0], z - def.start[2]);
+      // Barrels keep clear of objective targets, so the target is never hidden behind a stack of drums.
+      const nearTarget = (x, z) => objectives.some(goal => goal.enemies.some(e => Math.hypot(x - e.position[0], z - e.position[2]) < 12));
       // Open worlds (moons, cylinders, canyons, open space and the sunless sea) give the ship room to outfly anything, so
       // their open-air zones hold three times the hostiles, spaced apart in three dimensions. Rooms and buildings inside
       // them keep their counts: a zone is open air when it has an altitude band, or, away from space, when most of it has
@@ -4529,7 +4562,7 @@
         for (let attempt = 0; attempt < 600 && placed < (zone.barrels || 0); attempt++) {
           let x = range(x0 + 3, x1 - 3), z = range(z0 + 3, z1 - 3);
           if (last && random() < 0.55) { const angle = range(0, Math.PI * 2), gap = range(3.7, 5); x = last[0] + Math.cos(angle) * gap; z = last[1] + Math.sin(angle) * gap; }
-          if (!walkable(x, z, 2.6) || !flatAt(x, z, 2.6) || !freeAt(x, floorAt(x, z) + 3, z) || hazardAt(x, z) || fromStart(x, z) < 18 ||
+          if (!walkable(x, z, 2.6) || !flatAt(x, z, 2.6) || !freeAt(x, floorAt(x, z) + 3, z) || hazardAt(x, z) || fromStart(x, z) < 18 || nearTarget(x, z) ||
             barrels.some(b => (b.position[0] - x) ** 2 + (b.position[2] - z) ** 2 < 3.7 * 3.7)) continue;
           addBarrel(x, z); last = [x, z]; placed++;
         }
@@ -6623,6 +6656,84 @@
       for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2; place(ball, { size: [0.42, 0.42, 0.42], at: [Math.cos(a) * 1.6, -1.2, Math.sin(a) * 1.4 - 2.0], lit: true }); }
       place(ball, { size: [0.32, 0.25, 0.25], at: [0, 0.75, 3.9], lit: true });
     });
+    // Objective targets that are machines rather than data cores: a target's title picks its look, built from the same
+    // kit as the hulls, standing on its base (model y = -1.6) with its working parts glowing. Unlisted titles stay crystals.
+    // `glow` colours the lit parts, the halo and the sparks; `burn` leaves the wreck on fire.
+    const UPRIGHT = [0, -Math.PI / 2, 0], ACROSS = [Math.PI / 2, 0, 0];
+    const lookOf = (glow, build, burn = false) => { const kit = hullKit(); build(kit); const [mesh, lit] = kit.done(); return { mesh, lit, glow, burn }; };
+    const TARGET_LOOKS = {
+      // A squat fuel tank with banded sides, a domed cap, feed pipes and a glowing sight band of fuel.
+      vat: lookOf([1.0, 0.55, 0.15], ({ place, pair }) => {
+        place(prism(14, 1.7, 1.7), { size: [1, 1, 1.25], at: [0, -0.35, 0], turn: UPRIGHT });
+        place(ball, { size: [1.7, 0.6, 1.7], at: [0, 0.9, 0] });
+        for (const y of [-1.25, 0.55]) place(prism(14, 1.82, 1.82), { size: [1, 1, 0.12], at: [0, y, 0], turn: UPRIGHT });
+        place(prism(14, 1.74, 1.74), { size: [1, 1, 0.2], at: [0, -0.35, 0], turn: UPRIGHT, lit: true });
+        pair(prism(8, 0.3, 0.3), { size: [1, 1, 1.0], at: [1.9, -1.0, 0], turn: ACROSS });
+        place(prism(8, 0.35, 0.35), { size: [1, 1, 0.5], at: [0, 1.6, 0], turn: UPRIGHT });
+        place(prism(10, 0.5, 0.5), { size: [1, 1, 0.08], at: [0, 2.1, 0], turn: UPRIGHT, lit: true });
+      }, true),
+      // A pump: a motor drum on a housing, with the pipe running through it and a glowing flywheel.
+      pump: lookOf([1.0, 0.6, 0.2], ({ place, pair }) => {
+        place(box, { size: [1.3, 0.7, 1.0], at: [0, -0.9, 0] });
+        place(prism(10, 0.85, 0.85), { size: [1, 1, 1.1], at: [0, 0.45, 0], turn: ACROSS });
+        place(prism(8, 0.4, 0.4), { size: [1, 1, 2.2], at: [0, -0.9, 0], turn: ACROSS });
+        pair(prism(10, 0.55, 0.55), { size: [1, 1, 0.12], at: [1.6, -0.9, 0], turn: ACROSS });
+        place(prism(12, 0.75, 0.75), { size: [1, 1, 0.1], at: [0, 0.45, 1.2], lit: true });
+        place(box, { size: [0.25, 0.6, 0.25], at: [0.6, 1.3, 0] });
+      }, true),
+      // A needle fighter racked nose up in its launch cradle, engine glowing under it.
+      racked: lookOf([1.0, 0.45, 0.3], ({ place, pair }) => {
+        place(prism(6, 0.7, 0.45), { size: [1, 1, 1.4], at: [0, 0.2, 0], turn: UPRIGHT });
+        place(prism(6, 0.45, 0.03), { size: [1, 1, 1.0], at: [0, 2.6, 0], turn: UPRIGHT });
+        pair(wing(0.35, 1.0, 0.4), { size: [1.9, 0.12, 0.8], at: [0.5, -0.4, 0], turn: [0, -Math.PI / 2, 0] });
+        place(prism(6, 0.45, 0.45), { size: [1, 1, 0.06], at: [0, -1.25, 0], turn: UPRIGHT, lit: true });
+        for (const y of [-0.9, 1.0]) place(box, { size: [1.25, 0.14, 0.3], at: [0, y, 0.75] });
+        pair(box, { size: [0.14, 1.6, 0.14], at: [1.25, 0, 0.75] });
+        place(box, { size: [1.5, 0.15, 1.0], at: [0, -1.6, 0.3] });
+      }),
+      // A relay mast: a short lattice spar on a foot, a dish turned outward and a glowing beacon on top.
+      mast: lookOf([0.4, 1.0, 0.9], ({ place, pair }) => {
+        place(box, { size: [0.9, 0.25, 0.9], at: [0, -1.35, 0] });
+        pair(box, { size: [0.1, 1.6, 0.1], at: [0.35, 0.3, 0.35] });
+        pair(box, { size: [0.1, 1.6, 0.1], at: [0.35, 0.3, -0.35] });
+        for (const y of [-0.6, 0.4, 1.4]) place(box, { size: [0.45, 0.06, 0.45], at: [0, y, 0] });
+        place(prism(14, 1.5, 0.25), { size: [1, 1, 0.35], at: [0, 0.9, 0.8] });
+        place(prism(6, 0.08, 0.08), { size: [1, 1, 0.5], at: [0, 0.9, 1.3] });
+        place(ball, { size: [0.35, 0.35, 0.35], at: [0, 2.1, 0], lit: true });
+        place(ball, { size: [0.2, 0.2, 0.2], at: [0, 0.9, 1.8], lit: true });
+      }),
+      // A control console: a six-sided pedestal with screens round it and a glowing core held in a ring on top.
+      console: lookOf([0.45, 1.0, 1.0], ({ place }) => {
+        place(prism(6, 1.5, 1.1), { size: [1, 1, 0.8], at: [0, -0.8, 0], turn: UPRIGHT });
+        for (let k = 0; k < 3; k++) {
+          const a = k / 3 * Math.PI * 2;
+          place(box, { size: [0.7, 0.45, 0.05], at: [Math.sin(a) * 1.25, -0.55, Math.cos(a) * 1.25], turn: [a, 0.5, 0], lit: true });
+        }
+        place(prism(12, 0.9, 0.9), { size: [1, 1, 0.1], at: [0, 0.6, 0], turn: UPRIGHT });
+        place(ball, { size: [0.6, 0.6, 0.6], at: [0, 0.65, 0], lit: true });
+        place(prism(6, 0.15, 0.15), { size: [1, 1, 0.35], at: [0, 0.25, 0], turn: UPRIGHT });
+      }),
+      // The uplink emitter: a horn opening to the sky on a ring of feed conduits, with a hot glow at its throat.
+      emitter: lookOf([0.6, 0.9, 1.3], ({ place }) => {
+        place(prism(12, 0.5, 1.7), { size: [1, 1, 1.0], at: [0, 0.4, 0], turn: UPRIGHT });
+        place(prism(12, 1.75, 1.75), { size: [1, 1, 0.08], at: [0, 1.4, 0], turn: UPRIGHT, lit: true });
+        place(prism(8, 0.9, 0.6), { size: [1, 1, 0.5], at: [0, -1.1, 0], turn: UPRIGHT });
+        for (let k = 0; k < 4; k++) { const a = k / 4 * Math.PI * 2 + 0.4; place(prism(6, 0.14, 0.14), { size: [1, 1, 0.8], at: [Math.sin(a) * 0.9, -0.6, Math.cos(a) * 0.9], turn: [a, -1.0, 0] }); }
+        place(ball, { size: [0.45, 0.45, 0.45], at: [0, -0.3, 0], lit: true });
+      }),
+      // A scrubber: a drum lying on its side with intake fans at both ends and a stack rising from it.
+      scrubber: lookOf([0.6, 1.2, 0.35], ({ place, pair }) => {
+        place(prism(10, 1.1, 1.1), { size: [1, 1, 1.3], at: [0, -0.3, 0], turn: ACROSS });
+        pair(prism(10, 1.0, 1.0), { size: [1, 1, 0.05], at: [1.32, -0.3, 0], turn: ACROSS, lit: true });
+        for (let k = 0; k < 3; k++) pair(box, { size: [0.05, 0.95, 0.12], at: [1.4, -0.3, 0], turn: [0, 0, k / 3 * Math.PI] });
+        place(prism(8, 0.4, 0.3), { size: [1, 1, 0.9], at: [0, 1.4, 0], turn: UPRIGHT });
+        place(box, { size: [1.1, 0.3, 0.8], at: [0, -1.4, 0] });
+      }),
+    };
+    // Machines are built of the station's own plate; the racked fighter keeps the swarm's hull.
+    for (const [name, material] of Object.entries({ vat: 'wallRust', pump: 'wallRust', mast: 'wallTech', console: 'wallTech', emitter: 'wallTech', scrubber: 'wallPipes' })) TARGET_LOOKS[name].material = material;
+    const LOOK_OF_TITLE = { 'FUEL VAT': 'vat', 'FUEL PUMP': 'pump', 'RACKED FIGHTER': 'racked', 'MAST RELAY': 'mast', 'RELAY CONTROL': 'console',
+      'LAUNCH CONTROL': 'console', 'UPLINK EMITTER': 'emitter', 'SCRUBBER CORE': 'scrubber' };
     const boxHull = (hx, hy, hz) => faceted(
       [[-hx, -hy, -hz], [hx, -hy, -hz], [hx, hy, -hz], [-hx, hy, -hz], [-hx, -hy, hz], [hx, -hy, hz], [hx, hy, hz], [-hx, hy, hz]],
       [[0, 1, 2], [0, 2, 3], [4, 6, 5], [4, 7, 6], [0, 4, 5], [0, 5, 1], [3, 2, 6], [3, 6, 7], [0, 3, 7], [0, 7, 4], [1, 5, 6], [1, 6, 2]], Math.max(hx, hy, hz) * 2);
@@ -7417,6 +7528,7 @@
       for (const spinner of spinners) for (const mesh of spinner.meshes) if (mesh) { gl.deleteBuffer(mesh.buffer); gl.deleteVertexArray(mesh.vao); }
       spinners = (level.spinners || []).map(buildSpinner);
       ensureMaterials(spinners.flatMap(spinner => spinner.materials));
+      ensureMaterials(Object.values(TARGET_LOOKS).map(look => look.material).filter(Boolean));
       ship.position = level.start.slice(); ship.yaw = level.yaw; ship.pitch = 0; ship.roll = 0; ship.speed = 8; ship.strafe = [0, 0];
       health = startHealth; levelWeapon = weaponLevel; levelMissiles = missileAmmo; levelLauncher = launcherLevel; rails.length = 0; railCount = 0; shield = SHIELD_MAX; shieldDelay = 0;
       missiles.length = 0; enemyMissiles.length = 0; lockTarget = null; lockTimer = 0;
@@ -7991,7 +8103,7 @@
       notice('RESTARTED AT CHECKPOINT', 2);
     }
     function damage(amount, label) {
-      if (destroyed || finished || warpTimer > 0) return;
+      if (destroyed || finished || warpTimer > 0 || debugFlags.god) return;
       if (untouchable()) { shieldGlow = Math.max(shieldGlow, 0.5); return; }
       amount *= DIFFICULTIES[save.difficulty].damage;
       // The shield soaks damage first and starts recharging a few seconds after the last hit.
@@ -8147,6 +8259,17 @@
           streak([x, vent.position[1] + rise, z], [x, vent.position[1] + rise + 3.5, z], 0.12, [1.0, 0.65, 0.3], 0.9 * (1 - rise / 40));
         }
       }
+      // A burning wreck: a flickering glow at its heart and tongues of flame licking up from it.
+      for (const wreck of wrecks) {
+        if (!nearby(wreck.position, 260)) continue;
+        const flicker = 0.75 + 0.25 * Math.sin(time * 23 + wreck.phase * 7) * Math.sin(time * 9 + wreck.phase);
+        billboard(wreck.position, 4.5 * flicker, [1.0, 0.45, 0.12], 0.9);
+        billboard(wreck.position, 10, [1.0, 0.35, 0.1], 0.18 * flicker);
+        for (let k = 0; k < 3; k++) {
+          const rise = (time * 9 + (wreck.phase + k / 3) * 14) % 14, x = wreck.position[0] + (k - 1) * 1.4, z = wreck.position[2] + Math.sin(k * 2.1 + wreck.phase) * 1.2;
+          streak([x, wreck.position[1] + rise, z], [x, wreck.position[1] + rise + 2.6, z], 0.5 * (1 - rise / 14), [1.0, 0.55, 0.2], 1.4 * (1 - rise / 14));
+        }
+      }
       const sentinel = enemies.find(e => e.type === 'sentinel' && e.hp > 0), herald = enemies.find(e => e.type === 'herald' && e.hp > 0);
       for (const enemy of enemies) {
         if (enemy.hp <= 0 || !nearby(enemy.position, 320)) continue;
@@ -8170,8 +8293,12 @@
           continue;
         }
         if (enemy.type === 'core') {
-          billboard(enemy.position, 2.2, ENEMY_TYPES.core.eye, 1.4 + enemy.flash * 2);
-          billboard(enemy.position, 6, [0.3, 0.9, 0.8], 0.25 + 0.1 * Math.sin(time * 3 + enemy.phase));
+          const look = enemy.look && TARGET_LOOKS[enemy.look];
+          if (look) billboard(enemy.position, 7, mul(look.glow, 0.8), 0.16 + 0.08 * Math.sin(time * 3 + enemy.phase) + enemy.flash);
+          else {
+            billboard(enemy.position, 2.2, ENEMY_TYPES.core.eye, 1.4 + enemy.flash * 2);
+            billboard(enemy.position, 6, [0.3, 0.9, 0.8], 0.25 + 0.1 * Math.sin(time * 3 + enemy.phase));
+          }
           continue;
         }
         if (enemy.cloaked) { billboard(enemy.position, 2.6, [0.5, 0.6, 1.0], 0.08 + 0.05 * Math.sin(time * 7 + enemy.phase)); continue; }
@@ -8473,6 +8600,15 @@
         const kind = ENEMY_TYPES[enemy.type];
         if (!seen(enemy.position, kind.radius * 2 + 4)) continue;
         if (enemy.type === 'sentry') { useMaterial(materials.hazard); drawMesh(pylonMesh, modelMatrix([enemy.base[0], enemy.base[1] - 1.8, enemy.base[2]]), 0, WHITE, exposureAt(enemy.position)); useMaterial(materials.drone); }
+        // Machine targets are hull plate with glowing working parts.
+        if (enemy.look) {
+          const look = TARGET_LOOKS[enemy.look], model = modelMatrix(enemy.position, enemy.lookYaw, 0, kind.scale);
+          if (look.material && materials[look.material]) useMaterial(materials[look.material]);
+          drawMesh(look.mesh, model, enemy.flash * 0.8, look.material ? [1, 1, 1] : [0.95, 0.95, 1.0], exposureAt(enemy.position));
+          if (look.material) useMaterial(materials.drone);
+          if (look.lit) glowing.push([look.lit, model, look.glow, enemy.flash]);
+          continue;
+        }
         // Data cores and the herald's crown and nodes are cut from glowing crystal rather than hull plate.
         if (CRYSTALLINE[enemy.type]) {
           useMaterial(materials.crystal, 1.6);
@@ -8775,8 +8911,10 @@
       if (enemy.type === 'mine') { detonateMine(enemy); registerHit('MINE DESTROYED'); return; }
       if (enemy.type === 'core') {
         const left = enemies.filter(e => e.type === 'core' && e.hp > 0).length;
-        explosions.push({ position: enemy.position.slice(), life: 0.65, scale: 1.2 });
-        sparks(enemy.position, 30, [0.4, 1.0, 0.9], 20); playExplosionSound();
+        const look = enemy.look && TARGET_LOOKS[enemy.look];
+        explosions.push({ position: enemy.position.slice(), life: 0.65, scale: look?.burn ? 2 : 1.2 });
+        sparks(enemy.position, 30, look ? look.glow : [0.4, 1.0, 0.9], 20); playExplosionSound();
+        if (look?.burn) wrecks.push({ position: enemy.position.slice(), phase: enemy.phase });
         if (left) registerHit(`${enemy.title || 'DATA CORE'} DESTROYED // ${left} LEFT`);
         else for (const gate of gates) if (gate.kind === 'core') openGate(gate, 'ALL DATA CORES DOWN // WAY OPEN');
         return;
@@ -10034,7 +10172,13 @@
         let peak = 0, sum = 0;
         for (const v of data) { peak = Math.max(peak, Math.abs(v)); sum += v * v; }
         return { peak: +peak.toFixed(3), rms: +Math.sqrt(sum / data.length).toFixed(3) };
-      }, exitCenter, exitOpen, step(seconds) { for (let t = 0; t < seconds; t += 1 / 60) update(1 / 60); }, ship, enemies, shots, enemyShots, bend, unbend, damage, ranks, timers, waits, wells, wingman, usePower, dashShip, flipShip, resetPowers, showUpgrades, enemyMissiles, barrels, pickups, gates, addEnemy, openGate, hurtEnemy, resetGame, insideGirder, startSector, render, cells: { open, floorY, ceilY, roofY, underY, cellIndex, freeAt, cutOn, cutTo, warpOn, ownerOf }, get level() { return level; }, get health() { return health; }, set health(v) { health = v; }, get phoenixReady() { return phoenixReady; }, get dashCharges() { return dashCharges; }, get time() { return time; }, get firing() { return mouseFiring; }, set firing(v) { mouseFiring = v; }, get boosting() { return boostFrom !== null; }, get objective() { return objectiveIndex; }, get mapOpen() { return mapOpen; }, set mapOpen(v) { mapOpen = v; } };
+      }, exitCenter, exitOpen, step(seconds) { for (let t = 0; t < seconds; t += 1 / 60) update(1 / 60); }, ship, enemies, shots, enemyShots, bend, unbend, damage, ranks, timers, waits, wells, wingman, usePower, dashShip, flipShip, resetPowers, showUpgrades, enemyMissiles, barrels, pickups, gates, addEnemy, openGate, hurtEnemy, resetGame, insideGirder, startSector, render, cells: { open, floorY, ceilY, roofY, underY, cellIndex, freeAt, cutOn, cutTo, warpOn, ownerOf, ventAt }, get level() { return level; }, get health() { return health; }, set health(v) { health = v; }, get phoenixReady() { return phoenixReady; }, get dashCharges() { return dashCharges; }, get time() { return time; }, get firing() { return mouseFiring; }, set firing(v) { mouseFiring = v; }, get boosting() { return boostFrom !== null; }, get objective() { return objectiveIndex; }, get mapOpen() { return mapOpen; }, set mapOpen(v) { mapOpen = v; },
+        // For the autopilot (tools/playtest): flight inputs, collision and objective state, and a way past the menus.
+        debugFlags, touch, keys, shipFits, lineOfSight, objectiveSpot, sealed, get objectives() { return objectives; }, get levelIndex() { return levelIndex; },
+        get grid() { return { x0: GRID_X0, z0: GRID_Z0, w: GRID_W, d: GRID_D, cell: CELL, top: WALL_TOP, spaceFloor }; }, get shield() { return shield; },
+        get destroyed() { return destroyed; }, get warping() { return warpTimer > 0; }, get sectorTime() { return sectorTime; }, get kills() { return kills; },
+        get weaponLevel() { return weaponLevel; }, get notice() { return statusText.textContent; },
+        fly() { menuOpen = false; menu.classList.remove('show'); intro.classList.remove('show'); briefing.classList.remove('show'); upgradesScreen.classList.remove('show'); screenOpen = null; started = true; paused = false; } };
     let perfSums = [0, 0, 0, 0], perfFrames = 0, perfStart = 0;
     const perfParts = { combat: 0, reveal: 0, music: 0 }, slowFactor = Number(new URLSearchParams(location.search).get('slow')) || 1;
     function perfReport(parts) {
@@ -10055,7 +10199,7 @@
         if (!slowHinted && graphics !== 'low' && graphics !== 'retro' && flightTime > 6 && fps < 24) { slowHinted = true; notice('LOW FRAME RATE // TRY GRAPHICS: LOW IN THE MENU', 4); }
       }
       const t0 = performance.now();
-      update(dt);
+      if (!debugFlags.hold) update(dt);
       const m0 = performance.now();
       scheduleMusic();
       const t1 = performance.now();

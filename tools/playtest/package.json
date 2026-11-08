@@ -1,0 +1,12 @@
+{
+  "name": "radix-playtest",
+  "private": true,
+  "type": "module",
+  "description": "Autopilot playtest for Radix: flies each sector objective to objective in headless Chromium and saves screenshots and a report.",
+  "scripts": {
+    "playtest": "node playtest.mjs"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.65.0"
+  }
+}
