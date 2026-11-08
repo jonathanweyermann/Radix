@@ -170,7 +170,7 @@ Then she turns the Requiem toward Sol. There is a root in the ground back there,
 21. **OMEGA HIGH STATION**: The ore tug never arrived, and Omega's high station is only half armoured: a fortress of hull and truss hanging in open space over the crown world, holding the last fuel the shepherd moon shipped. Strip its hull turrets, force the docking port, kill the control cores in its hub, then dive under it and burn the stabilizers round its reactor.
 22. **OMEGA RIFT LANDS**: The high station is falling out of orbit. Below it, the only way to the crown world's core runs through the rift lands: a plateau split by a rift a hundred units deep. Destroy the beacons on its rims, dive into the rift, wreck the generators in the bunker on its floor, silence the guns on the east mesa, and follow the rift to its end.
 23. **OMEGA CROWN CITY**: The rift ends under the walls of the crown city, the one place in Nadir the Choir built to dwell in rather than to make war from. Three emitter towers stand over it and hold the shield that covers the core. Break the emitters on the tower tops, force the citadel gate, kill the core locks inside, and take the shaft down.
-24. **OMEGA CORE BREACH**: The crown city's shield is down and the shaft to the core is open. The core powers Omega's defenses: destroy the feeders round it, then the Omega Sentinel and the four pylons that shield it. Bring the Sentinel down; this should end the song.
+24. **OMEGA CORE BREACH**: The crown city's shield is down and the shaft to the core is open. The core powers Omega's defenses: destroy the feeders round it, then the four pylons that shield the Omega Sentinel, then the Sentinel itself. Bring it down; this should end the song.
 
 **EPISODE III // BEYOND THE VOID**
 
