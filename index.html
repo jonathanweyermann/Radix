@@ -409,8 +409,9 @@
     //     and loose rocks to scatter), clear: areas [x0, z0, x1, z1] kept flat for buildings }. Its floors follow a smooth
     //     heightfield instead of flat steps.
     //   walls: optional weighted wall-texture variants for the lower and upper bands
-    //   dressing: [look, x, y, z, yaw] machines from TARGET_LOOKS stood about as scenery (racks of fighters, banks of pods),
-    //     each centred 1.7 units above the floor it stands on, with a solid box round it
+    //   dressing: [look, x, y, z, yaw, scale] scenery: machines from TARGET_LOOKS stood about (racks of fighters, banks of pods),
+    //     each centred 1.7 units above the floor it stands on with a solid box round it, or derelict ships from WRECKS,
+    //     solid part by part
     //   vents: floor material whose updraft lifts the ship; lasers: timed beam grids [x0, z0, x1, z1, bottom, top, period, offset]
     //   music: the sector's track
     const FLOOR_MATERIALS = ['floorPlate', 'floorGrate', 'floorPad', 'floorFoundry', 'floorSludge', 'floorLava', 'floorIce', 'floorHive', 'floorWater', 'floorVent', 'floorVoid', 'floorMoon', 'floorGrass', 'floorSand'];
@@ -1168,7 +1169,7 @@
           extras: {},
           objectives: [
             { kind: 'destroy', text: 'DESTROY THE LISTENING MASTS', targets: masts.map(([x, z]) => ['core', x + 7, 31.7, z, 'LISTENING MAST']) },
-            { kind: 'destroy', text: 'SINK THE PICKET SHIPS IN THE LAGOON', targets: [['warden', -120, 3, 300, 'PICKET SHIP'], ['warden', 140, 3, 380, 'PICKET SHIP'], ['warden', 20, 3, 520, 'PICKET SHIP']] },
+            { kind: 'destroy', text: 'SINK THE PICKET SHIPS IN THE LAGOON', targets: [['warden', -120, -2.2, 300, 'PICKET SHIP'], ['warden', 140, -2.2, 380, 'PICKET SHIP'], ['warden', 20, -2.2, 520, 'PICKET SHIP']] },
             { kind: 'exit', text: 'REACH THE STORM GATE' },
           ],
           zones: [
@@ -3285,7 +3286,9 @@
         ],
         shards: [[100, 172, 3, 34], [100, 212, 3.5, 40], [-76, 292, 4, 46], [-56, 320, 3, 38], [-4, 304, 4, 50], [-68, 344, 5, 60], [4, 360, 4, 48], [28, 380, 3, 36], [-44, 384, 4, 44],
           [204, 164, 4, 52], [180, 144, 3, 40], [204, 404, 4, 42], [228, 444, 3.5, 36]],
-        girders: [[-30, 20, 84, 30, 23, 88], [16, 23, 112, 120, 26, 116], [-120, 31, 330, 40, 34, 334], [-64, 31, 560, 64, 34, 564]],
+        girders: [[-30, 20, 84, 30, 23, 88], [16, 23, 112, 120, 26, 116], [-120, 31, 330, 40, 34, 334], [-64, 31, 560, 64, 34, 564],
+          // The carrier's mooring cradle: posts on the ledges and arms reaching in toward the hull.
+          ...[578, 606].flatMap(z => [[-66, 9, z, -62, 30, z + 4], [62, 9, z, 66, 30, z + 4], [-64, 15, z, -22, 18, z + 4], [22, 15, z, 64, 18, z + 4]])],
         gates: [[-16, 448, 16, 452, 'south', 'chain'], [-124, 300, -120, 316, 'east', 'secret'], [-12, 640, 12, 644, 'south', 'boss'], [-28, -8, -24, 8, 'east', 'chain'], [148, 176, 152, 192, 'west', 'chain'], [224, 92, 240, 96, 'north', 'cracked']],
         lasers: [[-56, 480, 56, 480, 26, 44, 3.4, 0], [-56, 496, 56, 496, 26, 44, 3.4, 1.7], [-120, 120, -104, 120, -15.6, 4.3, 3, 0], [-120, 180, -104, 180, -15.6, 4.3, 3, 1.5], [120, 456, 120, 472, 26, 36.3, 3, 0]],
         extras: {},
@@ -3538,10 +3541,15 @@
         ],
       },
       (() => {
-        // The trophy field: wrecks of other worlds' ships hung in rows round a great hulk in open space. The great wreck and the
-        // four husks are rounded hull modules with decks inside; the rest are tumbling shapes: a broken ring big enough to fly
-        // through, a long spine, spheres and containers.
+        // The trophy field: a dead armada of other worlds' ships hung round a great hulk in open space, every one from a
+        // different builder. The great wreck and the four husks are rounded hull modules with decks inside; round them drift
+        // derelicts from WRECKS: lancers, saucers, freighters, a cruiser broken in two, sail ships and a spider.
         const husks = [[-300, 140], [300, 180], [-320, 560], [280, 600]];
+        // [design, x, y, z, yaw, size]: size multiplies the design (1 = as built), so the big ones dwarf the husks.
+        const derelicts = [['lancer', -230, 110, 330, 0.05, 1.8], ['saucer', 230, -120, 420, 0.4, 2], ['freighter', 440, 40, 360, Math.PI / 2 + 0.25, 1.6],
+          ['cruiserFore', -460, -40, 400, 0.2, 2], ['cruiserAft', -470, -90, 610, 2.6, 2], ['sailship', 230, 120, 690, -0.6, 1.6], ['lancer', 420, -110, 640, -1.1, 1.4],
+          ['saucer', -230, 140, 680, 1.2, 1.5], ['freighter', -440, 80, 40, 1.35, 1.4], ['spider', 430, 120, 100, 0, 2], ['cruiserFore', 180, -150, 170, 2.2, 1.6],
+          ['sailship', -180, -140, 260, 0.9, 1.4], ['cruiserAft', 200, 150, 40, -0.8, 1.6], ['superstructure', 0, 50, 400, 0, 1.4]].map(([name, x, y, z, yaw, size]) => [name, x, y, z, yaw, size * WORLD_SCALE]);
         return {
           name: 'VOID-4', title: 'TROPHY FIELD', music: 'belt', music2: 'archive', top: 200, width: 256, start: [0, 0, -30], yaw: 0, exit: [0, 20, 730, true],
           since: 'episodes', space: true, roof: 'wallRust', hull: 'wallRust', ceiling: 'wallTech', rockMaterial: 'wallBasalt',
@@ -3561,15 +3569,11 @@
           ],
           hulls: [{ at: [0, 400], radii: [120, 100], top: [56, 30], bottom: [-40, -20], roof: 40, under: -16 },
             ...husks.map(([x, z]) => ({ at: [x, z], radii: [36, 36], top: [26, 18], bottom: [-14, -7], roof: 20, under: -10 }))],
-          rocks: rockField(40, 0x7a0f, [-500, -150, -20, 500, 150, 740], [3, 4, 5, 6, 8],
-            [[0, 0, -30, 60], [0, 10, 400, 140], [0, 20, 730, 40], ...husks.map(([x, z]) => [x, 5, z, 60]), [-200, 30, 300, 60], [250, 60, 380, 90]]),
+          // Loose rubble between the wrecks, kept off the routes, the hulls and the derelicts.
+          rocks: rockField(24, 0x7a0f, [-500, -150, -20, 500, 150, 740], [3, 4, 5, 6],
+            [[0, 0, -30, 60], [0, 10, 400, 140], [0, 20, 730, 40], ...husks.map(([x, z]) => [x, 5, z, 60]), ...derelicts.map(([, x, y, z, , size]) => [x, y, z, 90 * size])]),
           stairs: [], blocks: [], girders: [],
-          spinners: [
-            { kind: 'ring', at: [-200, 30, 300], axis: [0.15, 0.2, 1], radius: 44, inner: 36, length: 12, speed: 0.04, materials: ['wallRust', 'wallTech', 'wallRust'] },
-            { kind: 'core', at: [250, 60, 380], axis: [1, 0.1, 0.3], radius: 9, length: 150, speed: 0.03, materials: ['wallTech', null, 'wallRust'] },
-            ...[80, 230, 530, 680].map((z, k) => ({ kind: 'sphere', at: [-170, k % 2 ? 40 : -30, z], axis: [0.2, 1, 0.1], radius: 14, speed: 0.05, materials: ['wallRust', null, null] })),
-            ...[100, 250, 550, 700].map((z, k) => ({ kind: 'cube', at: [170, k % 2 ? -40 : 30, z], axis: [0.3, 1, 0.2], radius: 8, speed: 0.15, materials: ['wallContainer', null, 'wallContainerB'] })),
-          ],
+          dressing: derelicts,
           gates: [[-24, 300, 24, 304, 'south', 'chain']],
           extras: {},
           objectives: [
@@ -3955,7 +3959,7 @@
         if (goal.radius) goal.radius *= WORLD_SCALE;
         if (goal.targets) goal.targets = scale(goal.targets, [5]);
       }
-      def.dressing = (def.dressing || []).map(([look, x, y, z, yaw = 0]) => [look, x * WORLD_SCALE, y * WORLD_SCALE, z * WORLD_SCALE, yaw]);
+      def.dressing = (def.dressing || []).map(([look, x, y, z, yaw = 0, size]) => [look, x * WORLD_SCALE, y * WORLD_SCALE, z * WORLD_SCALE, yaw, size]);
     }
     for (const def of LEVELS) scaleLevel(def);
 
@@ -4447,7 +4451,8 @@
       return Math.abs(along) < spinner.length / 2 + pad && radial < spinner.radius + pad && (spinner.inner <= 0 || radial > spinner.inner - pad);
     });
     const insideGirder = (p, pad = 0) => (rocks.length > 0 && insideRock(p, pad)) || (spinners.length > 0 && insideSpinner(p, pad)) ||
-      level.dressing.some(([, x, y, z]) => Math.abs(p[0] - x) < 2 + pad && Math.abs(p[1] - y) < 2.2 + pad && Math.abs(p[2] - z) < 2 + pad) || level.girders.some(([x0, y0, z0, x1, y1, z1]) =>
+      dressBoxes.some(({ c, r, boxes }) => Math.hypot(p[0] - c[0], p[1] - c[1], p[2] - c[2]) < r + pad &&
+        boxes.some(([x0, y0, z0, x1, y1, z1]) => p[0] > x0 - pad && p[0] < x1 + pad && p[1] > y0 - pad && p[1] < y1 + pad && p[2] > z0 - pad && p[2] < z1 + pad)) || level.girders.some(([x0, y0, z0, x1, y1, z1]) =>
       p[0] > x0 - pad && p[0] < x1 + pad && p[1] > y0 - pad && p[1] < y1 + pad && p[2] > z0 - pad && p[2] < z1 + pad);
     function lineOfSight(point, from = ship.position) {
       const delta = sub(point, from), steps = Math.ceil(Math.hypot(...delta) / 1.5);
@@ -4483,13 +4488,13 @@
       skimmer: { hp: 3, radius: 2.0, scale: 0.9, tint: [0.55, 1.45, 0.55], eye: [0.5, 1.0, 0.4], ram: 16, radar: '#7dff6a', sight: 100, name: 'SKIMMER' },
       miner: { hp: 6, radius: 2.8, scale: 1.3, tint: [1.35, 0.8, 0.45], eye: [1.0, 0.55, 0.2], ram: 24, radar: '#ff9a4a', sight: 90, name: 'MINER', bump: true },
       mine: { hp: 1, radius: 1.4, scale: 0.6, tint: [1.4, 0.55, 0.35], eye: [1.0, 0.3, 0.1], ram: 20, radar: '#ff7040', sight: 60, name: 'MINE' },
-      sentinel: { hp: 120, radius: 7, scale: 2.6, tint: [1.3, 0.55, 0.9], eye: [1.0, 0.3, 0.6], ram: 30, radar: '#ff5a9a', sight: 170, name: 'SENTINEL', bump: true, boss: 'OMEGA SENTINEL' },
+      sentinel: { hp: 420, radius: 7, scale: 2.6, tint: [1.3, 0.55, 0.9], eye: [1.0, 0.3, 0.6], ram: 30, radar: '#ff5a9a', sight: 170, name: 'SENTINEL', bump: true, boss: 'OMEGA SENTINEL' },
       pylon: { hp: 6, radius: 2.6, scale: 1, tint: [0.6, 0.9, 1.5], eye: [0.4, 0.8, 1.0], ram: 20, radar: '#7fb8ff', sight: 85, name: 'PYLON', bump: true },
-      carrier: { hp: 180, radius: 7.5, scale: 2.8, tint: [0.85, 1.15, 0.7], eye: [0.6, 1.0, 0.4], ram: 30, radar: '#a8ff6a', sight: 170, name: 'CARRIER', bump: true, boss: 'VOID CARRIER' },
-      herald: { hp: 300, radius: 8, scale: 3.2, tint: [0.95, 0.5, 1.5], eye: [0.85, 0.4, 1.0], ram: 34, radar: '#e070ff', sight: 190, name: 'HERALD', bump: true, boss: 'VOID HERALD', lance: 22 },
-      overseer: { hp: 140, radius: 6, scale: 2.4, tint: [1.1, 1.0, 0.75], eye: [1.0, 0.85, 0.4], ram: 30, radar: '#ffd36a', sight: 160, name: 'OVERSEER', bump: true, boss: 'SPIRE OVERSEER', lance: 18 },
+      carrier: { hp: 340, radius: 9, scale: 3.4, tint: [0.85, 1.15, 0.7], eye: [0.6, 1.0, 0.4], ram: 30, radar: '#a8ff6a', sight: 170, name: 'CARRIER', bump: true, boss: 'VOID CARRIER' },
+      herald: { hp: 600, radius: 8, scale: 3.2, tint: [0.95, 0.5, 1.5], eye: [0.85, 0.4, 1.0], ram: 34, radar: '#e070ff', sight: 190, name: 'HERALD', bump: true, boss: 'VOID HERALD', lance: 22 },
+      overseer: { hp: 420, radius: 6, scale: 2.4, tint: [1.1, 1.0, 0.75], eye: [1.0, 0.85, 0.4], ram: 30, radar: '#ffd36a', sight: 160, name: 'OVERSEER', bump: true, boss: 'SPIRE OVERSEER', lance: 18 },
       relay: { hp: 6, radius: 2.4, scale: 1, tint: [1.2, 1.05, 0.6], eye: [1.0, 0.85, 0.3], ram: 20, radar: '#ffe58a', sight: 110, name: 'RELAY', bump: true },
-      queen: { hp: 160, radius: 6.5, scale: 2.8, tint: [1.3, 1.1, 0.35], eye: [0.9, 1.0, 0.3], ram: 30, radar: '#e6ff5a', sight: 150, name: 'QUEEN', bump: true, boss: 'HIVE QUEEN' },
+      queen: { hp: 320, radius: 6.5, scale: 2.8, tint: [1.3, 1.1, 0.35], eye: [0.9, 1.0, 0.3], ram: 30, radar: '#e6ff5a', sight: 150, name: 'QUEEN', bump: true, boss: 'HIVE QUEEN' },
       egg: { hp: 5, radius: 2.3, scale: 1.2, tint: [1.3, 1.05, 0.45], eye: [1.0, 0.9, 0.3], ram: 16, radar: '#f2ff9a', sight: 70, name: 'EGG SAC', bump: true },
       phantom: { hp: 3, radius: 2.0, scale: 1, tint: [0.65, 0.8, 1.3], eye: [0.6, 0.8, 1.0], ram: 18, radar: '#9fb0ff', sight: 100, name: 'PHANTOM' },
       core: { hp: 6, radius: 2.4, scale: 1.3, tint: [0.45, 1.4, 1.25], eye: [0.4, 1.0, 0.9], ram: 18, radar: '#5dfff0', sight: 0, name: 'DATA CORE', bump: true },
@@ -4507,7 +4512,10 @@
     // The sentinel cannot be hurt while any of its shield pylons stand.
     const pylonsLeft = () => enemies.filter(e => e.type === 'pylon' && e.hp > 0).length;
     // wrecks: fuel vats and pumps left burning where they were destroyed.
-    const barrels = [], enemies = [], pickups = [], wrecks = [];
+    // sinking: craft going down where they were sunk.
+    const barrels = [], enemies = [], pickups = [], wrecks = [], sinking = [];
+    // dressBoxes: the solid boxes of a level's dressing, gathered per piece with a bounding sphere round each.
+    let dressBoxes = [];
     // The chance each type carries a shield, and, for those that fly, how much room they need when moving into its cover.
     const SHIELD_BEARERS = { warden: 0.6, sentry: 0.45, striker: 0.4, lancer: 0.4, drone: 0.2 };
     const COVER_PADS = { warden: 4, striker: 2.6, drone: 2.2 };
@@ -4566,7 +4574,9 @@
       for (const [type, x, y, z] of def.extras?.enemies || []) addEnemy(type, x, y, z);
       objectiveIndex = 0;
       objectives = (def.objectives || []).map(goal => ({ ...goal, enemies: (goal.targets || []).map(([type, x, y, z, title, lookYaw = 0]) =>
-        Object.assign(addEnemy(type, x, y, z), { title, target: true, look: type === 'core' ? LOOK_OF_TITLE[title] : LOOK_OF_TYPE[type], lookYaw })) }));
+        Object.assign(addEnemy(type, x, y, z), { title, target: true, look: type === 'core' ? LOOK_OF_TITLE[title] : CRAFT_OF_TITLE[title]?.look || LOOK_OF_TYPE[type],
+          lookYaw: type === 'core' ? lookYaw : undefined, craft: CRAFT_OF_TITLE[title] })) }));
+      sinking.length = 0;
       wrecks.length = 0;
       const fromStart = (x, z) => Math.hypot(x - def.start[0], z - def.start[2]);
       // Barrels keep clear of objective targets, so the target is never hidden behind a stack of drums.
@@ -6475,6 +6485,7 @@
           const axis = Math.abs(n[0]) > Math.abs(n[1]) && Math.abs(n[0]) > Math.abs(n[2]) ? 0 : Math.abs(n[1]) > Math.abs(n[2]) ? 1 : 2;
           for (const q of [pa, pb, pc]) { const [u, v] = [0, 1, 2].filter(k => k !== axis).map(k => q[k] / 3 + 0.5); into.push(...q, ...n, u, v, 1); }
         }
+        return moved;
       };
       // The same part on both sides: at x and -x, mirrored.
       const pair = (shape, { at = [0, 0, 0], size = [1, 1, 1], turn = [0, 0, 0], lit = false } = {}) => {
@@ -6680,18 +6691,29 @@
         place(prism(8, 0.65, 0.55), { size: [1, 1, 0.8], at: [x, y, -5.4] });
         place(prism(8, 0.5, 0.5), { size: [1, 1, 0.05], at: [x, y, -6.25], lit: true });
       }
-      pair(wing(0.5, 1.2, 0.4), { size: [2.2, 0.2, 1.6], at: [3.8, 0, -2.6] });
+      place(wing(0.5, 1.2, 0.4), { size: [2.2, 0.2, 1.6], at: [3.8, 0, -2.6] });
+      // The scars of the crossing: the port wing sheared off short, a gash in the flank with its ribs bare, dented plating.
+      place(wing(0.9, 0.4, 0.4), { size: [-0.9, 0.2, 1.4], at: [-3.8, 0, -2.6] });
+      for (const z of [-1.5, -0.7, 0.1, 0.9]) place(box, { size: [0.05, 0.6, 0.05], at: [-2.62, 0.25, z], turn: [0, 0, 0.3] });
+      place(box, { size: [0.3, 0.05, 1.6], at: [-2.55, 0.6, -0.3], turn: [0, 0.1, 0.4] });
+      for (const [x, y, z, a] of [[1.4, 1.25, 2.4, 0.3], [-1.2, 1.2, -3.2, -0.25], [2.2, 0.9, -3.6, 0.5], [0.4, 1.3, 3.6, -0.15]]) place(box, { size: [0.7, 0.06, 0.9], at: [x, y, z], turn: [a, a * 0.5, a] });
+      place(box, { size: [0.04, 1.0, 0.04], at: [0.4, 3.1, -2.6], turn: [0, 0, 0.5] });
     });
     design('queen', ({ place, pair }) => {
-      place(ball, { size: [2.3, 1.7, 2.1], at: [0, 0, 0.6] });
-      place(ball, { size: [1.8, 1.4, 1.7], at: [0, -0.2, -2.0] });
-      place(ball, { size: [1.2, 1.0, 1.2], at: [0, -0.4, -3.8] });
-      place(ball, { size: [1.0, 0.85, 1.0], at: [0, 0.4, 3.0] });
-      pair(prism(5, 0.32, 0), { size: [1, 1, 1.3], at: [0.6, 0.1, 4.3], turn: [-0.5, 0, 0] });
-      for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2; place(prism(5, 0.3, 0), { size: [1, 1, 1.2], at: [Math.cos(a) * 1.3, 1.7, Math.sin(a) * 1.3 + 0.6], turn: [Math.PI / 2 - a, -1.0, 0] }); }
-      pair(ball, { size: [1.6, 0.4, 1.0], at: [1.5, 0.9, 0.0], turn: [0.3, 0, 0.5] });
-      for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2; place(ball, { size: [0.42, 0.42, 0.42], at: [Math.cos(a) * 1.6, -1.2, Math.sin(a) * 1.4 - 2.0], lit: true }); }
-      place(ball, { size: [0.32, 0.25, 0.25], at: [0, 0.75, 3.9], lit: true });
+      place(ball, { size: [1.6, 1.4, 1.9], at: [0, 0.3, 1.3] });
+      place(ball, { size: [1.0, 0.85, 1.1], at: [0, 0.6, 3.3] });
+      pair(prism(5, 0.26, 0.02), { size: [1, 1, 0.9], at: [0.42, 0.25, 4.3], turn: [-0.45, 0.25, 0] });
+      pair(prism(5, 0.12, 0.02), { size: [1, 1, 1.4], at: [0.35, 1.3, 3.6], turn: [-0.3, -0.9, 0] });
+      place(ball, { size: [2.5, 2.1, 3.6], at: [0, -0.1, -2.7] });
+      for (const [z, r] of [[-0.6, 1.9], [-1.8, 2.4], [-3.0, 2.5], [-4.2, 2.1], [-5.3, 1.3]]) place(prism(14, r * 1.04, r * 1.04), { size: [1, 0.86, 0.12], at: [0, -0.1, z] });
+      place(prism(8, 0.55, 0.12), { size: [1, 1, 1.2], at: [0, -0.7, -6.6] });
+      for (const z of [2.1, 1.2, 0.3]) {
+        pair(box, { size: [1.3, 0.16, 0.16], at: [1.9, 0.5, z], turn: [-(z - 1.2) * 0.35, 0, 0.55] });
+        pair(box, { size: [0.16, 1.4, 0.16], at: [3.15, -0.6, z + (z - 1.2) * 0.5], turn: [0, 0, -0.25] });
+      }
+      for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI - Math.PI / 2; place(prism(5, 0.28, 0), { size: [1, 1, 1.0], at: [Math.sin(a) * 1.0, 1.6, 1.0 + Math.cos(a) * 0.4], turn: [a, -1.1, 0] }); }
+      for (const z of [-1.4, -2.8, -4.2]) pair(ball, { size: [0.5, 0.45, 0.55], at: [2.15, -0.5, z], lit: true });
+      pair(ball, { size: [0.2, 0.16, 0.16], at: [0.45, 0.85, 4.15], lit: true });
     });
     // Objective targets that are machines rather than data cores: a target's title picks its look, built from the same
     // kit as the hulls, standing on its base (model y = -1.6) with its working parts glowing. Unlisted titles stay crystals.
@@ -6869,6 +6891,43 @@
         place(box, { size: [1.6, 0.15, 0.5], at: [0, -1.1, 0] });
       }),
     });
+    Object.assign(TARGET_LOOKS, {
+      // A picket ship: a low swarm hull riding the sea, a cabin and a gun turret on its deck, a radar mast aft.
+      picket: lookOf([1.0, 0.35, 0.6], ({ place, pair }) => {
+        place(prism(6, 1.25, 0.5), { size: [1.15, 0.45, 2.6], at: [0, -0.35, 0], turn: [0, 0, Math.PI / 6] });
+        place(prism(6, 0.5, 0.02), { size: [1.15, 0.45, 0.9], at: [0, -0.3, 3.4], turn: [0, 0, Math.PI / 6] });
+        place(box, { size: [1.0, 0.12, 2.3], at: [0, 0.12, -0.1] });
+        place(box, { size: [0.6, 0.45, 0.8], at: [0, 0.6, -0.4] });
+        place(box, { size: [0.5, 0.08, 0.05], at: [0, 0.75, 0.42], lit: true });
+        place(prism(8, 0.35, 0.35), { size: [1, 1, 0.2], at: [0, 0.35, 1.4], turn: [0, -Math.PI / 2, 0] });
+        place(prism(6, 0.08, 0.08), { size: [1, 1, 0.8], at: [0, 0.45, 2.1] });
+        place(box, { size: [0.05, 0.9, 0.05], at: [0, 1.4, -1.5] });
+        place(box, { size: [0.5, 0.05, 0.15], at: [0, 2.2, -1.5] });
+        pair(box, { size: [0.05, 0.1, 1.6], at: [1.05, -0.1, -0.2], lit: true });
+        place(ball, { size: [0.12, 0.12, 0.12], at: [0, 2.35, -1.5], lit: true });
+      }),
+      // A sand crawler: two tracks under a long crude tank, a cab up front, exhaust stacks behind.
+      crawler: lookOf([1.0, 0.55, 0.2], ({ place, pair }) => {
+        pair(box, { size: [0.45, 0.55, 2.4], at: [1.25, -1.05, 0] });
+        for (const z of [-1.8, -0.6, 0.6, 1.8]) pair(prism(10, 0.5, 0.5), { size: [1, 1, 0.5], at: [1.25, -1.05, z], turn: ACROSS });
+        place(box, { size: [1.2, 0.2, 2.5], at: [0, -0.45, 0] });
+        place(prism(12, 0.95, 0.95), { size: [1, 1, 1.7], at: [0, 0.55, -0.4] });
+        for (const z of [-1.6, -0.4, 0.8]) place(prism(12, 1.02, 1.02), { size: [1, 1, 0.08], at: [0, 0.55, z] });
+        place(box, { size: [1.0, 0.7, 0.6], at: [0, 0.35, 2.0] });
+        place(box, { size: [0.8, 0.18, 0.05], at: [0, 0.6, 2.62], lit: true });
+        pair(prism(6, 0.14, 0.12), { size: [1, 1, 0.6], at: [0.6, 1.5, -2.1], turn: UPRIGHT });
+      }),
+      // An ore tug: a stubby hull with big engine bells, its clamp arms locked on a rack of armour plate for Omega.
+      tug: lookOf([0.6, 0.85, 1.3], ({ place, pair }) => {
+        place(box, { size: [1.1, 0.9, 1.4], at: [0, 0, 1.6] });
+        place(box, { size: [0.7, 0.3, 0.05], at: [0, 0.35, 3.02], lit: true });
+        pair(prism(10, 0.55, 0.75), { size: [1, 1, 0.6], at: [0.65, -0.2, 0.0] });
+        pair(prism(10, 0.5, 0.5), { size: [1, 1, 0.04], at: [0.65, -0.2, -0.62], lit: true });
+        pair(box, { size: [0.15, 0.15, 1.6], at: [1.1, 0.55, -1.0] });
+        pair(box, { size: [0.15, 1.2, 0.15], at: [1.1, -0.5, -2.5] });
+        for (let k = 0; k < 4; k++) place(box, { size: [0.95, 0.12, 1.3], at: [0, -1.1 + k * 0.3, -2.5] });
+      }),
+    });
     // Variants: the same build in another trim and glow.
     const variant = (base, glow, material, burn = false) => ({ ...TARGET_LOOKS[base], glow, material, burn });
     Object.assign(TARGET_LOOKS, {
@@ -6903,6 +6962,195 @@
       'CRACKING COLUMN': 'cracker', 'PUMP CORE': 'pump', 'PUMP': 'pump', 'CORE FEEDER': 'feeder', 'FLARE BURNER': 'burner', 'CAR GRIP': 'clamp',
       'TETHER CLAMP': 'clamp', 'SHIELD EMITTER': 'shieldEmitter', 'BEAM EMITTER': 'emitter' };
     const LOOK_OF_TYPE = { relay: 'turretRelay' };
+    // Named swarm craft drawn with their own build, how they move with the world, and whether they sink when killed.
+    const CRAFT_OF_TITLE = { 'PICKET SHIP': { look: 'picket', hug: 'surface', sinks: true }, 'SAND CRAWLER': { look: 'crawler', hug: 'ground' }, 'ORE TUG': { look: 'tug' } };
+    // The derelicts of the Trophy Field: ships of other worlds, each from a different builder, dead in space. They are
+    // built in level units from the hull kit's parts, each part in one of the station's materials, with a collision box
+    // taken from every solid part. A few emergency lights still glow. Drawn and collided through a level's `dressing`.
+    function wreckKit(seed) {
+      const kits = {}, boxes = [];
+      let r = seed >>> 0;
+      const rand = () => { r = (r + 0x6d2b79f5) >>> 0; let t = r; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+      const place = (shape, { mat = 'wallTech', solid = true, ...opts } = {}) => {
+        const pts = (kits[mat] ||= hullKit()).place(shape, opts);
+        if (solid && !opts.lit) {
+          const lo = [0, 1, 2].map(k => Math.min(...pts.map(q => q[k]))), hi = [0, 1, 2].map(k => Math.max(...pts.map(q => q[k])));
+          boxes.push([...lo, ...hi]);
+        }
+      };
+      const pair = (shape, { at = [0, 0, 0], size = [1, 1, 1], turn = [0, 0, 0], ...opts } = {}) => {
+        place(shape, { at, size, turn, ...opts });
+        place(shape, { at: [-at[0], at[1], at[2]], size: [-size[0], size[1], size[2]], turn: [-turn[0], turn[1], -turn[2]], ...opts });
+      };
+      const done = (glow) => ({ glow, boxes, parts: Object.entries(kits).map(([material, kit]) => { const [mesh, lit] = kit.done(); return { material, mesh, lit }; }) });
+      return { place, pair, rand, done };
+    }
+    const WRECKS = {
+      // A lancer: a long spine with frames along it, half its plating gone, broken through amidships, fins and a dead
+      // engine block at the stern.
+      lancer: (() => {
+        const { place, pair, rand, done } = wreckKit(11);
+        for (const [z0, z1] of [[-80, -42], [-38, 18], [30, 80]]) place(box, { size: [4, 4, (z1 - z0) / 2], at: [rand() * 1.5, rand() - 0.5, (z0 + z1) / 2], turn: [rand() * 0.04, 0, rand() * 0.06], mat: 'wallTech' });
+        for (let z = -76; z <= 76; z += 11) {
+          if (z > 14 && z < 34) continue;
+          place(prism(8, 10, 10), { size: [1, 1, 0.7], at: [0, 0, z], turn: [0, 0, rand() * 0.3], mat: 'wallRust' });
+          for (let k = 0; k < 8; k++) {
+            if (rand() < 0.45) continue;
+            const a = (k + 0.5) / 8 * Math.PI * 2;
+            place(box, { size: [3.6, 0.35, 5], at: [Math.cos(a) * 9.4, Math.sin(a) * 9.4, z + 5.5], turn: [0, 0, a + Math.PI / 2], mat: rand() < 0.5 ? 'wallTech' : 'wallLower' });
+          }
+        }
+        place(prism(8, 9, 0.6), { size: [1, 1, 15], at: [0, 0, 95], mat: 'wallUpper' });
+        place(box, { size: [11, 11, 8], at: [0, 0, -89], mat: 'wallLower' });
+        for (const [x, y] of [[-5.5, -5.5], [5.5, -5.5], [-5.5, 5.5], [5.5, 5.5]]) place(prism(10, 3, 4.2), { size: [1, 1, 4], at: [x, y, -101], mat: 'wallPipes' });
+        pair(wing(0.4, 0.9, 0.3), { size: [22, 1.2, 10], at: [9, 0, -78], mat: 'solarPanel' });
+        place(wing(0.4, 0.9, 0.3), { size: [16, 1.2, 9], at: [0, 9, -80], turn: [0, 0, Math.PI / 2], mat: 'solarPanel' });
+        for (let k = 0; k < 7; k++) place(box, { size: [0.3, 3 + rand() * 6, 0.3], at: [(rand() - 0.5) * 6, 13 + rand() * 4, -60 + k * 20], turn: [0, 0, (rand() - 0.5) * 0.6], mat: 'column' });
+        for (let k = 0; k < 10; k++) place(box, { size: [1 + rand() * 3, 0.3, 1 + rand() * 4], at: [(rand() - 0.5) * 30, (rand() - 0.5) * 30, 20 + (rand() - 0.5) * 30], turn: [rand() * 3, rand() * 3, rand() * 3], mat: 'wallTech' });
+        // Greebles: rib stubs down both flanks, pipe runs along the spine, sensor domes and antenna arrays on top.
+        for (let z = -78; z <= 78; z += 4) { if (z > 16 && z < 32) continue; for (const x of [-4.6, 4.6]) if (rand() < 0.7) place(box, { size: [0.5, 0.4 + rand() * 1.2, 0.5], at: [x, (rand() - 0.5) * 6, z], mat: 'wallPipes' }); }
+        for (const x of [-3, 3]) for (const [z0, z1] of [[-80, 16], [32, 80]]) place(prism(6, 0.7, 0.7), { size: [1, 1, (z1 - z0) / 2], at: [x, 4.8, (z0 + z1) / 2], mat: 'wallPipes' });
+        for (const z of [-50, -20, 45, 70]) place(ball, { size: [2.2, 1.4, 2.2], at: [0, 4.4, z], mat: 'crown' });
+        for (let k = 0; k < 5; k++) place(box, { size: [0.15, 2.5, 3], at: [0, 7, -70 + k * 3.2], mat: 'girder' });
+        for (const z of [-60, 0, 60]) place(ball, { size: [0.7, 0.7, 0.7], at: [0, 4.6, z], lit: true });
+        return done([1.0, 0.25, 0.15]);
+      })(),
+      // A saucer: a plated disc round a domed core, one sector of it torn away to the bare spars, pods slung beneath.
+      saucer: (() => {
+        const { place, rand, done } = wreckKit(23);
+        place(ball, { size: [26, 7, 26], mat: 'floorPlate' });
+        place(ball, { size: [13, 10, 13], at: [0, 5, 0], mat: 'wallUpper' });
+        place(prism(16, 6, 6), { size: [1, 1, 2], at: [0, 13, 0], turn: [0, -Math.PI / 2, 0], mat: 'crown' });
+        for (let k = 0; k < 16; k++) {
+          const a = k / 16 * Math.PI * 2, torn = k >= 3 && k <= 5;
+          if (!torn) {
+            place(box, { size: [6.2, 1.6, 12], at: [Math.cos(a) * 36, -0.5, Math.sin(a) * 36], turn: [Math.PI / 2 - a, 0, 0], mat: k % 3 ? 'floorPlate' : 'wallLower' });
+            place(box, { size: [3, 2.6, 7.5], at: [Math.cos(a) * 49, 0, Math.sin(a) * 49], turn: [Math.PI / 2 - a, 0, 0], mat: 'crown' });
+          } else {
+            place(box, { size: [0.6, 0.6, 12], at: [Math.cos(a) * 37, -1, Math.sin(a) * 37], turn: [Math.PI / 2 - a, 0, 0], mat: 'girder' });
+            if (rand() < 0.6) place(box, { size: [3, 0.6, 4], at: [Math.cos(a) * (55 + rand() * 20), (rand() - 0.5) * 16, Math.sin(a) * (55 + rand() * 20)], turn: [rand() * 3, rand(), rand()], mat: 'floorPlate' });
+          }
+        }
+        for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2 + 0.2; if (k === 1) continue; place(prism(8, 3, 2), { size: [1, 1, 4], at: [Math.cos(a) * 22, -9, Math.sin(a) * 22], turn: [0, Math.PI / 2, 0], mat: 'wallPipes' }); }
+        // Radial ribs and hatches across the top of the disc, skipping the torn sector.
+        for (let k = 0; k < 24; k++) { const a = (k + 0.5) / 24 * Math.PI * 2; if (a > 1.0 && a < 2.4) continue; place(box, { size: [0.5, 0.5, 9], at: [Math.cos(a) * 30, 3.6, Math.sin(a) * 30], turn: [Math.PI / 2 - a, 0, 0], mat: 'crown' }); }
+        for (let k = 0; k < 10; k++) { const a = rand() * Math.PI * 2; if (a > 1.0 && a < 2.4) continue; const d = 16 + rand() * 18; place(box, { size: [1.6, 0.6, 1.6], at: [Math.cos(a) * d, 4.2 - d * 0.06, Math.sin(a) * d], turn: [a, 0, 0], mat: 'wallLower' }); }
+        for (let k = 0; k < 4; k++) { const a = k / 4 * Math.PI * 2; place(ball, { size: [0.8, 0.8, 0.8], at: [Math.cos(a) * 12, 12, Math.sin(a) * 12], lit: true }); }
+        return done([1.0, 0.6, 0.2]);
+      })(),
+      // A freighter: an open keel of girders loaded with containers, some knocked loose and drifting, a bridge tower aft.
+      freighter: (() => {
+        const { place, pair, rand, done } = wreckKit(37);
+        pair(box, { size: [1.4, 1.4, 70], at: [6, -6, 0], mat: 'girder' });
+        for (let z = -66; z <= 66; z += 11) place(box, { size: [7.4, 0.9, 0.9], at: [0, -6, z], mat: 'girder' });
+        for (let z = -60; z <= 60; z += 10) for (const x of [-6, 6]) {
+          const high = Math.floor(rand() * 4);
+          for (let y = 0; y < high; y++) {
+            if (rand() < 0.12) continue;
+            const loose = rand() < 0.1;
+            place(box, { size: [2.4, 2.4, 4.6], at: [x + (loose ? (rand() - 0.5) * 30 : 0), -2.2 + y * 4.9 + (loose ? 10 + rand() * 20 : 0), z + (loose ? (rand() - 0.5) * 10 : 0)],
+              turn: loose ? [rand() * 3, rand() * 2, rand()] : [(rand() - 0.5) * 0.06, 0, 0], mat: rand() < 0.5 ? 'wallContainer' : 'wallContainerB' });
+          }
+        }
+        place(box, { size: [8, 11, 6], at: [0, 6, -74], mat: 'wallUpper' });
+        place(box, { size: [9, 2, 5], at: [0, 18, -73], mat: 'wallLower' });
+        place(box, { size: [6, 0.4, 0.3], at: [0, 14, -67.6], mat: 'wallWindows' });
+        pair(prism(10, 3.5, 4.5), { size: [1, 1, 4], at: [4.5, 0, -84], mat: 'wallPipes' });
+        place(prism(4, 9, 2), { size: [1, 1, 8], at: [0, -4, 78], turn: [0, 0, Math.PI / 4], mat: 'wallLower' });
+        place(ball, { size: [0.7, 0.7, 0.7], at: [0, 20.5, -73], lit: true });
+        return done([1.0, 0.35, 0.15]);
+      })(),
+      // The fore half of a cruiser broken in two: an armoured wedge with turrets, the break a mess of ribs and pipes.
+      cruiserFore: (() => {
+        const { place, pair, rand, done } = wreckKit(53);
+        place(prism(6, 16, 3), { size: [1, 0.55, 36], at: [0, 0, 36], mat: 'wallLower' });
+        place(prism(6, 12, 2), { size: [1, 0.35, 30], at: [0, 6, 32], mat: 'gateDoor' });
+        pair(box, { size: [0.5, 2.5, 30], at: [14.5, 0, 30], turn: [-0.18, 0, 0], mat: 'hazard' });
+        for (const z of [16, 40]) {
+          place(prism(10, 4, 4), { size: [1, 1, 1.5], at: [0, 10, z], turn: [0, -Math.PI / 2, 0], mat: 'wallTech' });
+          pair(prism(6, 0.6, 0.6), { size: [1, 1, 7], at: [1.2, 11, z + 7], turn: [rand() * 0.3, -0.1, 0], mat: 'column' });
+        }
+        for (let k = 0; k < 9; k++) place(box, { size: [0.5, 2 + rand() * 7, 0.5], at: [(k - 4) * 3.4, (rand() - 0.5) * 6, -2 - rand() * 6], turn: [rand() * 0.6, rand() * 0.8, rand() * 0.6], mat: 'girder' });
+        for (let k = 0; k < 6; k++) place(prism(8, 0.9, 0.9), { size: [1, 1, 3 + rand() * 4], at: [(rand() - 0.5) * 20, (rand() - 0.5) * 8, -3 - rand() * 4], turn: [rand(), rand() * 0.6, 0], mat: 'wallPipes' });
+        for (let k = 0; k < 12; k++) place(box, { size: [1 + rand() * 4, 0.4, 1 + rand() * 4], at: [(rand() - 0.5) * 40, (rand() - 0.5) * 24, -14 - rand() * 30], turn: [rand() * 3, rand() * 3, rand() * 3], mat: rand() < 0.5 ? 'wallLower' : 'gateDoor' });
+        // Layered armour panels over the deck, a row of dark portholes down each flank, sponsons and a sensor mast.
+        for (let z = 6; z <= 62; z += 5) for (let x = -9; x <= 9; x += 4.5) { const w = 11 * (1 - z / 90); if (Math.abs(x) > w || rand() < 0.2) continue; place(box, { size: [2, 0.35 + rand() * 0.5, 2.2], at: [x, 8.4 + rand() * 0.4, z], mat: rand() < 0.5 ? 'wallLower' : 'gateDoor' }); }
+        for (let z = 8; z <= 56; z += 4) for (const x of [-1, 1]) place(box, { size: [0.3, 0.5, 1.1], at: [x * (13.6 - z * 0.13), 1, z], mat: 'wallComputer' });
+        for (const z of [10, 28, 46]) for (const x of [-1, 1]) place(box, { size: [2.2, 2, 4], at: [x * (15 - z * 0.12), -2, z], mat: 'wallTech' });
+        place(box, { size: [0.5, 9, 0.5], at: [0, 15, 26], mat: 'column' }); place(box, { size: [5, 0.3, 0.3], at: [0, 22, 26], mat: 'column' });
+        place(ball, { size: [0.9, 0.9, 0.9], at: [0, 8, 60], lit: true });
+        return done([1.0, 0.2, 0.15]);
+      })(),
+      // The aft half: engine bells and reactor housings, the break facing forward with its decks laid open.
+      cruiserAft: (() => {
+        const { place, pair, rand, done } = wreckKit(71);
+        place(prism(6, 15, 15), { size: [1, 0.55, 26], at: [0, 0, -26], mat: 'wallLower' });
+        for (const y of [-3, 1, 5]) place(box, { size: [12, 0.4, 4], at: [0, y, -2], mat: 'floorPlate' });
+        pair(box, { size: [0.5, 2.5, 24], at: [14, 0, -26], mat: 'hazard' });
+        for (const [x, y] of [[-8, -3], [0, -3], [8, -3], [-4, 4], [4, 4]]) place(prism(12, 3.4, 5.5), { size: [1, 1, 6], at: [x, y, -58], mat: 'wallPipes' });
+        pair(ball, { size: [6, 6, 9], at: [11, 2, -36], mat: 'wallTech' });
+        for (let k = 0; k < 10; k++) place(box, { size: [0.5, 2 + rand() * 6, 0.5], at: [(k - 4.5) * 3, (rand() - 0.5) * 7, 2 + rand() * 5], turn: [rand() * 0.6, rand() * 0.8, rand() * 0.6], mat: 'girder' });
+        for (let k = 0; k < 8; k++) place(box, { size: [1 + rand() * 3, 0.4, 1 + rand() * 3], at: [(rand() - 0.5) * 36, (rand() - 0.5) * 24, 12 + rand() * 26], turn: [rand() * 3, rand() * 3, rand() * 3], mat: 'wallLower' });
+        for (let z = -48; z <= -6; z += 5) for (let x = -10; x <= 10; x += 5) { if (rand() < 0.25) continue; place(box, { size: [2.2, 0.35 + rand() * 0.6, 2.2], at: [x, 8.3, z], mat: rand() < 0.5 ? 'wallLower' : 'gateDoor' }); }
+        for (let z = -46; z <= -6; z += 4) for (const x of [-1, 1]) place(box, { size: [0.3, 0.5, 1.1], at: [x * 14.6, 1, z], mat: 'wallComputer' });
+        place(ball, { size: [0.8, 0.8, 0.8], at: [0, 8.5, -40], lit: true });
+        return done([1.0, 0.45, 0.15]);
+      })(),
+      // A sail ship: a slim hull under three masts, its great light-sails torn and hanging.
+      sailship: (() => {
+        const { place, rand, done } = wreckKit(97);
+        place(ball, { size: [6, 5, 34], mat: 'wallTech' });
+        place(prism(8, 3, 0.4), { size: [1, 1, 8], at: [0, 0, 40], mat: 'crown' });
+        for (const z of [-18, 2, 22]) {
+          place(box, { size: [0.7, 22, 0.7], at: [0, 22, z], mat: 'column' });
+          place(box, { size: [16, 0.5, 0.5], at: [0, 36, z], mat: 'column' });
+          place(box, { size: [12, 0.5, 0.5], at: [0, 12, z], mat: 'column' });
+          // The sail: whole panels, a few missing, the lowest hanging askew.
+          for (let row = 0; row < 3; row++) for (let col = -2; col <= 1; col++) {
+            if (rand() < 0.22) continue;
+            const askew = row === 0 && rand() < 0.5;
+            place(box, { size: [3.6, 3.9, 0.15], at: [col * 7.6 + 3.8, 32 - row * 8, z + 0.6 + (askew ? 2 : 0)], turn: [0, askew ? 0.5 : 0, askew ? 0.3 : 0], mat: 'solarPanel', solid: false });
+          }
+        }
+        for (let k = 0; k < 6; k++) place(box, { size: [2 + rand() * 3, 2 + rand() * 3, 0.15], at: [(rand() - 0.5) * 40, 10 + rand() * 30, (rand() - 0.5) * 60], turn: [rand() * 3, rand(), rand()], mat: 'solarPanel', solid: false });
+        place(ball, { size: [0.7, 0.7, 0.7], at: [0, 44.5, 2], lit: true });
+        return done([0.5, 0.8, 1.2]);
+      })(),
+      // A spider: a rusted sphere on six jointed legs, a ring round its waist, a dish on top.
+      spider: (() => {
+        const { place, rand, done } = wreckKit(131);
+        place(ball, { size: [15, 13, 15], mat: 'wallRust' });
+        place(prism(20, 16.5, 16.5), { size: [1, 1, 1.4], at: [0, 0, 0], turn: [0, -Math.PI / 2, 0], mat: 'wallPipes' });
+        for (let k = 0; k < 6; k++) {
+          if (k === 4) continue;
+          const a = k / 6 * Math.PI * 2, c = Math.cos(a), sn = Math.sin(a);
+          place(box, { size: [11, 1.1, 1.1], at: [c * 24, 6, sn * 24], turn: [-a, 0, 0.45], mat: 'girder' });
+          place(box, { size: [1.1, 13, 1.1], at: [c * 34, -6, sn * 34], turn: [-a, 0, -0.25], mat: 'girder' });
+          place(box, { size: [3, 0.8, 3], at: [c * 37, -19, sn * 37], mat: 'wallRust' });
+        }
+        place(box, { size: [11, 1.1, 1.1], at: [Math.cos(4 / 6 * Math.PI * 2) * 40, -20, Math.sin(4 / 6 * Math.PI * 2) * 40], turn: [1, 0.5, 0.3], mat: 'girder' });
+        place(prism(14, 7, 1), { size: [1, 1, 2], at: [0, 16, 0], turn: [0, -Math.PI / 2, 0], mat: 'wallTech' });
+        for (let k = 0; k < 6; k++) place(ball, { size: [3, 3, 3], at: [(rand() - 0.5) * 24, -13 + rand() * 3, (rand() - 0.5) * 24], mat: 'wallRust' });
+        place(ball, { size: [0.8, 0.8, 0.8], at: [0, 19, 0], lit: true });
+        return done([1.0, 0.3, 0.2]);
+      })(),
+      // The great wreck's back: what is left of its superstructure, built to stand on the hull's dome.
+      superstructure: (() => {
+        const { place, pair, rand, done } = wreckKit(173);
+        place(box, { size: [10, 9, 8], at: [0, 9, -20], mat: 'wallUpper' });
+        place(box, { size: [12, 2, 9], at: [0, 19, -21], turn: [0, 0, 0.12], mat: 'wallLower' });
+        place(box, { size: [8, 0.5, 0.4], at: [0, 15, -11.7], mat: 'wallComputer' });
+        for (let k = 0; k < 6; k++) place(box, { size: [0.4, 6 + rand() * 10, 0.4], at: [-6 + k * 2.4, 27 + rand() * 4, -24], turn: [0, 0, (rand() - 0.5) * 0.4], mat: 'column' });
+        place(prism(14, 9, 9), { size: [1, 1, 1.2], at: [0, 2, 30], turn: [0, -Math.PI / 2, 0], mat: 'wallTech' });
+        for (let k = 0; k < 3; k++) place(prism(6, 0.9, 0.9), { size: [1, 1, 9], at: [(k - 1) * 3, 6, 39], turn: [0, -0.2 - rand() * 0.3, 0], mat: 'column' });
+        pair(box, { size: [0.3, 8, 14], at: [24, 6, 0], turn: [0, 0, 0.1], mat: 'solarPanel' });
+        pair(box, { size: [0.3, 6, 10], at: [34, 4, 10], turn: [0, 0, 0.25], mat: 'solarPanel' });
+        for (let z = -50; z <= 50; z += 6) for (let x = -40; x <= 40; x += 8) { if (rand() < 0.45 || (Math.abs(x) < 14 && z > -32 && z < 42)) continue; place(box, { size: [3.4, 0.5 + rand(), 2.6], at: [x, rand() * 0.6, z], mat: rand() < 0.5 ? 'floorPlate' : 'wallLower' }); }
+        for (let k = 0; k < 8; k++) place(prism(8, 1.1, 1.1), { size: [1, 1, 10 + rand() * 20], at: [-30 + rand() * 60, 1.2, -20 + rand() * 40], turn: [rand() * 3, 0, 0], mat: 'wallPipes' });
+        place(ball, { size: [0.9, 0.9, 0.9], at: [0, 30, -24], lit: true });
+        return done([1.0, 0.3, 0.2]);
+      })(),
+    };
     design('egg', ({ place, pair }) => {
       place(ball, { size: [1.25, 1.55, 1.2], at: [0, 0.35, 0] });
       place(ball, { size: [0.8, 0.95, 0.75], at: [0.65, -0.15, 0.35] });
@@ -7706,6 +7954,21 @@
       spinners = (level.spinners || []).map(buildSpinner);
       ensureMaterials(spinners.flatMap(spinner => spinner.materials));
       ensureMaterials(Object.values(TARGET_LOOKS).map(look => look.material).filter(Boolean));
+      ensureMaterials(level.dressing.flatMap(([name]) => WRECKS[name] ? WRECKS[name].parts.map(part => part.material) : []));
+      dressBoxes = level.dressing.map(([name, x, y, z, yaw, size]) => {
+        const wreck = WRECKS[name];
+        if (!wreck) return { c: [x, y, z], r: 4, boxes: [[x - 2, y - 2.2, z - 2, x + 2, y + 2.2, z + 2]] };
+        // Each part's box, turned by the piece's yaw and scaled, then boxed again in world axes.
+        const k = size ?? WORLD_SCALE, cy = Math.cos(yaw), sy = Math.sin(yaw);
+        let r = 0;
+        const boxes = wreck.boxes.map(([x0, y0, z0, x1, y1, z1]) => {
+          const corners = [[x0, z0], [x1, z0], [x0, z1], [x1, z1]].map(([lx, lz]) => [x + k * (cy * lx + sy * lz), z + k * (-sy * lx + cy * lz)]);
+          const b = [Math.min(...corners.map(q => q[0])), y + k * y0, Math.min(...corners.map(q => q[1])), Math.max(...corners.map(q => q[0])), y + k * y1, Math.max(...corners.map(q => q[1]))];
+          r = Math.max(r, Math.hypot(Math.max(Math.abs(b[0] - x), Math.abs(b[3] - x)), Math.max(Math.abs(b[1] - y), Math.abs(b[4] - y)), Math.max(Math.abs(b[2] - z), Math.abs(b[5] - z))));
+          return b;
+        });
+        return { c: [x, y, z], r, boxes };
+      });
       ship.position = level.start.slice(); ship.yaw = level.yaw; ship.pitch = 0; ship.roll = 0; ship.speed = 8; ship.strafe = [0, 0];
       hudTimer = 0; // the HUD shows the new sector's objective and counts on the first frame, not the last sector's
       health = startHealth; levelWeapon = weaponLevel; levelMissiles = missileAmmo; levelLauncher = launcherLevel; rails.length = 0; railCount = 0; shield = SHIELD_MAX; shieldDelay = 0;
@@ -8773,6 +9036,22 @@
       for (const [model, flash, exposure] of liveBarrels) drawMesh(barrelMesh.lid, model, flash, WHITE, exposure);
       useMaterial(materials.drone);
       const glowing = [];
+      for (const craft of sinking) {
+        const look = TARGET_LOOKS[craft.look], at = [craft.position[0], craft.position[1] - craft.t * craft.t * 0.25, craft.position[2]];
+        const model = modelMatrix(at, craft.yaw, Math.min(0.9, craft.t * 0.3), craft.scale);
+        drawMesh(look.mesh, model, 0, [0.6, 0.6, 0.65], exposureAt(at));
+      }
+      level.dressing.forEach(([name, x, y, z, yaw, size], i) => {
+        const wreck = WRECKS[name], at = [x, y, z];
+        if (!wreck || !near(at, 1200) || !seen(at, dressBoxes[i].r)) return;
+        const model = modelMatrix(at, yaw, 0, size ?? WORLD_SCALE), flicker = Math.sin(time * 3 + i * 1.7) > 0.6 ? 1 : 0.35;
+        for (const part of wreck.parts) {
+          if (materials[part.material]) useMaterial(materials[part.material]);
+          drawMesh(part.mesh, model, 0, [0.82, 0.82, 0.86], 1);
+          if (part.lit) glowing.push([part.lit, model, mul(wreck.glow, flicker), 0]);
+        }
+        useMaterial(materials.drone);
+      });
       for (const [name, x, y, z, yaw] of level.dressing) {
         const look = TARGET_LOOKS[name], at = [x, y, z];
         if (!look || !near(at, 300) || !seen(at, 4)) continue;
@@ -8789,7 +9068,7 @@
         if (enemy.type === 'sentry') { useMaterial(materials.hazard); drawMesh(pylonMesh, modelMatrix([enemy.base[0], enemy.base[1] - 1.8, enemy.base[2]]), 0, WHITE, exposureAt(enemy.position)); useMaterial(materials.drone); }
         // Machine targets are hull plate with glowing working parts.
         if (enemy.look) {
-          const look = TARGET_LOOKS[enemy.look], model = modelMatrix(enemy.position, enemy.lookYaw, 0, kind.scale);
+          const look = TARGET_LOOKS[enemy.look], model = modelMatrix(enemy.position, enemy.lookYaw ?? enemy.yaw, 0, kind.scale);
           if (look.material && materials[look.material]) useMaterial(materials[look.material]);
           drawMesh(look.mesh, model, enemy.flash * 0.8, look.material ? [1, 1, 1] : [0.95, 0.95, 1.0], exposureAt(enemy.position));
           if (look.material) useMaterial(materials.drone);
@@ -9095,6 +9374,7 @@
       if (enemy.hp > 0) { registerHit('TARGET HIT'); return; }
       if (timers.overdrive > 0 && ranks.overdrive >= 3) timers.overdrive += 0.5;
       if (!enemy.summoned) kills++;
+      if (enemy.craft?.sinks) sinking.push({ look: enemy.look, position: enemy.position.slice(), yaw: enemy.yaw, scale: ENEMY_TYPES[enemy.type].scale, t: 0 });
       if (enemy.type === 'mine') { detonateMine(enemy); registerHit('MINE DESTROYED'); return; }
       if (enemy.type === 'core') {
         const left = enemies.filter(e => e.type === 'core' && e.hp > 0).length;
@@ -9476,6 +9756,8 @@
         const visible = distance < kind.sight && lineOfSight(enemy.position);
         if (visible && !enemy.active) alert(enemy);
         moveByType(enemy, toPlayer, distance, visible, dt, sight);
+        if (enemy.craft?.hug === 'surface') { enemy.position[1] = enemy.base[1] + Math.sin(time * 1.3 + enemy.phase) * 0.25; enemy.velocity[1] = 0; }
+        else if (enemy.craft?.hug === 'ground') { enemy.position[1] = floorAt(enemy.position[0], enemy.position[2]) + kind.scale * 1.6; enemy.velocity[1] = 0; }
         if (enemy.guard) updateGuard(enemy, sub(ship.position, enemy.position), Math.hypot(...sub(ship.position, enemy.position)) || 0.01, visible, dt);
         toPlayer = sub(ship.position, enemy.position); distance = Math.hypot(...toPlayer) || 0.01;
         enemy.age += dt;
@@ -10038,6 +10320,11 @@
       setStyle(timeFlash, 'opacity', timers.overdrive > 0 ? '0.8' : '0');
     }
     function updateEffects(dt) {
+      for (let i = sinking.length - 1; i >= 0; i--) {
+        const craft = sinking[i];
+        if ((craft.t += dt) > 7) { sinking.splice(i, 1); continue; }
+        if (random() < dt * 8) sparks([craft.position[0] + range(-2, 2), craft.position[1] - craft.t * craft.t * 0.25 + 1, craft.position[2] + range(-2, 2)], 1, [0.7, 0.85, 1.0], 6);
+      }
       for (let i = explosions.length - 1; i >= 0; i--) {
         explosions[i].life -= dt;
         if (explosions[i].life <= 0) explosions.splice(i,1);
