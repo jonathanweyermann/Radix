@@ -92,7 +92,7 @@ const md = ['# Autopilot playtest', '', `Sectors ${from}-${to}, modes ${modes.jo
 for (const r of reports) {
   md.push(`## Sector ${r.sector}: ${r.title} (${r.mode})`, '', `Result: **${r.result}** after ${r.seconds}s of flight.`, '', '| Objective | Seconds | Hull lost | Shield lost | |', '|---|---|---|---|---|');
   for (const leg of r.legs) md.push(`| ${leg.goal || 'EXIT'} | ${leg.seconds} | ${leg.hullLost} | ${leg.shieldLost} | ${leg.ended || ''} |`);
-  const notes = r.log.filter(e => ['detour', 'stalled', 'no-damage', 'stuck', 'died', 'timeout'].includes(e.type));
+  const notes = r.log.filter(e => ['detour', 'stalled', 'no-damage', 'stuck', 'died', 'timeout', 'squeeze'].includes(e.type));
   if (notes.length) { md.push('', 'Notes:'); for (const n of notes) md.push(`- ${n.t}s ${n.type}: ${n.why || n.name || n.toward || ''} at ${n.pos.join(', ')}${n.zone ? ` (${n.zone})` : ''}`); }
   md.push('', 'Screenshots:', ...r.shots.map(s => `- ${s.file}: ${s.type}${s.name ? ' ' + s.name : ''}${s.zone ? ` in ${s.zone}` : ''}, objective ${s.objective + 1}${s.goal ? ` (${s.goal})` : ''}`), '');
 }

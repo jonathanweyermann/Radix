@@ -10,10 +10,12 @@
 // the pilot flies the path, cutting corners wherever the straight line is clear.
 (() => {
   const R = window.radix;
-  const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+  // In a cylinder the map wraps round east to west, so differences in x are taken the short way round.
+  let AROUND = 0;
+  const sub = (a, b) => { const d = [a[0] - b[0], a[1] - b[1], a[2] - b[2]]; if (AROUND) d[0] -= AROUND * Math.round(d[0] / AROUND); return d; };
   const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
   const mul = (a, s) => [a[0] * s, a[1] * s, a[2] * s];
-  const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+  const dist = (a, b) => Math.hypot(...sub(a, b));
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
   const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
   const DT = 1 / 60, BOLT_SPEED = 140;
@@ -29,6 +31,7 @@
     }
     if (Number.isFinite(g.spaceFloor)) lo = Math.min(lo, g.spaceFloor);
     const y0 = lo + 2, dy = 2.5, H = Math.max(1, Math.ceil((g.top - 2 - y0) / dy) + 1), N = W * D * H;
+    AROUND = R.level.cylinder ? W * g.cell : 0;
     G = { W, D, H, N, y0, dy, x0: g.x0, z0: g.z0, cell: g.cell, state: new Uint8Array(N), cost: new Float32Array(N), from: new Int32Array(N), closed: new Uint8Array(N) };
   }
   const nodePos = (n) => {
@@ -38,19 +41,22 @@
   // Room to spare: the ship fits a little wider than it needs, and a little above and below.
   const roomy = (p) => R.shipFits(p, 1.6) && !R.insideGirder(p, 1.8) && R.cells.freeAt(p[0], p[1] + 1.3, p[2], 1) && R.cells.freeAt(p[0], p[1] - 1.3, p[2], 1);
   const flyable = (p) => R.shipFits(p, 1.0) && !R.insideGirder(p, 1.2);
+  // Only just room: what the planner falls back to when no roomy route exists (a squeeze a player would scrape through).
+  const tightFit = (p) => R.shipFits(p, 0.9) && !R.insideGirder(p, 1.0);
   function nodeFree(n) {
     const s = G.state[n];
     if (s) return s === 1;
-    const ok = roomy(nodePos(n));
+    const ok = G.tight ? tightFit(nodePos(n)) : roomy(nodePos(n));
     G.state[n] = ok ? 1 : 2;
     return ok;
   }
   function nodeNear(p) {
-    const gx = Math.floor((p[0] - G.x0) / G.cell), gz = Math.floor((p[2] - G.z0) / G.cell), k = Math.round((p[1] - G.y0) / G.dy);
+    const wrapX = (x) => AROUND ? ((x % G.W) + G.W) % G.W : x;
+    const gx = wrapX(Math.floor((p[0] - G.x0) / G.cell)), gz = Math.floor((p[2] - G.z0) / G.cell), k = Math.round((p[1] - G.y0) / G.dy);
     let best = -1, bestGap = Infinity;
     for (let r = 0; r <= 3 && best < 0; r++)
       for (let dk = -r * 2; dk <= r * 2; dk++) for (let dz = -r; dz <= r; dz++) for (let dx = -r; dx <= r; dx++) {
-        const x = gx + dx, z = gz + dz, kk = k + dk;
+        const x = wrapX(gx + dx), z = gz + dz, kk = k + dk;
         if (x < 0 || z < 0 || kk < 0 || x >= G.W || z >= G.D || kk >= G.H) continue;
         const n = (kk * G.D + z) * G.W + x;
         if (!nodeFree(n)) continue;
@@ -99,7 +105,7 @@
       }
       const gx = n % G.W, gz = Math.floor(n / G.W) % G.D, k = Math.floor(n / (G.W * G.D));
       for (const [dx, dz, dk] of STEPS) {
-        const x = gx + dx, z = gz + dz, kk = k + dk;
+        const x = AROUND ? (gx + dx + G.W) % G.W : gx + dx, z = gz + dz, kk = k + dk;
         if (x < 0 || z < 0 || kk < 0 || x >= G.W || z >= G.D || kk >= G.H) continue;
         const m = (kk * G.D + z) * G.W + x;
         if (!nodeFree(m)) continue;
@@ -113,6 +119,45 @@
     }
     return { path: null, seen };
   }
+  // A fine search for squeezes the planning grid is too coarse to see: 1.25-unit steps, testing the ship's true size.
+  function finePlan(fromPos, isGoal, toward, limit = 500000) {
+    const h = 1.25, fit = (p) => R.shipFits(p) && !R.insideGirder(p, 0.8);
+    const at = (i, j, k) => [fromPos[0] + i * h, fromPos[1] + j * h, fromPos[2] + k * h];
+    const cost = new Map(), from = new Map(), heap = [];
+    const push = (key, c, p) => {
+      heap.push([c + 2 * toward(p), key, c]);
+      for (let i = heap.length - 1; i > 0;) { const q = (i - 1) >> 1; if (heap[q][0] <= heap[i][0]) break; [heap[q], heap[i]] = [heap[i], heap[q]]; i = q; }
+    };
+    const pop = () => {
+      const top = heap[0], last = heap.pop();
+      if (heap.length) { heap[0] = last; for (let i = 0; ;) { const l = i * 2 + 1, r = l + 1; let m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } }
+      return top;
+    };
+    cost.set('0,0,0', 0); push('0,0,0', 0, fromPos);
+    const closed = new Set();
+    while (heap.length && closed.size < limit) {
+      const [, key, c] = pop();
+      if (closed.has(key)) continue;
+      closed.add(key);
+      const [i, j, k] = key.split(',').map(Number), p = at(i, j, k);
+      if (isGoal(p)) {
+        const path = [];
+        for (let m = key; m; m = from.get(m)) { const [a, b, d] = m.split(',').map(Number); path.push(at(a, b, d)); }
+        // Keep every fourth point: the pilot cuts corners between them where it can.
+        return path.reverse().filter((q, n, all) => n % 4 === 0 || n === all.length - 1);
+      }
+      for (const [di, dj, dk] of [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]]) {
+        const nk = `${i + di},${j + dj},${k + dk}`;
+        if (closed.has(nk)) continue;
+        const q = at(i + di, j + dj, k + dk);
+        if (!fit(q)) { closed.add(nk); continue; }
+        if (c + h < (cost.get(nk) ?? Infinity)) { cost.set(nk, c + h); from.set(nk, key); push(nk, c + h, q); }
+      }
+    }
+    return null;
+  }
+  // Line of sight, taken the short way round in a cylinder.
+  const los = (point, from) => R.lineOfSight(add(from, sub(point, from)), from);
   const segmentClear = (a, b) => {
     const steps = Math.ceil(dist(a, b) / 1.5);
     for (let i = 1; i <= steps; i++) if (!flyable(add(a, mul(sub(b, a), i / steps)))) return false;
@@ -123,7 +168,7 @@
   let S = null;
   const ship = () => R.ship;
   const live = (e) => e && e.hp > 0;
-  const zoneAt = (p) => (R.level.zones || []).find(({ area: [x0, z0, x1, z1] }) => p[0] >= x0 && p[0] <= x1 && p[2] >= z0 && p[2] <= z1);
+  const zoneAt = (p) => R.zoneAt(p[0], p[2], p[1]);
   const gateOf = (lock) => R.gates.find(g => g.locks.includes(lock));
   function hull() { return Math.round(R.health); }
   function event(type, detail = {}) {
@@ -139,6 +184,8 @@
     R.startSector(index); R.fly();
     Object.assign(R.touch, { steerX: 0, steerY: 0, thrust: false, brake: false, fire: false }); R.keys.clear(); R.firing = false;
     buildGrid();
+    // One step, so the HUD shows this sector's area and objective before the first picture.
+    R.step(DT);
     S = { index, mode, t: 0, log: [], path: null, wp: 0, task: null, replans: 0, stalled: 0, progressAt: 0, bestLeft: Infinity, zones: new Set(),
       lastShot: -99, legStart: { t: 0, health: 100, shield: R.shield }, legs: [], ignore: new Map(), lastObjective: R.objective, aimedAt: new Set(),
       sealedSum: sealedCount(), done: null, fightStart: 0, fightFoe: null, firedAt: 0, foeHp: 0 };
@@ -170,18 +217,22 @@
     : (p) => Math.max(0, dist(p, task.target.position) - shootRange(task));
   const goalTest = (task) => task.kind === 'reach'
     ? (p) => dist(p, task.at) < task.radius
-    : (p) => { const at = task.target.position; return dist(p, at) < shootRange(task) && dist(p, at) > 5 && R.lineOfSight(at, p); };
+    : (p) => { const at = task.target.position; return dist(p, at) < shootRange(task) && dist(p, at) > 5 && los(at, p); };
 
   // When the goal can't be reached, the way is probably shut by a chain gate: break the nearest one the ship can get to.
   function lockTask() {
     const locks = R.gates.filter(g => g.kind === 'chain' && !g.opening).flatMap(g => g.locks.filter(live));
     if (!locks.length) return null;
-    const result = plan(ship().position, (p) => locks.some(l => dist(p, l.position) < 26 && R.lineOfSight(l.position, p)),
+    const result = plan(ship().position, (p) => locks.some(l => dist(p, l.position) < 26 && los(l.position, p)),
       (p) => Math.max(0, Math.min(...locks.map(l => dist(p, l.position))) - 26), 600000);
-    if (!result?.path) return null;
-    const end = result.path[result.path.length - 1];
-    const lock = locks.filter(l => dist(end, l.position) < 26 && R.lineOfSight(l.position, end)).sort((a, b) => dist(end, a.position) - dist(end, b.position))[0];
-    return { kind: 'shoot', target: lock, lock: true, label: 'CHAIN GATE LOCK', path: result.path, detour: true };
+    let path = result?.path;
+    // Past a squeeze the coarse grid can't see: search finely for the locks instead.
+    if (!path) path = finePlan(ship().position, (p) => locks.some(l => dist(p, l.position) < 26 && los(l.position, p)),
+      (p) => Math.max(0, Math.min(...locks.map(l => dist(p, l.position))) - 26), 600000);
+    if (!path) return null;
+    const end = path[path.length - 1];
+    const lock = locks.filter(l => dist(end, l.position) < 26 && los(l.position, end)).sort((a, b) => dist(end, a.position) - dist(end, b.position))[0];
+    return { kind: 'shoot', target: lock, lock: true, label: 'CHAIN GATE LOCK', path, detour: true };
   }
 
   function replan(why) {
@@ -193,13 +244,23 @@
     // A quick search first: A* finds a reachable goal fast. If it fails, look for a chain gate to break, and only then
     // search everything the ship can reach.
     const quick = plan(ship().position, goalTest(task), towardTask(task), 300000);
-    if (quick?.path) { S.path = quick.path; return true; }
+    if (quick?.path) { S.noRouteAt = 0; S.path = quick.path; return true; }
     const detour = lockTask();
-    if (detour) { S.task = detour; S.path = detour.path; event('detour', { why: why || 'goal not reachable', toward: task.label }); return true; }
+    if (detour) { S.noRouteAt = 0; S.task = detour; S.path = detour.path; event('detour', { why: why || 'goal not reachable', toward: task.label }); return true; }
     const full = plan(ship().position, goalTest(task), towardTask(task));
-    if (full?.path) { S.path = full.path; return true; }
+    if (full?.path) { S.noRouteAt = 0; S.path = full.path; return true; }
+    // No roomy route: try again with only the room the ship really needs, and note the squeeze.
+    G.tight = true; G.state.fill(0);
+    const squeeze = plan(ship().position, goalTest(task), towardTask(task));
+    G.tight = false; G.state.fill(0);
+    if (squeeze?.path) { S.noRouteAt = 0; S.path = squeeze.path; event('squeeze', { toward: task.label }); return true; }
+    const fine = finePlan(ship().position, goalTest(task), towardTask(task));
+    if (fine) { S.noRouteAt = 0; S.path = fine; event('squeeze', { toward: task.label, fine: true }); return true; }
     // A gate still swinging open may be the way through: wait for it.
     if (R.gates.some(g => g.opening && g.open < 1)) { S.task = { kind: 'wait', label: 'GATE OPENING' }; return true; }
+    // Nothing yet: a boss's gate can open a moment after it dies. Wait a little, planning again, before giving up.
+    if (!S.noRouteAt) S.noRouteAt = S.t;
+    if (S.t - S.noRouteAt < 12) { S.task = { kind: 'wait', label: 'NO ROUTE YET' }; return true; }
     return false;
   }
 
@@ -252,7 +313,7 @@
     R.touch.steerX = clamp(ey * 3, -1, 1); R.touch.steerY = clamp(-ep * 3, -1, 1);
     const gap = dist(target.position, s.position), want = gap > 30 ? 6 : gap < 10 ? 0 : 2;
     R.touch.thrust = s.speed < want - 0.5; R.touch.brake = s.speed > want + 0.5;
-    const onTarget = Math.abs(ey) < Math.max(0.03, 1.2 / gap) && Math.abs(ep) < Math.max(0.03, 1.2 / gap) && R.lineOfSight(target.position, s.position);
+    const onTarget = Math.abs(ey) < Math.max(0.03, 1.2 / gap) && Math.abs(ep) < Math.max(0.03, 1.2 / gap) && los(target.position, s.position);
     R.firing = onTarget;
     return onTarget;
   }
@@ -274,7 +335,7 @@
     const gap = dist(foe.position, s.position), want = gap > 35 ? 10 : gap < 15 ? 0 : 4;
     R.touch.thrust = s.speed < want - 0.5; R.touch.brake = s.speed > want + 0.5;
     dodge(true);
-    R.firing = Math.abs(ey) < Math.max(0.06, 2.5 / gap) && Math.abs(ep) < Math.max(0.06, 2.5 / gap) && R.lineOfSight(foe.position, s.position);
+    R.firing = Math.abs(ey) < Math.max(0.06, 2.5 / gap) && Math.abs(ep) < Math.max(0.06, 2.5 / gap) && los(foe.position, s.position);
   }
 
   // In combat mode, anything shooting at the ship nearby is dealt with first.
@@ -286,7 +347,7 @@
       if (!live(e) || e.hacked || e.cloaked || e.target || ['pylon', 'egg', 'mine', 'mite', 'relay', 'node', 'core'].includes(e.type)) continue;
       if ((S.ignore.get(e) || 0) > S.t) continue;
       const gap = dist(e.position, s.position);
-      if (gap < bestGap && R.lineOfSight(e.position, s.position)) { bestGap = gap; best = e; }
+      if (gap < bestGap && los(e.position, s.position)) { bestGap = gap; best = e; }
     }
     return best;
   }
@@ -344,7 +405,7 @@
         } else {
           const arrived = S.path && (S.wp >= S.path.length - 1) && dist(ship().position, S.path[S.path.length - 1]) < 3.5;
           const inPlace = task.kind === 'shoot' && goalTest(task)(ship().position);
-          if (task.kind === 'shoot' && arrived && !inPlace && !(S.firedAt && R.lineOfSight(task.target.position, ship().position))) {
+          if (task.kind === 'shoot' && arrived && !inPlace && !(S.firedAt && los(task.target.position, ship().position))) {
             // At the end of the path but the shot is blocked (drifted onto a corner, or the target moved): settle onto the
             // planned spot, and plan again if that doesn't do it.
             R.firing = false;
@@ -402,5 +463,5 @@
   }
   function report() { return { title: R.level.title, mode: S.mode, result: S.done, seconds: +S.t.toFixed(1), legs: S.legs, log: S.log }; }
 
-  window.autopilot = { begin, run, report, plan, grid: () => G, state: () => S, roomy, flyable, segmentClear };
+  window.autopilot = { begin, run, report, plan, finePlan, grid: () => G, state: () => S, roomy, flyable, segmentClear };
 })();
