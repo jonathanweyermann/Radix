@@ -5,6 +5,7 @@
 //   node playtest.mjs                    sectors 1-3, god mode then combat mode
 //   node playtest.mjs --sectors 4-6 --modes god
 //   node playtest.mjs --sectors 2 --modes combat --out out/run2
+//   node playtest.mjs --sectors 1-36 --modes god --every 5   a picture every 5 seconds of flight as well
 import { chromium } from 'playwright-core';
 import { createServer } from 'node:http';
 import { readFile, mkdir, writeFile, readdir } from 'node:fs/promises';
@@ -19,6 +20,7 @@ const [from, to = from] = arg('sectors', '1-3').split('-').map(Number);
 const modes = arg('modes', 'god,combat').split(',');
 const out = resolve(here, arg('out', 'out'));
 const limit = Number(arg('limit', 900));
+const every = Number(arg('every', 30)); // seconds of flight between routine screenshots
 
 // A plain static server for the repo, so the game loads over http.
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.json': 'application/json', '.png': 'image/png' };
@@ -71,7 +73,7 @@ for (let sector = from; sector <= to; sector++) for (const mode of modes) {
   await snap(info.start);
   const wallStart = Date.now();
   for (;;) {
-    const r = await page.evaluate(([l]) => window.autopilot.run(30, l), [limit]);
+    const r = await page.evaluate(([l, e]) => window.autopilot.run(30, l, e), [limit, every]);
     if (r.shot) {
       await snap(r);
       const what = r.type === 'zone' ? r.name : r.type === 'target' ? `${r.name} at ${r.gap}m` : r.type === 'objective' ? `done: ${r.completed} (${r.seconds}s)` : r.why || r.lastLeg || '';

@@ -225,20 +225,26 @@
     ? (p) => dist(p, task.at) < task.radius
     : (p) => { const at = task.target.position; return dist(p, at) < shootRange(task) && dist(p, at) > 12 && shallow(p, at) && los(at, p); };
 
-  // When the goal can't be reached, the way is probably shut by a chain gate: break the nearest one the ship can get to.
-  function lockTask() {
-    const locks = R.gates.filter(g => g.kind === 'chain' && !g.opening).flatMap(g => g.locks.filter(live));
-    if (!locks.length) return null;
-    const result = plan(ship().position, (p) => locks.some(l => dist(p, l.position) < 26 && los(l.position, p)),
-      (p) => Math.max(0, Math.min(...locks.map(l => dist(p, l.position))) - 26), 600000);
-    let path = result?.path;
-    // Past a squeeze the coarse grid can't see: search finely for the locks instead.
-    if (!path) path = finePlan(ship().position, (p) => locks.some(l => dist(p, l.position) < 26 && los(l.position, p)),
-      (p) => Math.max(0, Math.min(...locks.map(l => dist(p, l.position))) - 26), 600000);
-    if (!path) return null;
-    const end = path[path.length - 1];
-    const lock = locks.filter(l => dist(end, l.position) < 26 && los(l.position, end)).sort((a, b) => dist(end, a.position) - dist(end, b.position))[0];
-    return { kind: 'shoot', target: lock, lock: true, label: 'CHAIN GATE LOCK', path, detour: true };
+  // When the goal can't be reached, the way is probably shut by a chain gate. Try the closed gates nearest the goal first
+  // (the one nearest the ship may be a side door whose locks face the other way), and break the first one the ship can
+  // get a shot at.
+  function lockTask(goalAt) {
+    const center = (g) => [(g.x0 + g.x1) / 2, (g.door.y0 + g.door.y1) / 2, (g.z0 + g.z1) / 2];
+    const gates = R.gates.filter(g => g.kind === 'chain' && !g.opening && g.locks.some(live) && !(S.ignore.get(g) > S.t))
+      .sort((a, b) => goalAt ? dist(center(a), goalAt) - dist(center(b), goalAt) : 0);
+    for (const gate of goalAt ? gates : [null]) {
+      const locks = (gate ? [gate] : gates).flatMap(g => g.locks.filter(live));
+      if (!locks.length) continue;
+      const near = (p) => locks.some(l => dist(p, l.position) < 26 && los(l.position, p));
+      const toward = (p) => Math.max(0, Math.min(...locks.map(l => dist(p, l.position))) - 26);
+      // Past a squeeze the coarse grid can't see: search finely for the locks instead.
+      const path = plan(ship().position, near, toward, 600000)?.path || finePlan(ship().position, near, toward, 600000);
+      if (!path) continue;
+      const end = path[path.length - 1];
+      const lock = locks.filter(l => dist(end, l.position) < 26 && los(l.position, end)).sort((a, b) => dist(end, a.position) - dist(end, b.position))[0];
+      return { kind: 'shoot', target: lock, lock: true, gate, label: 'CHAIN GATE LOCK', path, detour: true };
+    }
+    return null;
   }
 
   // A reinforced wall gives way only to missiles: go to a spot facing one and fire missiles at it.
@@ -265,7 +271,7 @@
     // search everything the ship can reach.
     const quick = plan(ship().position, goalTest(task), towardTask(task), 300000);
     if (quick?.path) { S.noRouteAt = 0; S.path = quick.path; return true; }
-    const detour = lockTask();
+    const detour = lockTask(task.at || task.target?.position);
     if (detour) { S.noRouteAt = 0; S.task = detour; S.path = detour.path; event('detour', { why: why || 'goal not reachable', toward: task.label }); return true; }
     const full = plan(ship().position, goalTest(task), towardTask(task));
     if (full?.path) { S.noRouteAt = 0; S.path = full.path; return true; }
@@ -386,7 +392,7 @@
 
   // ---- The main loop -------------------------------------------------------------------------------------------------
   // Runs the game until something worth a screenshot happens, the time runs out, or about four seconds of real time pass.
-  function run(maxSeconds = 30, limitSeconds = 900) {
+  function run(maxSeconds = 30, limitSeconds = 900, every = 30) {
     if (S.done) return { done: S.done, ...S.log[S.log.length - 1] };
     const wallStart = performance.now(), until = S.t + maxSeconds;
     if (!S.task) if (!replan()) return finish('stuck', { why: 'no route to the first goal' });
@@ -475,6 +481,8 @@
           const blocker = R.enemies.filter(e => live(e) && dist(e.position, ship().position) < 14).sort((a, b) => dist(a.position, ship().position) - dist(b.position, ship().position))[0];
           event('stalled', { tries: S.stalled, toward: S.task.label, blocker: blocker ? blocker.type : null });
           if (S.stalled >= 6) return finish('stuck', { why: `no progress toward ${S.task.label}` });
+          // A gate whose locks it can't get at is set aside for a while, so the next plan tries another.
+          if (S.task.detour && S.task.gate) S.ignore.set(S.task.gate, S.t + 60);
           // Shake loose: shoot whatever is in the way and slide sideways or up for a moment.
           S.unstick = { until: S.t + 2.5, key: ['a', 'd', 'w'][S.stalled % 3], foe: blocker || null };
           if (!replan('stalled')) return finish('stuck', { why: `no route to ${goalTask().label}` });
@@ -482,7 +490,7 @@
         if (S.t - S.progressAt < 1 && S.stalled && S.bestLeft < 10) S.stalled = 0;
       }
       R.step(DT); S.t += DT;
-      if (S.t - S.lastShot > 30) { S.lastShot = S.t; return { shot: true, ...event('flight') }; }
+      if (S.t - S.lastShot > every) { S.lastShot = S.t; return { shot: true, ...event('flight') }; }
     }
     return { tick: true, t: +S.t.toFixed(1) };
   }

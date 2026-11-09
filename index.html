@@ -36,7 +36,7 @@
     .cockpit .hull .meter { height: 10px; }
     .cockpit .speed { width: 100%; text-align: left; font-size: 10px; }
     .cockpit .speed .meter { height: 8px; }
-    .status { position: absolute; top: 30%; left: 50%; transform: translateX(-50%); width: max-content; max-width: 92vw; text-align: center; line-height: 1.5; color: #ffd18a; font-size: 14px; letter-spacing: .22em; opacity: 0; }
+    .status { position: absolute; top: 30%; left: 50%; transform: translateX(-50%); width: max-content; max-width: 92vw; text-align: center; line-height: 1.5; color: #ffd18a; font-size: 14px; font-weight: bold; letter-spacing: .22em; opacity: 0; background: #000b; padding: 5px 14px; border-radius: 3px; text-shadow: 0 0 4px #000, 0 0 10px #ffb34a55; }
     body.touch .status { font-size: 12px; letter-spacing: .14em; }
     .shield-flash { position: absolute; inset: 0; background: radial-gradient(transparent 50%,#4fa8ff77); opacity: 0; }
     .warning { position: absolute; top: 22%; left: 50%; transform: translateX(-50%); color: #ff6a5a; font-size: 13px; letter-spacing: .3em; opacity: 0; }
@@ -315,7 +315,7 @@
     let width = 0, height = 0, dpr = 1, lastTime = performance.now(), time = 0, paused = false, impactTimer = 0, hitTimer = 0, muzzleTimer = 0, fireCooldown = 0, lastFired = -9, wallCooldown = 0, health = 100, barrelsDestroyed = 0, kills = 0, destroyed = false, mouseFiring = false, audioContext = null, musicBus = null, musicOn = true, musicStep = 0, musicNextTime = 0;
     let musicIn = null, reverbIn = null, delayIn = null, driveIn = null, pumpIn = null, noiseBuffer = null, musicIntensity = 0;
     let shield = 34, shieldDelay = 0, shieldGlow = 0, redFlash = 0, trauma = 0, missileAmmo = 0, levelMissiles = 0, missileCooldown = 0, missileRequest = false, lockTarget = null, lockTimer = 0;
-    let sludgeCooldown = 0, weaponLevel = 1, levelWeapon = 1, launcherLevel = 1, levelLauncher = 1, railCount = 0, finished = false, warpTimer = 0, warpGlow = 0, noticeTimer = 0;
+    let sludgeCooldown = 0, weaponLevel = 1, levelWeapon = 1, launcherLevel = 1, levelLauncher = 1, railCount = 0, finished = false, warpTimer = 0, warpGlow = 0, noticeTimer = 0, storyTimer = 0;
     let seed = 0x5eed;
     const random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 0x100000000; };
     const range = (a, b) => a + random() * (b - a);
@@ -361,6 +361,16 @@
     //     through the exit gate, which stays locked until every goal before it is done)
     //   moon: { radius } wraps the sector around a small moon with no walls at its edge, airless sky and open ground beyond
     //   interior: the sector is sealed inside a hull, with a ceiling at the top over every open space
+    //   weather: { rain, lightning, motes: [r, g, b] }: rain driven past the ship, lightning in the clouds now and then,
+    //     or motes (spores, ash, dust) drifting round it
+    //   flames: [x, y, z, size] fires burning in place, such as a flare stack's lip
+    //   feeds: [{ title, to: [x, y, z] or axis: [x, z] or up: height, color or spectrum, width }] beams of power running from
+    //     every live target with that title to a point (or straight across to an upright line at its own height, or straight
+    //     up), each going out as its target dies; `spectrum` gives each source its own hue
+    //   dimLights: 0-1, how many whole banks of painted lights are dark (a sector running on reserve power)
+    //   falling: [x, y, z] the direction of something burning as it falls through the sky (the high station, over Omega)
+    //   escort: the Requiem follows the ship on the exit leg, a long dark hull showing only its running lights
+    //   sky.veil: 0-1, how much dust hides the stars, planet and sun
     //   fog: [start, full, strength] for how distance fades into the fog colour, and haze for the mist along the floor
     //   lit: covered rooms are lit as brightly as open ones (for ceilings that are light panels, not shade)
     //   ceiling, crown: the textures for ceilings and for the trim along wall tops (default 'ceiling' and 'crown'), so a
@@ -544,6 +554,8 @@
         // A refinery is round things joined by pipes: settling basins, clarifier pools and storage tanks with domed tops,
         // towers in the yards, and a long barrel-roofed hall. The ducts and sheds between them stay square.
         name: 'DELTA-9', title: 'TOXIN REFINERY', music: 'acidbath', music2: 'toxin', top: 75, roundBlocks: true, start: [0, -4, 0], yaw: 0, exit: [0, 24, 700, true],
+        // The flare burns round the stack's lip.
+        flames: [0, 1, 2, 3, 4, 5, 6, 7].map(k => [Math.cos(k * Math.PI / 4) * 22.6, 72, 644 + Math.sin(k * Math.PI / 4) * 22.6, 9]),
         sky: { zenith: [0.04, 0.06, 0.03], fog: [0.19, 0.23, 0.15], sun: [0.7, 0.75, 0.5], sunDir: [-0.3, 0.45, 0.8] },
         walls: { lower: [['wallRust', 0.45], ['wallPipes', 0.3], ['wallVent', 0.25]], upper: [['wallRust', 0.55], ['wallUpper', 0.45]] },
         rooms: [
@@ -724,13 +736,14 @@
             { name: 'LANDING FIELD', area: [-60, -48, 60, 60], barrels: 4 },
             { name: 'LAUNCH BUNKER', area: [-40, 564, 40, 636], barrels: 4, drones: 2, wardens: 1, health: 1 },
             { name: 'AMMUNITION SHED', area: [184, 564, 216, 600], missile: 2, health: 1 },
-            ...silos.map(([x, z], k) => ({ name: `SILO ${k + 1}`, area: [x - 16, z - 16, x + 16, z + 16], hunters: 1 })),
+            // Inside a shaft it is that silo; back up over the collars it is the silo field again.
+            ...silos.map(([x, z], k) => ({ name: `SILO ${k + 1}`, area: [x - 16, z - 16, x + 16, z + 16], below: 28, hunters: 1 })),
             { name: 'PIPELINE', area: [-200, 60, -100, 640], barrels: 6, drones: 4, hunters: 2, turrets: 2, health: 1, high: true },
             { name: 'TANK FARM', area: [-100, 180, 20, 320], barrels: 10, drones: 3, strikers: 1, health: 1 },
             { name: 'SILO FIELD', area: [20, 200, 220, 460], barrels: 8, drones: 4, hunters: 2, wardens: 1, turrets: 2, missile: 1, high: true },
-            { name: 'SLUDGE FLATS', area: [-256, 320, 20, 552], drones: 4, hunters: 2, health: 1, weapon: 1, high: true },
             { name: 'EAST FLATS', area: [20, -48, 256, 200], barrels: 4, drones: 3, hunters: 2 },
-            { name: 'BUNKER APRON', area: [-120, 460, 256, 556], barrels: 6, drones: 3, strikers: 1, turrets: 1, missile: 1 },
+            { name: 'BUNKER APRON', area: [-120, 460, 256, 563], barrels: 6, drones: 3, strikers: 1, turrets: 1, missile: 1 },
+            { name: 'SLUDGE FLATS', area: [-256, 320, 20, 552], drones: 4, hunters: 2, health: 1, weapon: 1, high: true },
             { name: 'LAUNCH GATE', area: [-256, 644, 256, 752], drones: 3, hunters: 1, health: 1 },
           ],
         };
@@ -768,6 +781,8 @@
         // Thousands sleep here: racks of inert fighters down both sides of the vault hall, and banks of pods round the chamber.
         dressing: [
           ...[-62, -44, 44, 62].flatMap(x => [104, 120, 136, 152, 168, 184].map(z => ['sleeping', x, -9.3, z, x < 0 ? 0.2 : -0.2])),
+          // Two more tiers stacked on rack shelves up the walls.
+          ...[3.9, 13.9].flatMap(y => [-62, 62].flatMap(x => [104, 120, 136, 152, 168, 184].map(z => ['sleeping', x, y, z, x < 0 ? 0.2 : -0.2]))),
           ...[378, 434].flatMap(z => [-72, -60, -48, -36, -24, -12, 0, 12, 24, 36, 48, 60, 72].filter(x => z !== 378 || Math.abs(x) > 12).map(x => ['pod', x, -9.3, z, z > 406 ? Math.PI : 0])),
         ],
         blocks: [
@@ -778,7 +793,8 @@
           [152, 480, 160, 488, COLUMN], [192, 512, 200, 520, COLUMN],
         ],
         shards: [[176, 224, 3, 40], [212, 304, 3, 36], [-30, 684, 3, 50], [28, 664, 3, 44]],
-        girders: [[-64, 10, 140, 64, 13, 144], [-24, -2, 316, 24, 1, 320], [-80, 8, 428, 80, 11, 432], [136, 9, 236, 248, 12, 240], [-40, 5, 690, 40, 8, 694]],
+        girders: [[-66, 1, 98, -57, 2.2, 190], [57, 1, 98, 66, 2.2, 190], [-66, 11, 98, -57, 12.2, 190], [57, 11, 98, 66, 12.2, 190],
+          [-64, 10, 140, 64, 13, 144], [-24, -2, 316, 24, 1, 320], [-80, 8, 428, 80, 11, 432], [136, 9, 236, 248, 12, 240], [-40, 5, 690, 40, 8, 694]],
         gates: [
           [-8, 88, 8, 92, 'south', 'chain'], [-8, 364, 8, 368, 'south', 'chain'], [-84, 384, -80, 400, 'west', 'chain'],
           [-8, 440, 8, 444, 'south', 'chain'], [-180, 160, -176, 176, 'east', 'secret'], [80, 400, 84, 416, 'west', 'cracked'],
@@ -953,7 +969,7 @@
           { name: 'SMELTER YARD', area: [-80, 300, 80, 380], barrels: 8, drones: 3, strikers: 2, wardens: 1, miners: 1, health: 1, high: true },
           { name: 'UPPER WORKS', area: [-80, 380, 80, 500], barrels: 8, drones: 3, turrets: 3, lancers: 1, missile: 1, high: true },
           { name: 'VENT SHAFT', area: [-24, 500, 24, 560], hunters: 2 },
-          { name: 'EXIT DECK', area: [-40, 560, 40, 640], barrels: 4, strikers: 2, wardens: 1 },
+          { name: 'POUR DECK', area: [-40, 560, 40, 640], barrels: 4, strikers: 2, wardens: 1 },
           { name: 'TOWER DUCT', area: [160, 260, 200, 276], hunters: 1 },
           { name: 'COOLING TOWER', area: [200, 220, 248, 320], drones: 2, lancers: 1, skimmers: 1, missile: 1, health: 1, high: true },
           { name: 'TOWER RUN', area: [80, 320, 224, 420], hunters: 2 },
@@ -1031,8 +1047,10 @@
           { kind: 'exit', text: 'REACH THE GATE IN THE GORGE' },
         ],
         zones: [
+          // Down in the cut, whichever band of the map it runs through, the ship is in the gorge itself.
+          { name: 'GORGE FLOOR', area: [-512, -48, 512, 752], below: -10 },
           { name: 'SOUTH SLAG', area: [-512, -48, 512, 200], drones: 8, hunters: 3, strikers: 2, skimmers: 2, health: 2, missile: 1 },
-          { name: 'THE GORGE', area: [-512, 200, 512, 460], drones: 8, lancers: 3, skimmers: 3, wardens: 1, health: 2, missile: 2, weapon: 1, high: true },
+          { name: 'GORGE RIMS', area: [-512, 200, 512, 460], drones: 8, lancers: 3, skimmers: 3, wardens: 1, health: 2, missile: 2, weapon: 1, high: true },
           { name: 'NORTH SLAG', area: [-512, 460, 512, 752], drones: 8, wardens: 2, miners: 1, escorts: 1, strikers: 1, health: 2, missile: 1, high: true },
         ],
       },
@@ -1134,6 +1152,7 @@
         return {
           name: 'TAU-3', title: 'STORM REEF', music: 'tide', music2: 'docks', top: 100, width: 256, start: [0, 10, -24], yaw: 0, exit: [0, 4, 724, true],
           since: 'episodes', canyon: true, crowd: 3, fog: [110, 640, 0.93], haze: 0.55, tint: [0.94, 1.0, 1.04],
+          weather: { rain: true, lightning: true },
           brief: 'DESTROY THE LISTENING MASTS ON THE FOUR ISLANDS',
           sky: { zenith: [0.1, 0.13, 0.17], fog: [0.36, 0.41, 0.45], sun: [0.65, 0.7, 0.78], sunDir: [-0.3, 0.6, 0.7] },
           walls: { lower: [['wallTech', 0.5], ['wallRust', 0.5]], upper: [['wallTech', 0.6], ['wallUpper', 0.4]] },
@@ -1375,6 +1394,8 @@
         zones: [
           { name: 'LANDING MEADOW', area: [-48, -48, 48, 40], barrels: 2 },
           { name: 'DESALINATION PLANT', area: [440, 456, 512, 544], drones: 2, health: 1 },
+          // The plant's third bay lies just across the drum's seam.
+          { name: 'DESALINATION PLANT', area: [-512, 456, -456, 544] },
           { name: 'HARBOUR COAST', area: [-512, -48, 512, 384], drones: 10, skimmers: 5, strikers: 2, lancers: 2, health: 3, missile: 2, weapon: 1, high: true },
           { name: 'OUTER ISLES', area: [-512, 388, 512, 752], drones: 9, skimmers: 4, wardens: 2, escorts: 1, strikers: 1, health: 2, missile: 2, high: true },
         ],
@@ -1481,6 +1502,8 @@
         // built, so nothing inside is straight: a ribbed gullet narrows to a throat, and the hold is a great domed stomach.
         name: 'TAU-3', title: 'BROOD ARK', music: 'brood', music2: 'hivemind', top: 200, width: 256, start: [0, 0, -30], yaw: 0, exit: [0, 20, 730, true], since: 'six',
         space: true, lit: true, roof: 'wallChitin', hull: 'wallChitin', ceiling: 'wallChitin', crown: 'wallChitin', posts: false, tint: [0.72, 0.62, 0.5],
+        // The ark sheds spores as it drifts.
+        weather: { motes: [1.0, 0.68, 0.3] },
         sky: { zenith: [0.0, 0.0, 0.01], fog: [0.02, 0.015, 0.01], sun: [1.1, 0.95, 0.75], sunDir: [0.5, 0.5, 0.3] },
         walls: { lower: [['wallChitin', 1]], upper: [['wallChitin', 1]] },
         rooms: [
@@ -2656,6 +2679,8 @@
         // The rift lands on Omega's surface: a flat world cut by a deep winding rift and its side canyons, with terraced walls,
         // a thin river along the bottom, and mesas standing above the plateau. Goals sit on the rims, down in the rift and on a mesa.
         name: 'OMEGA', title: 'RIFT LANDS', music: 'rivet', music2: 'rift', top: 90, start: [-70, 48, -24], yaw: 0, exit: [16, -57, 664, true], canyon: true,
+        // The high station, coming down burning over the plateau.
+        falling: [0.35, 0.42, 1],
         sky: { zenith: [0.22, 0.32, 0.58], fog: [0.78, 0.56, 0.4], sun: [1.15, 0.92, 0.72], sunDir: [0.5, 0.45, 0.3] },
         walls: { lower: [['wallTech', 0.6], ['wallComputer', 0.4]], upper: [['wallTech', 1]] },
         rooms: [
@@ -2708,6 +2733,8 @@
           name: 'OMEGA', title: 'CROWN CITY', music: 'spire', music2: 'omega', top: 150, start: [0, 0, -24], yaw: 0, exit: [0, -50, 716, true],
           since: 'episodes', crowd: 1, fog: [120, 760, 0.9], haze: 0.25,
           brief: 'BREAK THE THREE SHIELD EMITTERS ON THE TOWER TOPS',
+          // Each emitter beams power to the shield over the citadel and the core.
+          feeds: [{ title: 'SHIELD EMITTER', to: [0, 130, 600], color: [0.45, 0.75, 1.3], width: 2.4 }],
           sky: { zenith: [0.08, 0.04, 0.14], fog: [0.32, 0.22, 0.36], sun: [0.95, 0.6, 0.85], sunDir: [-0.4, 0.4, 0.7] },
           walls: { lower: [['wallWindows', 0.3], ['wallTech', 0.4], ['wallComputer', 0.3]], upper: [['wallWindows', 0.6], ['wallTech', 0.4]] },
           rooms: [
@@ -2767,6 +2794,8 @@
         // round tank, and the throne room ends in a curve. The sentinel's crown hall sits under a barrel roof.
         name: 'OMEGA', title: 'CORE BREACH', music: 'furnace', music2: 'omega', top: 90, roundBlocks: true, start: [0, -4, 0], yaw: 0, exit: [0, 36, 728, true],
         brief: 'DESTROY THE CORE FEEDERS IN THE ARENA',
+        // Each feeder pours power into the core; its beam goes out as it dies.
+        feeds: [{ title: 'CORE FEEDER', to: [0, 6, 216], color: [0.75, 0.5, 1.3] }],
         sky: { zenith: [0.06, 0.02, 0.1], fog: [0.24, 0.16, 0.27], sun: [0.85, 0.5, 0.78], sunDir: [-0.5, 0.4, 0.6] },
         walls: { lower: [['wallVoid', 0.35], ['wallComputer', 0.35], ['wallLower', 0.3]], upper: [['wallVoid', 0.5], ['wallUpper', 0.5]] },
         rooms: [
@@ -2837,7 +2866,10 @@
           name: 'THE SHROUD', title: 'DUST VEIL', music: 'drift', music2: 'nadir', top: 200, width: 256, start: [0, 0, -30], yaw: 0, exit: [0, 20, 730, true],
           since: 'episodes', space: true, roof: 'floorPlate', hull: 'floorPlate', ceiling: 'wallTech', rockMaterial: 'wallBasalt', fog: [50, 380, 0.97], haze: 0,
           brief: 'DESTROY THE VEIL BUOYS BEFORE THE REQUIEM COMES THROUGH',
-          sky: { zenith: [0.03, 0.0, 0.05], fog: [0.12, 0.06, 0.16], sun: [0.9, 0.45, 0.4], sunDir: [0.2, 0.3, 0.9] },
+          // A wall of dust: grit and slow wisps drift past, and the stars show only faintly through it. On the last leg the
+          // Requiem follows the ship through.
+          weather: { motes: [0.55, 0.45, 0.65], dust: [0.5, 0.36, 0.62] }, escort: true,
+          sky: { zenith: [0.03, 0.0, 0.05], fog: [0.12, 0.06, 0.16], sun: [0.9, 0.45, 0.4], sunDir: [0.2, 0.3, 0.9], veil: 0.7 },
           walls: { lower: [['wallTech', 0.5], ['wallVoid', 0.5]] },
           rooms: [
             [-512, -48, 512, 752, VOID, -200],
@@ -2877,6 +2909,8 @@
         // The first thing inside the Void: a world bored out to its core. The shafts are round, rough-edged and very deep, with
         // ledges left in their walls, and the tall crystals grow from their floors.
         name: 'VOID-1', title: 'ABYSS SHAFT', music: 'furnace', music2: 'abyss', top: 140, start: [0, 52, 0], yaw: 0, exit: [0, 68, 728, true], tint: [0.95, 0.92, 1.08],
+        // Each relay is tied into the signal line down the shaft's middle; its link dies with it.
+        feeds: [{ title: 'SIGNAL RELAY', axis: [-4, 182], color: [0.4, 0.95, 1.2], width: 1.2 }],
         sky: { zenith: [0.02, 0.02, 0.06], fog: [0.11, 0.1, 0.17], sun: [0.6, 0.55, 0.9], sunDir: [0.2, 0.85, 0.4] },
         walls: { lower: [['wallVoid', 0.7], ['wallPipes', 0.3]], upper: [['wallVoid', 0.8], ['wallUpper', 0.2]] },
         posts: false, roundBlocks: true,
@@ -2969,6 +3003,8 @@
         // stalagmites on the shore and a drowned shrine on an island in the middle.
         name: 'VOID-1B', title: 'SUNLESS SEA', music: 'nadir', music2: 'sunless', top: 70, width: 256, start: [0, -3, -24], yaw: 0, exit: [0, 0, 730, true], since: 'six', crowd: 3,
         interior: true, ceiling: 'wallBasalt', crown: 'wallBasalt', posts: false, roof: 'floorVoid', tint: [0.95, 0.85, 1.1], fog: [140, 900, 0.8], haze: 0.25,
+        // The echo cores pass the song up through the shrine's roof; each beam dies with its core.
+        feeds: [{ title: 'ECHO CORE', to: [0, BASE + 17, 450], color: [0.85, 0.5, 1.3], width: 1.4 }],
         sky: { zenith: [0.02, 0.01, 0.04], fog: [0.1, 0.06, 0.16], sun: [0.8, 0.62, 1.05], sunDir: [0.3, 1, 0.25] },
         walls: { lower: [['wallBasalt', 1]], upper: [['wallBasalt', 1]] },
         rooms: [
@@ -3232,6 +3268,8 @@
         zones: [
           { name: 'LANDING LEDGE', area: [-48, -48, 48, 40], barrels: 2 },
           { name: 'DROWNED SHRINE', area: [-44, 408, 44, 476], drones: 2, wardens: 1, health: 1 },
+          // Its walls and the apron round its door count as the shrine too.
+          { name: 'DROWNED SHRINE', area: [-60, 388, 60, 496] },
           { name: 'SOUTH SHORE', area: [-512, -48, 512, 300], drones: 9, hunters: 3, phantoms: 2, lancers: 2, health: 3, missile: 2, high: true },
           { name: 'SUNLESS SEA', area: [-512, 300, 512, 560], skimmers: 5, drones: 5, strikers: 2, health: 2, missile: 1, high: true },
           { name: 'NORTH SHORE', area: [-512, 560, 512, 752], drones: 7, wardens: 2, broods: 1, escorts: 1, health: 2, weapon: 1 },
@@ -3332,6 +3370,9 @@
           name: 'VOID-2B', title: 'SUNCATCHER', music: 'canyon', music2: 'ascent', top: 140, start: [0, -4, -24], yaw: 0, exit: [0, -1, 700, true],
           since: 'episodes', moon: { radius: 900 }, roof: 'floorPlate', ceiling: 'wallTech', tint: [1.04, 0.98, 1.02],
           brief: 'SHATTER THE FOCUS LENSES AMONG THE MIRRORS',
+          // The lenses gather the mirrors' light into the beam tower, and the emitter throws it on to the foundries.
+          feeds: [{ title: 'FOCUS LENS', to: [0, BASE + 100, 590], color: [1.3, 1.0, 0.6], width: 2 },
+            { title: 'BEAM EMITTER', to: [0, 900, 1500], color: [1.3, 1.05, 0.7], width: 5 }],
           sky: { zenith: [0.01, 0.0, 0.02], fog: [0.08, 0.05, 0.1], sun: [1.4, 0.8, 0.55], sunDir: [0.0, 0.35, 0.94] },
           walls: { lower: [['wallTech', 0.6], ['wallComputer', 0.4]], upper: [['wallTech', 0.7], ['wallUpper', 0.3]] },
           rooms: [
@@ -3382,6 +3423,8 @@
         // The Crucible is a round pit with a true crucible at its heart, and the Mega Forge a great round pool of lava with a
         // walkway round its rim and the anvil standing in the middle. The yards and stores are built square.
         name: 'VOID-3', title: 'DRIFT FOUNDRY', music: 'rivet', music2: 'drift', top: 105, roundBlocks: true, start: [0, -4, 0], yaw: 0, exit: [0, 68, 724, true], tint: [1.08, 0.96, 0.9],
+        // With the suncatcher dark the foundry runs on reserve power: whole banks of lights are out.
+        dimLights: 0.8,
         sky: { zenith: [0.1, 0.05, 0.05], fog: [0.34, 0.2, 0.16], sun: [1.0, 0.65, 0.45], sunDir: [-0.4, 0.6, 0.6] },
         walls: { lower: [['wallBasalt', 0.4], ['wallPipes', 0.3], ['wallTech', 0.3]], upper: [['wallBasalt', 0.5], ['wallRust', 0.3], ['wallUpper', 0.2]] },
         brief: 'WRECK THE SMELTING CORES // UPDRAFTS RISE FROM THE VENTS',
@@ -3460,6 +3503,8 @@
         // around a crackling column caged by turning rings. The spin section is a true horizontal bore round the drum, and the
         // reactor hall a round well.
         name: 'THE ARK', title: 'REACTOR SPINE', music: 'anvil', music2: 'ark', top: 100, start: [0, -2, -24], yaw: 0, exit: [0, 12, 736, true],
+        // Each regulator holds the core column steady through a link that dies with it.
+        feeds: [{ title: 'REGULATOR', axis: [0, 590], color: [0.5, 0.85, 1.3], width: 1.4 }],
         interior: true, lit: true, roof: 'floorPlate', tint: [0.86, 0.9, 1.0],
         sky: { zenith: [0.01, 0.015, 0.03], fog: [0.03, 0.045, 0.07], sun: [0.3, 0.34, 0.42], sunDir: [0.2, 1, 0.15] },
         walls: { lower: [['wallTech', 0.35], ['wallComputer', 0.25], ['wallPipes', 0.25], ['wallVent', 0.15]], upper: [['wallUpper', 0.5], ['wallTech', 0.3], ['wallWindows', 0.2]] },
@@ -3579,7 +3624,8 @@
           objectives: [
             { kind: 'destroy', text: 'DESTROY THE WARD BEACONS', targets: husks.map(([x, z]) => ['core', x, 27.7, z, 'WARD BEACON']) },
             { kind: 'gate', text: 'FORCE THE DOCK ON THE GREAT WRECK', gate: 0 },
-            { kind: 'reach', text: 'SEARCH THE GREAT WRECK\'S HOLD', at: [0, 0, 400], radius: 30 },
+            { kind: 'reach', text: 'SEARCH THE GREAT WRECK\'S HOLD', at: [0, 0, 400], radius: 30,
+              done: 'A FLIGHT RECORDER IN THE HOLD // ITS CREW HEARD THE CHORD TOO // THE TRAIL ENDS AT THE ARCHIVE' },
             { kind: 'exit', text: 'FLY ON TO THE ARCHIVE' },
           ],
           zones: [
@@ -3690,8 +3736,12 @@
         name: 'VOID-5', title: 'ASH MESAS', music: 'mesa', music2: 'furnace', top: 90, start: [0, -4, 0], yaw: 0, exit: [0, -4, 680, true], tint: [1.05, 0.95, 0.9], canyon: true,
         sky: { zenith: [0.08, 0.03, 0.03], fog: [0.3, 0.17, 0.13], sun: [1.0, 0.55, 0.35], sunDir: [0.3, 0.35, 0.85] },
         walls: { lower: [['wallBasalt', 0.6], ['wallRust', 0.4]], upper: [['wallBasalt', 0.7], ['wallRust', 0.3]] },
-        brief: 'DESTROY THE THREE DATA CORES ACROSS THE MESAS TO OPEN THE HANGAR',
+        brief: 'DESTROY THE THREE TUNING CORES ACROSS THE MESAS TO OPEN THE HANGAR',
         roundBlocks: true,
+        // World 311 is long dead: ash falls, haze hangs low, and most of its old lights are out. The three tuning cores aim
+        // the Herald's array, each beaming to its focus high over the plain until it is destroyed.
+        weather: { motes: [0.5, 0.45, 0.42], dust: [0.45, 0.28, 0.2] }, fog: [120, 760, 0.9], haze: 0.45, dimLights: 0.6,
+        feeds: [{ title: 'TUNING CORE', to: [0, 150, 340], color: [1.3, 0.75, 0.4], width: 1.8 }],
         rooms: [
           [-256, -48, 256, 752, SLAG, BASE, SKY, 'wallBasalt'],
           // Pads for the cores on the mesa tops.
@@ -3749,6 +3799,8 @@
           name: 'VOID-6', title: 'CHOIR SPIRES', music: 'void', music2: 'spire', top: 140, roundBlocks: true, start: [0, 0, -24], yaw: 0, exit: [0, -1, 722, true],
           since: 'episodes', canyon: true, tint: [1.0, 0.92, 1.08],
           brief: 'SILENCE ALL ELEVEN VOICES OF THE CHOIR',
+          // Each tone sings its own colour up into the sky, beating at its own rate, until it is silenced.
+          feeds: [{ title: 'CHOIR TONE', up: 400, spectrum: true, width: 1.6 }],
           sky: { zenith: [0.06, 0.0, 0.09], fog: [0.24, 0.1, 0.28], sun: [0.95, 0.45, 0.95], sunDir: [0.0, 0.5, 0.86] },
           walls: { lower: [['wallVoid', 0.7], ['wallBasalt', 0.3]], upper: [['wallVoid', 0.8], ['wallBasalt', 0.2]] },
           rooms: [
@@ -3846,7 +3898,8 @@
         extras: {},
         objectives: [
           { kind: 'destroy', text: 'DESTROY THE HERALD\'S NODES', targets: [['node', -14, 33, 404], ['node', 14, 33, 404], ['node', 0, 33, 418]] },
-          { kind: 'destroy', text: 'SILENCE THE VOID HERALD', targets: [['herald', 0, 33, 404, 'VOID HERALD']] },
+          { kind: 'destroy', text: 'SILENCE THE VOID HERALD', targets: [['herald', 0, 33, 404, 'VOID HERALD']], silence: true,
+            done: 'THE HERALD IS SILENT // THE CHOIR\'S CHANNEL HAS GONE FLAT // THE SWARM HAS LOST ITS VOICE' },
           { kind: 'exit', text: 'TAKE THE LAST GATE HOME' },
         ],
         zones: [
@@ -3924,10 +3977,12 @@
         for (const field of ['at', 'radii', 'path', 'width', 'floor', 'ceil', 'head', 'dome', 'dish', 'crown', 'wobble', 'grain', 'roof', 'under', 'shell']) if (room[field] !== undefined) room[field] = scaled(room[field]);
         return room;
       });
-      for (const zone of def.zones) if (zone.altitude) zone.altitude = zone.altitude.map(v => v * WORLD_SCALE);
+      for (const zone of def.zones) { if (zone.altitude) zone.altitude = zone.altitude.map(v => v * WORLD_SCALE); if (zone.below !== undefined) zone.below *= WORLD_SCALE; }
       def.stairs = scale(def.stairs || [], [4]);
       def.blocks = scale(def.blocks, [4]);
       def.shards = scale(def.shards || []);
+      def.flames = scale(def.flames || []);
+      for (const feed of def.feeds || []) { if (feed.to) feed.to = feed.to.map(v => v * WORLD_SCALE); if (feed.axis) feed.axis = feed.axis.map(v => v * WORLD_SCALE); if (feed.up) feed.up *= WORLD_SCALE; }
       def.girders = scale(def.girders);
       def.gates = scale(def.gates || []);
       if (def.extras) def.extras = { barrels: scale(def.extras.barrels || []), enemies: scale(def.extras.enemies || []) };
@@ -4454,6 +4509,23 @@
       dressBoxes.some(({ c, r, boxes }) => Math.hypot(p[0] - c[0], p[1] - c[1], p[2] - c[2]) < r + pad &&
         boxes.some(([x0, y0, z0, x1, y1, z1]) => p[0] > x0 - pad && p[0] < x1 + pad && p[1] > y0 - pad && p[1] < y1 + pad && p[2] > z0 - pad && p[2] < z1 + pad)) || level.girders.some(([x0, y0, z0, x1, y1, z1]) =>
       p[0] > x0 - pad && p[0] < x1 + pad && p[1] > y0 - pad && p[1] < y1 + pad && p[2] > z0 - pad && p[2] < z1 + pad);
+    // Fire stops only at things you can see. The limits that keep the ship inside a sector (the open sky over the wall
+    // tops, the rim of the map where no wall is drawn, and the floor and edges of open space) let shots, rails and
+    // missiles fly on through and burn out, so a sector never feels like a glass box. A cylinder curls its sky into the
+    // far shore, so it keeps the old rule.
+    const stopsShots = (p) => {
+      if (!level.cylinder) {
+        const [x, y, z] = p, gx = Math.floor((x - GRID_X0) / CELL), gz = Math.floor((z - GRID_Z0) / CELL);
+        if (gx < 0 || gz < 0 || gx >= GRID_W || gz >= GRID_D) return false;
+        if (y < spaceFloor) return false;
+        if (y > WALL_TOP && !level.interior) {
+          // Above the walls only ground that rises past them (a peak) still stops a shot.
+          const i = gz * GRID_W + gx;
+          return !!(open[i] && floorY[i] > y) || insideGirder(p);
+        }
+      }
+      return !freeAt(...p) || insideGirder(p);
+    };
     function lineOfSight(point, from = ship.position) {
       const delta = sub(point, from), steps = Math.ceil(Math.hypot(...delta) / 1.5);
       for (let i = 1; i < steps; i++) {
@@ -4464,7 +4536,11 @@
     }
     const zoneAt = (x, z, y) => {
       const here = level.zones.filter(({ area: [x0, z0, x1, z1] }) => x >= x0 && x <= x1 && z >= z0 && z <= z1);
-      if (y === undefined || !level.space) return here[0];
+      if (y === undefined) return here[0];
+      // Off open space, a zone given `below` (a pit or a gorge floor) or an `altitude` band (a drum's inner deck) wins
+      // over the ground zone it lies in while the ship is in that height range.
+      if (!level.space) return here.find(zone => (zone.below !== undefined && y < zone.below) || (zone.altitude && y >= zone.altitude[0] && y <= zone.altitude[1]))
+        || here.find(zone => zone.below === undefined && !zone.altitude) || here[0];
       // Out in open space a covered room's zone only counts inside the hull; outside it, the open-air zone round it does.
       const inside = coveredAt(x, z, y);
       return here.find(zone => !zone.altitude === inside) || here.find(zone => zone.altitude) || here[0];
@@ -4513,7 +4589,10 @@
     const pylonsLeft = () => enemies.filter(e => e.type === 'pylon' && e.hp > 0).length;
     // wrecks: fuel vats and pumps left burning where they were destroyed.
     // sinking: craft going down where they were sunk.
-    const barrels = [], enemies = [], pickups = [], wrecks = [], sinking = [];
+    // husks: the scorched shells of machine targets, left slumped where they died so a finished objective stays visible.
+    const barrels = [], enemies = [], pickups = [], wrecks = [], sinking = [], husks = [];
+    // Where the Requiem is while it follows the ship out of a sector (null until the exit leg).
+    let escort = null;
     // dressBoxes: the solid boxes of a level's dressing, gathered per piece with a bounding sphere round each.
     let dressBoxes = [];
     // The chance each type carries a shield, and, for those that fly, how much room they need when moving into its cover.
@@ -4563,7 +4642,13 @@
       objectiveIndex++;
       const next = objectives[objectiveIndex];
       // A goal with a `done` line tells the story at that moment instead of the plain completion notice.
-      if (goal.done) notice(goal.done, 7);
+      if (goal.done) notice(goal.done, Math.max(7, goal.done.length / 11), true);
+      // When the voice that leads them dies, the swarm is left without orders: every fighter still flying drifts, dead in
+      // space, and the gates on the way home open.
+      if (goal.silence) {
+        for (const enemy of enemies) if (enemy.hp > 0 && !ENEMY_TYPES[enemy.type].boss) { enemy.stun = 1e6; enemy.charge = 0; }
+        for (const gate of gates) if (gate.kind === 'chain' && !gate.opening) { gate.opening = true; for (const lock of gate.locks) lock.hp = 0; }
+      }
       else notice(next ? `OBJECTIVE COMPLETE // NEXT: ${next.text}` : 'ALL OBJECTIVES COMPLETE', 4);
       playPickup('weapon');
     }
@@ -4578,6 +4663,8 @@
           lookYaw: type === 'core' ? lookYaw : undefined, craft: CRAFT_OF_TITLE[title] })) }));
       sinking.length = 0;
       wrecks.length = 0;
+      husks.length = 0;
+      escort = null;
       const fromStart = (x, z) => Math.hypot(x - def.start[0], z - def.start[2]);
       // Barrels keep clear of objective targets, so the target is never hidden behind a stack of drums.
       const nearTarget = (x, z) => objectives.some(goal => goal.enemies.some(e => Math.hypot(x - e.position[0], z - e.position[2]) < 12));
@@ -5627,15 +5714,42 @@
       uniform sampler2D uAlbedo;
       uniform sampler2D uDetail;
       uniform vec3 uCamera, uSunDir, uSunColor, uSkyLight, uGroundLight, uFogColor, uHeadPos, uHeadDir, uTint;
-      uniform float uFlash, uSpecular, uBump, uEmissive, uExposure, uHaze, uWater, uTime;
-      uniform vec3 uFog;
+      uniform float uFlash, uSpecular, uBump, uEmissive, uExposure, uHaze, uWater, uTime, uShine, uGrime, uLinear, uGlowVary, uContrast, uCrust, uDim;
+      uniform vec3 uFog, uRim;
       uniform int uQuality;
       uniform vec4 uLights[16];
       uniform vec3 uLightColors[16];
       uniform int uLightCount;
       out vec4 outColor;
+      float hash2(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float vnoise(vec2 p) {
+        vec2 i = floor(p), f = fract(p), u = f * f * (3.0 - 2.0 * f);
+        return mix(mix(hash2(i), hash2(i + vec2(1.0, 0.0)), u.x), mix(hash2(i + vec2(0.0, 1.0)), hash2(i + vec2(1.0, 1.0)), u.x), u.y);
+      }
       void main() {
         vec3 albedo = texture(uAlbedo, vUv).rgb * uTint;
+        // Grime: slow blotches of dirt and a faint warm-cool drift laid over the level in world space, so no two
+        // stretches of the same panel or rock look stamped from one block.
+        float grime = 1.0, glow = 1.0;
+        if (uQuality > 0 && uGrime > 0.0) {
+          vec2 q = vPos.xz + vec2(vPos.y * 0.71, -vPos.y * 0.53);
+          float g = vnoise(q * 0.031) * 0.6 + vnoise(q * 0.093 + 7.3) * 0.3 + vnoise(q * 0.27 + 1.7) * 0.1;
+          grime = mix(1.0, mix(0.72, 1.1, g), uGrime);
+          albedo *= mix(vec3(1.0), mix(vec3(1.05, 1.0, 0.93), vec3(0.94, 0.99, 1.06), vnoise(q * 0.017 + 3.1)), uGrime);
+          // Painted lights, hot cracks and glowing cells come and go in broad patches, so a long wall has dark stretches
+          // and failed panels instead of one even pattern.
+          glow = mix(1.0, 0.06 + 1.2 * smoothstep(0.34, 0.66, vnoise(q * 0.043 + 11.0)), uGlowVary);
+          // On reserve power whole banks of lights are dark, and the rest burn lower.
+          if (uDim > 0.0) glow *= mix(1.0, 0.04 + 0.7 * smoothstep(0.5, 0.58, vnoise(q * 0.019 + 5.0)), uDim);
+          // Lava carries a drifting dark crust, with the white heat only in the seams between plates.
+          if (uCrust > 0.0) {
+            float crust = smoothstep(0.36, 0.56, vnoise(q * 0.07 + vec2(uTime * 0.03, uTime * 0.017)) * 0.7 + vnoise(q * 0.21 - uTime * 0.02) * 0.3);
+            glow *= 1.0 - 0.82 * crust * uCrust;
+            albedo *= 1.0 - 0.55 * crust * uCrust;
+          }
+        }
+        // Busy ground patterns (sand ripples, grass, brickwork) are eased towards their average colour.
+        if (uQuality > 0 && uContrast < 1.0) albedo = mix(textureLod(uAlbedo, vUv, 12.0).rgb * uTint, albedo, uContrast);
         vec4 detail = texture(uDetail, vUv);
         vec3 n = normalize(vNormal), N = n;
         bool full = uQuality > 0;
@@ -5660,14 +5774,15 @@
         vec3 spec = vec3(0.0);
         float sun = max(dot(N, uSunDir), 0.0) * uExposure;
         diffuse += uSunColor * sun * (0.45 + 0.55 * vShade);
-        if (full) spec += uSunColor * pow(max(dot(N, normalize(uSunDir + V)), 0.0), 40.0) * sun;
+        float shine = uShine, shineGain = clamp((uShine + 4.0) / 44.0, 0.2, 1.3);
+        if (full) spec += uSunColor * pow(max(dot(N, normalize(uSunDir + V)), 0.0), shine) * sun;
         vec3 toHead = uHeadPos - vPos;
         float headDist = length(toHead);
         vec3 headL = toHead / max(headDist, 0.001);
         float beam = smoothstep(0.78, 0.97, dot(-headL, uHeadDir)) * pow(clamp(1.0 - headDist / 95.0, 0.0, 1.0), 2.0);
         float headN = max(dot(N, headL), 0.0);
         diffuse += vec3(1.0, 0.92, 0.78) * 1.1 * headN * beam;
-        if (full) spec += vec3(1.0, 0.92, 0.78) * pow(max(dot(N, normalize(headL + V)), 0.0), 50.0) * headN * beam;
+        if (full) spec += vec3(1.0, 0.92, 0.78) * pow(max(dot(N, normalize(headL + V)), 0.0), shine * 1.25) * headN * beam;
         for (int i = 0; i < 16; i++) {
           if (i >= uLightCount) break;
           vec3 L = uLights[i].xyz - vPos;
@@ -5677,18 +5792,23 @@
           fall *= fall;
           float nl = max(dot(N, L), 0.0);
           diffuse += uLightColors[i] * nl * fall;
-          if (full) spec += uLightColors[i] * pow(max(dot(N, normalize(L + V)), 0.0), 50.0) * nl * fall;
+          if (full) spec += uLightColors[i] * pow(max(dot(N, normalize(L + V)), 0.0), shine * 1.25) * nl * fall;
         }
         float gloss = uSpecular * (0.3 + dot(albedo, vec3(0.6, 0.9, 0.5)));
-        vec3 color = albedo * diffuse + spec * gloss + albedo * detail.a * uEmissive + uFlash * vec3(1.0, 0.82, 0.65);
+        vec3 color = albedo * diffuse * grime + spec * gloss * shineGain + albedo * detail.a * uEmissive * glow + uFlash * vec3(1.0, 0.82, 0.65);
+        // Objective targets carry a rim of light round their silhouette, so they read against busy walls.
+        color += uRim * pow(1.0 - max(dot(n, V), 0.0), 2.5);
         if (uWater > 0.5) {
           // Water: a few crossing swells tilt the surface, which then mirrors the sky at grazing angles (Fresnel), shows
           // its deep colour looking down, and throws a hard glint of sun.
-          vec2 p = vPos.xz;
+          // A slow warp keeps the crossing swells from lining up into stripes across a wide sea.
+          vec2 p = vPos.xz + vec2(vnoise(vPos.xz * 0.021), vnoise(vPos.xz * 0.021 + 7.7)) * 26.0;
           float t = uTime;
           vec2 slope = vec2(cos(p.x * 0.45 + p.y * 0.2 + t * 1.3) * 0.5 + cos(p.x * 1.3 - p.y * 0.9 + t * 2.1) * 0.25 + cos(p.x * 3.1 + p.y * 2.3 - t * 3.4) * 0.1,
                             cos(p.y * 0.5 - p.x * 0.15 + t * 1.1) * 0.5 + cos(p.y * 1.4 + p.x * 0.8 - t * 1.9) * 0.25 + cos(p.y * 2.9 - p.x * 2.6 + t * 3.0) * 0.1);
-          vec3 W = normalize(vec3(-slope.x * 0.12, 1.0, -slope.y * 0.12));
+          // Far off the swell flattens, or its small waves alias into bands of sky and deep water.
+          float calm = (0.6 + 0.8 * vnoise(vPos.xz * 0.013 + 3.3)) * mix(1.0, 0.2, smoothstep(25.0, 160.0, length(uCamera - vPos)));
+          vec3 W = normalize(vec3(-slope.x * 0.12 * calm, 1.0, -slope.y * 0.12 * calm));
           float facing = max(dot(W, V), 0.0), fresnel = 0.03 + 0.97 * pow(1.0 - facing, 5.0);
           vec3 R = reflect(-V, W);
           vec3 sky = mix(uFogColor, uSkyLight * 1.3 + vec3(0.05, 0.1, 0.2), smoothstep(0.0, 0.5, R.y));
@@ -5699,6 +5819,8 @@
         float dist = length(uCamera - vPos);
         float haze = (1.0 - smoothstep(${FLOOR.toFixed(1)}, ${(FLOOR + 9).toFixed(1)}, vPos.y)) * smoothstep(25.0, 180.0, dist) * uHaze;
         color = mix(color, uFogColor, clamp(smoothstep(uFog.x, uFog.y, dist) * uFog.z + haze, 0.0, 1.0));
+        // With the post pass on, colour goes out linear and the tone curve is applied once to the whole frame.
+        if (uLinear > 0.5) { outColor = vec4(color, 1.0); return; }
         vec3 over = max(color - 0.82, 0.0);
         outColor = vec4(min(color, 0.82) + over / (1.0 + over * 2.2), 1.0);
       }`;
@@ -5711,7 +5833,7 @@
       precision highp float;
       in vec2 vNdc;
       uniform vec3 uForward, uRight, uUp, uSunDir, uFogColor, uZenith, uPlanetDir, uPlanetA, uPlanetB;
-      uniform float uPlanetSize, uAirless;
+      uniform float uPlanetSize, uAirless, uVeil;
       uniform int uQuality;
       uniform vec2 uSpread;
       uniform float uTime;
@@ -5741,7 +5863,7 @@
         vec3 color = mix(uFogColor, uZenith, pow(clamp(h, 0.0, 1.0), 0.5));
         color = mix(color, uFogColor * 0.55, smoothstep(0.0, -0.3, h));
         float sun = max(dot(dir, uSunDir), 0.0);
-        color += vec3(1.0, 0.55, 0.28) * (pow(sun, 5.0) * 0.22 + pow(sun, 60.0) * 0.5) + vec3(1.0, 0.9, 0.75) * smoothstep(0.9994, 0.9997, sun);
+        color += (vec3(1.0, 0.55, 0.28) * (pow(sun, 5.0) * 0.22 + pow(sun, 60.0) * 0.5) + vec3(1.0, 0.9, 0.75) * smoothstep(0.9994, 0.9997, sun)) * (1.0 - 0.75 * uVeil);
         vec3 planetDir = uPlanetDir;
         vec3 px = normalize(cross(vec3(0.0, 1.0, 0.0), planetDir)), py = cross(planetDir, px);
         vec2 q = vec2(dot(dir, px), dot(dir, py)) / uPlanetSize;
@@ -5752,7 +5874,9 @@
             float lit = clamp(dot(sphere, normalize(vec3(0.55, 0.25, 0.8))), 0.0, 1.0);
             float bands = 0.5 + 0.5 * sin(q.y * 15.0 + noise(q * 4.0) * 3.0);
             vec3 surface = mix(uPlanetA, uPlanetB, bands);
-            color = mix(color, surface * (0.08 + lit * 0.95), smoothstep(1.0, 0.97, r2) * 0.92);
+            // Seen through air, the planet sinks into the haze towards the horizon.
+            float veil = uAirless > 0.5 ? 0.92 : 0.92 * mix(0.45, 0.85, smoothstep(0.0, 0.45, h));
+            color = mix(color, surface * (0.08 + lit * 0.95), smoothstep(1.0, 0.97, r2) * veil * (1.0 - 0.8 * uVeil));
             color += vec3(0.5, 0.65, 0.8) * pow(r2, 6.0) * 0.25 * lit;
           } else {
             color += vec3(0.45, 0.55, 0.7) * exp(-(sqrt(r2) - 1.0) * 9.0) * 0.12;
@@ -5766,7 +5890,9 @@
           float band = smoothstep(0.42, 0.0, abs(dot(dir, normalize(vec3(0.35, 0.62, -0.7))))) * (0.45 + 0.55 * noise(dir.xz * 6.0 + dir.y * 3.0));
           vec3 stars = starLayer(dir, 110.0, 0.1 + band * 0.15) + starLayer(dir, 260.0, 0.16 + band * 0.45) * 0.7;
           float show = smoothstep(uAirless > 0.5 ? 0.0 : 0.25, uAirless > 0.5 ? 0.08 : 0.7, h) * (1.0 - mask);
-          color += (stars + vec3(0.07, 0.07, 0.1) * band * band * uAirless) * show;
+          // Dust drifting through the view thins the stars in slow clouds.
+          float veiled = uVeil * (0.75 + 0.25 * noise(dir.xz * 3.0 + dir.y * 2.0 + uTime * 0.01));
+          color += (stars + vec3(0.07, 0.07, 0.1) * band * band * uAirless) * show * (1.0 - veiled);
         }
         outColor = vec4(color, 1.0);
       }`;
@@ -5781,6 +5907,7 @@
       out float vFog;
       // On a moon the flat world is wrapped onto a sphere under the camera, so the ground falls away to a horizon.
       uniform float uCurve, uDatum;
+      uniform vec3 uFog;
       vec3 bend(vec3 p) {
         vec2 d = p.xz - uCamera.xz;
         float dist = length(d);
@@ -5796,7 +5923,8 @@
         vec2 along = d / dist * r * sin(a);
         return vec3(uCamera.x + along.x, uDatum - radius + r * cos(a), uCamera.z + along.y);
       }
-      void main() { vUv = aUv; vColor = aColor; vFog = smoothstep(60.0, 430.0, distance(aPos, uCamera)); gl_Position = uViewProj * vec4(bend(aPos), 1.0); }`;
+      // Glows fade into the same fog as the surfaces round them.
+      void main() { vUv = aUv; vColor = aColor; vFog = clamp(smoothstep(uFog.x * 0.8, uFog.y, distance(aPos, uCamera)) * (uFog.z + 0.1), 0.0, 1.0); gl_Position = uViewProj * vec4(bend(aPos), 1.0); }`;
     // Additive glows; streak quads carry u in [2, 3] so they fade across their width only.
     const SPRITE_FS = `#version 300 es
       precision highp float;
@@ -5826,7 +5954,61 @@
           float r = dot(p, p);
           glow = (exp(-r * 7.0) + exp(-r * 2.2) * 0.35) * (1.0 - smoothstep(0.75, 1.0, r));
         }
-        outColor = vec4(vColor.rgb * vColor.a * glow * (1.0 - vFog * 0.85), 1.0);
+        outColor = vec4(vColor.rgb * vColor.a * glow * (1.0 - vFog * 0.9), 1.0);
+      }`;
+
+    // The post pass: the scene is drawn linear into a multisampled half-float buffer, resolved, and then put on screen
+    // through one tone curve with a little bloom, so walls, sky and glows all share the same exposure. The curve keeps
+    // the hue of a colour as it compresses, so hot cores stay orange or green instead of clipping to white.
+    const POST_VS = `#version 300 es
+      layout(location = 0) in vec2 aPos;
+      out vec2 vUv;
+      void main() { vUv = aPos * 0.5 + 0.5; gl_Position = vec4(aPos, 0.0, 1.0); }`;
+    // Bright pass at quarter size: a 4-tap average, keeping only what rises above the knee.
+    const BRIGHT_FS = `#version 300 es
+      precision highp float;
+      in vec2 vUv;
+      uniform sampler2D uScene;
+      uniform vec2 uTexel;
+      out vec4 outColor;
+      void main() {
+        vec3 c = (texture(uScene, vUv + uTexel * vec2(-1.0, -1.0)).rgb + texture(uScene, vUv + uTexel * vec2(1.0, -1.0)).rgb
+          + texture(uScene, vUv + uTexel * vec2(-1.0, 1.0)).rgb + texture(uScene, vUv + uTexel * vec2(1.0, 1.0)).rgb) * 0.25;
+        float m = max(max(c.r, c.g), c.b);
+        outColor = vec4(c * (max(m - 0.95, 0.0) / max(m, 1e-4)), 1.0);
+      }`;
+    const BLUR_FS = `#version 300 es
+      precision highp float;
+      in vec2 vUv;
+      uniform sampler2D uImage;
+      uniform vec2 uStep;
+      out vec4 outColor;
+      void main() {
+        vec3 c = texture(uImage, vUv).rgb * 0.227;
+        c += (texture(uImage, vUv + uStep * 1.385).rgb + texture(uImage, vUv - uStep * 1.385).rgb) * 0.316;
+        c += (texture(uImage, vUv + uStep * 3.231).rgb + texture(uImage, vUv - uStep * 3.231).rgb) * 0.070;
+        outColor = vec4(c, 1.0);
+      }`;
+    const COMPOSITE_FS = `#version 300 es
+      precision highp float;
+      in vec2 vUv;
+      uniform sampler2D uScene, uBloom;
+      uniform float uBloomGain;
+      out vec4 outColor;
+      void main() {
+        vec3 c = texture(uScene, vUv).rgb + texture(uBloom, vUv).rgb * uBloomGain;
+        // Below the knee colour passes straight through, as before; above it the brightest channel eases towards 1 and
+        // the others keep their ratio to it. Very hot light turns a little whiter, as it should.
+        float m = max(max(c.r, c.g), c.b), knee = 0.78;
+        if (m > knee) {
+          float t = knee + (1.0 - knee) * (1.0 - exp(-(m - knee) / (1.0 - knee)));
+          c *= t / m;
+          c = mix(c, vec3(t), smoothstep(1.6, 8.0, m) * 0.4);
+        }
+        // A soft vignette draws the eye to the middle of the view.
+        vec2 d = vUv - 0.5;
+        c *= 1.0 - dot(d, d) * 0.42;
+        outColor = vec4(c, 1.0);
       }`;
 
     function compile(type, source) {
@@ -5877,6 +6059,22 @@
     const surfaceProgram = createProgram(SURFACE_VS, SURFACE_FS);
     const skyProgram = createProgram(SKY_VS, SKY_FS);
     const spriteProgram = createProgram(SPRITE_VS, SPRITE_FS);
+    // Highlight sharpness: sand, grass and chitin take broad, weak highlights; wet, icy and glassy things tight ones.
+    // Anything not listed is painted metal.
+    const MATERIAL_SHINE = {
+      floorSand: 6, wallSandstone: 8, floorGrass: 5, treeLeaves: 6, treeBark: 6, wallCliff: 8, floorMoon: 7, wallMoon: 8,
+      wallHive: 14, wallChitin: 18, floorHive: 14, wallRust: 16, wallBasalt: 14, hazard: 18, floorFoundry: 14,
+      floorSludge: 60, floorWater: 90, floorIce: 70, wallIce: 60, wallGlacier: 50, crystal: 80, wallVoid: 70, floorVoid: 64,
+      solarPanel: 110, chain: 60, lock: 60, drone: 56,
+    };
+    // How much a surface's glow comes and goes in patches across a level (0 = even), and how far its pattern is eased
+    // towards its average colour (1 = as painted).
+    const MATERIAL_GLOW_VARY = {
+      ceiling: 0.55, wallBasalt: 0.85, wallHive: 0.6, wallChitin: 0.7, floorHive: 0.6, wallComputer: 0.4, wallWindows: 0.45,
+      floorPad: 0.45, wallTech: 0.45, wallUpper: 0.3, wallLower: 0.3, wallDoor: 0.3, wallVent: 0.3, wallPipes: 0.3, crown: 0.35,
+      floorFoundry: 0.6, floorVent: 0.4, wallVoid: 0.4, floorVoid: 0.4, floorSludge: 0.35, wallContainer: 0.3, wallContainerB: 0.3,
+    };
+    const MATERIAL_CONTRAST = { floorSand: 0.55, wallSandstone: 0.72, floorGrass: 0.75, wallChitin: 0.75, wallHive: 0.85, floorIce: 0.7, wallCliff: 0.85 };
     // [specular, bump, emissive] per material.
     const MATERIAL_SETTINGS = {
       wallLower: [0.4, 1, 1.8], wallVent: [0.4, 1, 1.6], wallDoor: [0.45, 1, 2.2], wallPipes: [0.55, 1, 2],
@@ -5885,8 +6083,8 @@
       floorPlate: [0.5, 1, 1], floorGrate: [0.5, 1, 1.1], floorPad: [0.35, 1, 3], floorFoundry: [0.3, 1, 3],
       barrel: [0.55, 1, 1], barrelLid: [0.5, 1, 1], drone: [0.7, 1, 3],
       ceiling: [0.4, 1, 1.5], pickupHealth: [0.6, 1, 2.4], pickupWeapon: [0.6, 1, 2.4], exitFrame: [0.5, 1, 2.6],
-      wallComputer: [0.5, 1, 2.2], wallRust: [0.35, 1, 1.2], floorSludge: [1.2, 0.6, 1.8], gateDoor: [0.5, 1, 2],
-      secretPanel: [0.4, 1, 1.6], crackedWall: [0.4, 1, 2.4], lock: [0.6, 1, 2.6], chain: [0.9, 1, 0.5], floorLava: [0.6, 0.8, 2.4],
+      wallComputer: [0.5, 1, 2.2], wallRust: [0.35, 1, 1.2], floorSludge: [1.2, 0.6, 1.35], gateDoor: [0.5, 1, 2],
+      secretPanel: [0.4, 1, 1.6], crackedWall: [0.4, 1, 2.4], lock: [0.6, 1, 2.6], chain: [0.9, 1, 0.5], floorLava: [0.6, 0.8, 2.1],
       wallIce: [0.8, 1, 1.6], wallGlacier: [0.7, 1, 1.4], wallHive: [0.5, 1, 2.2], wallChitin: [0.5, 1, 1.8], wallBasalt: [0.35, 1, 2.6], wallContainer: [0.45, 1, 1.2], wallContainerB: [0.45, 1, 1.2], wallTech: [0.6, 1, 2.2],
       wallVoid: [0.9, 1, 2.6], crystal: [1.1, 1, 1.5], floorIce: [1.1, 0.8, 1.4], floorHive: [0.5, 1, 2], floorWater: [1.5, 0.5, 1.6],
       floorVent: [0.5, 1, 2.6], floorVoid: [0.9, 1, 2.4], floorMoon: [0.2, 1, 1], wallMoon: [0.25, 1, 1],
@@ -5902,7 +6100,8 @@
       for (const name of names) {
         if (materials[name] || !textureFactories[name]) continue;
         const texture = textureFactories[name](), [specular, bump, emissive] = MATERIAL_SETTINGS[name];
-        materials[name] = { name, specular, bump, emissive,
+        materials[name] = { name, specular, bump, emissive, shine: MATERIAL_SHINE[name] ?? 40, vary: MATERIAL_GLOW_VARY[name] ?? 0,
+          contrast: MATERIAL_CONTRAST[name] ?? 1, crust: name === 'floorLava' ? 1 : 0,
           albedo: uploadTexture(texture.color, texture.w, texture.h), detail: uploadTexture(texture.normal, texture.w, texture.h) };
       }
     }
@@ -6942,7 +7141,7 @@
       regulator: variant('valve', [0.6, 0.9, 1.2], 'wallTech'),
       governor: variant('console', [1.0, 0.75, 0.35], 'wallTech'),
       feeder: variant('pump', [0.8, 0.5, 1.3], 'wallTech'),
-      burner: variant('emitter', [1.0, 0.5, 0.15], 'wallRust', true),
+      burner: { ...variant('emitter', [1.0, 0.5, 0.15], 'wallRust', true), flame: true },
       shieldEmitter: variant('emitter', [0.4, 0.7, 1.4], 'wallTech'),
     });
     // Machines are built of the station's own plate; the racked fighter keeps the swarm's hull.
@@ -7191,6 +7390,67 @@
       return vao;
     })();
     const spriteMesh = createMesh([], SPRITE_LAYOUT, gl.DYNAMIC_DRAW);
+    // The post pass runs on HIGH and MEDIUM; LOW and RETRO draw straight to the screen with the old per-surface curve.
+    const post = (() => {
+      if (!antialiased || !gl.getExtension('EXT_color_buffer_float')) return null;
+      const programs = { bright: createProgram(POST_VS, BRIGHT_FS), blur: createProgram(POST_VS, BLUR_FS), composite: createProgram(POST_VS, COMPOSITE_FS) };
+      const samples = Math.min(4, gl.getParameter(gl.MAX_SAMPLES));
+      const target = (w, h) => {
+        const texture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA16F, w, h);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        const fbo = gl.createFramebuffer();
+        gl.bindFramebuffer(gl.FRAMEBUFFER, fbo); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+        return { texture, fbo, w, h };
+      };
+      const state = { w: 0, h: 0 };
+      state.ensure = (w, h) => {
+        if (w === state.w && h === state.h) return;
+        if (state.w) {
+          gl.deleteFramebuffer(state.msaa); gl.deleteRenderbuffer(state.color); gl.deleteRenderbuffer(state.depth);
+          for (const t of [state.scene, state.bloomA, state.bloomB]) { gl.deleteTexture(t.texture); gl.deleteFramebuffer(t.fbo); }
+        }
+        state.w = w; state.h = h;
+        state.msaa = gl.createFramebuffer(); state.color = gl.createRenderbuffer(); state.depth = gl.createRenderbuffer();
+        gl.bindRenderbuffer(gl.RENDERBUFFER, state.color); gl.renderbufferStorageMultisample(gl.RENDERBUFFER, samples, gl.RGBA16F, w, h);
+        gl.bindRenderbuffer(gl.RENDERBUFFER, state.depth); gl.renderbufferStorageMultisample(gl.RENDERBUFFER, samples, gl.DEPTH_COMPONENT24, w, h);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, state.msaa);
+        gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.RENDERBUFFER, state.color);
+        gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, state.depth);
+        state.scene = target(w, h);
+        const bw = Math.max(1, Math.round(w / 4)), bh = Math.max(1, Math.round(h / 4));
+        state.bloomA = target(bw, bh); state.bloomB = target(bw, bh);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      };
+      // Resolve the multisampled scene, build the bloom, and put the frame on screen.
+      state.finish = () => {
+        const { w, h, scene, bloomA, bloomB } = state;
+        gl.bindFramebuffer(gl.READ_FRAMEBUFFER, state.msaa); gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, scene.fbo);
+        gl.blitFramebuffer(0, 0, w, h, 0, 0, w, h, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+        gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
+        gl.disable(gl.DEPTH_TEST); gl.disable(gl.BLEND); gl.depthMask(false);
+        gl.bindVertexArray(skyMesh);
+        const pass = (program, out, setup) => {
+          gl.bindFramebuffer(gl.FRAMEBUFFER, out ? out.fbo : null);
+          gl.viewport(0, 0, out ? out.w : world.width, out ? out.h : world.height);
+          gl.useProgram(program.program); setup(program.uniforms);
+          gl.drawArrays(gl.TRIANGLES, 0, 3);
+        };
+        const bind = (unit, texture) => { gl.activeTexture(gl.TEXTURE0 + unit); gl.bindTexture(gl.TEXTURE_2D, texture); };
+        pass(programs.bright, bloomA, u => { bind(0, scene.texture); gl.uniform1i(u.uScene, 0); gl.uniform2f(u.uTexel, 1 / w, 1 / h); });
+        pass(programs.blur, bloomB, u => { bind(0, bloomA.texture); gl.uniform1i(u.uImage, 0); gl.uniform2f(u.uStep, 1 / bloomA.w, 0); });
+        pass(programs.blur, bloomA, u => { bind(0, bloomB.texture); gl.uniform1i(u.uImage, 0); gl.uniform2f(u.uStep, 0, 1 / bloomA.h); });
+        pass(programs.composite, null, u => {
+          bind(0, scene.texture); bind(1, bloomA.texture); gl.uniform1i(u.uScene, 0); gl.uniform1i(u.uBloom, 1); gl.uniform1f(u.uBloomGain, 0.55);
+        });
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindVertexArray(null);
+        gl.depthMask(true);
+      };
+      return state;
+    })();
 
     function basis(yaw, pitch, roll = 0) {
       const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
@@ -7974,7 +8234,7 @@
       health = startHealth; levelWeapon = weaponLevel; levelMissiles = missileAmmo; levelLauncher = launcherLevel; rails.length = 0; railCount = 0; shield = SHIELD_MAX; shieldDelay = 0;
       missiles.length = 0; enemyMissiles.length = 0; lockTarget = null; lockTimer = 0;
       barrelsDestroyed = 0; kills = 0; destroyed = false; finished = false; sludgeCooldown = 0; paused = menuOpen || !!screenOpen; mouseFiring = false;
-      impactTimer = 0; hitTimer = 0; muzzleTimer = 0; fireCooldown = 0; wallCooldown = 0; warpTimer = 0; redFlash = 0; trauma = 0;
+      impactTimer = 0; hitTimer = 0; muzzleTimer = 0; fireCooldown = 0; wallCooldown = 0; warpTimer = 0; redFlash = 0; trauma = 0; storyTimer = 0;
       shots.length = 0; enemyShots.length = 0; explosions.length = 0; particles.length = 0;
       gameOverText.classList.remove('show'); pausedText.classList.remove('show');
       bossBlast = null; resetMap(); secondTrack = false; setTrack(menuOpen || screenOpen ? 'menu' : sectorTrack());
@@ -8177,7 +8437,7 @@
       'MAGMA GORGE': 'The foundry is slag, but its fire still runs: a gorge a hundred units deep feeds the furnaces with lava from the moon\'s core. Destroy the smelter valves on its rims, dive into the gorge to wreck the pumps standing in the lava, silence the foundry guns, and fly out through the gate at the gorge\'s end.',
       'SIGNAL SPIRE': 'The gorge has run cold. The last target on Epsilon-5 is the signal spire that runs its defenses, held by the Spire Overseer. Destroy its two relays, then the Overseer, and the forge moon goes deaf and blind.',
       'STORM REEF': 'Epsilon-5 is deaf, but the Choir know now that something is loose among their worlds. Tau-3, the ocean moon, watches its sky from a reef of islands strung with listening masts, and the Requiem cannot slip into its shadow while they listen. Destroy the masts, sink the picket ships that patrol the lagoon, and leave through the storm gate.',
-      'DROWNED DOCKS': 'The reef has gone quiet and the Requiem is in Tau-3\'s shadow, unseen. The ocean moon\'s docks load the swarm for the crossing between stars, and a new carrier stands on the stocks in the dry dock. Scuttle the carrier, wreck the loading cranes, and watch for gold-marked enemies: they were at Earth.',
+      'DROWNED DOCKS': 'The reef has gone quiet and the Requiem is in Tau-3\'s shadow, unseen. The ocean moon\'s docks load the swarm for the crossing between stars, and a new carrier stands on the stocks in the dry dock. Scuttle the carrier, wreck the loading cranes, and get out through the gate by the lighthouse. Watch for gold-marked enemies: they were at Earth.',
       'TIDE DRUM': 'The docks are burning, but Tau-3 farms its tides too: a drum of sea turns in orbit over the moon, its islands and harbours curving up round you to meet overhead. Destroy the harbour cranes, open the sea gate in the wall that rings the drum, cross to the far shore and destroy the desalination cores.',
       'HIVE WARRENS': 'The tide drum is drained, and no swarm will load or feed there again. Under Tau-3\'s surface are the hive warrens where the Choir grow their pilots, ruled by the Hive Queen. Burst her egg sacs, then kill her, and the next generation of Earth-burners is never born.',
       'BROOD ARK': 'The Hive Queen is dead, but her last brood had already launched: a living ark drifting out of Tau-3\'s orbit, its hold full of eggs round a brood mother as big as the queen was. Destroy the spore turrets on its hide, shoot open the maw, burst the egg sacs and kill the brood mother.',
@@ -8579,11 +8839,15 @@
         gameOverText.classList.add('show');
       }
     }
+    // A story beat (storyTimer) holds the status line for its full time: hit reports and lesser notices wait until it has been read.
     function registerHit(message) {
+      if (storyTimer > 0) return;
       hitTimer = 0.34; noticeTimer = 0;
       statusText.textContent = message;
     }
-    function notice(message, seconds) {
+    function notice(message, seconds, story = false) {
+      if (storyTimer > 0 && !story) return;
+      if (story) storyTimer = seconds;
       noticeTimer = seconds;
       statusText.textContent = message;
     }
@@ -8635,6 +8899,7 @@
       gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, material.albedo);
       gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, material.detail);
       gl.uniform1f(u.uSpecular, material.specular); gl.uniform1f(u.uBump, material.bump); gl.uniform1f(u.uEmissive, material.emissive * pulse);
+      gl.uniform1f(u.uShine, material.shine); gl.uniform1f(u.uGlowVary, material.vary); gl.uniform1f(u.uContrast, material.contrast); gl.uniform1f(u.uCrust, material.crust);
     }
     function drawMesh(mesh, model = IDENTITY, flash = 0, tint = WHITE, exposure = 1) {
       const u = surfaceProgram.uniforms;
@@ -8648,12 +8913,12 @@
       for (const shot of enemyShots) list.push([shot.position, 12, [1.0, 0.4, 0.15]]);
       for (const missile of missiles) list.push([missile.position, 14, [1.0, 0.55, 0.2]]);
       for (const missile of enemyMissiles) list.push([missile.position, 14, [1.0, 0.25, 0.15]]);
-      for (const explosion of explosions) { const k = explosion.life / 0.65; list.push([explosion.position, (30 + 30 * (1 - k)) * explosion.scale, [3.2 * k, 1.6 * k, 0.5 * k]]); }
+      for (const explosion of explosions) { const k = explosion.life / 0.65; list.push([explosion.position, (26 + 24 * (1 - k)) * explosion.scale, [2.1 * k, 1.05 * k, 0.32 * k]]); }
       if (muzzleTimer > 0) list.push([add(ship.position, mul(camera.view.forward, 2)), 24, mul([0.4, 0.85, 1.0], muzzleTimer / 0.12 * 1.5)]);
       for (const enemy of enemies) if (enemy.hp > 0 && !enemy.cloaked) { const kind = ENEMY_TYPES[enemy.type]; list.push([enemy.position, 10 * kind.scale, mul(kind.eye, 0.85)]); }
       for (const pickup of pickups) if (!pickup.taken) list.push([pickup.position, 13, PICKUP_COLORS[pickup.type]]);
       for (const gate of gates) for (const lock of gate.locks) if (lock.hp > 0) list.push([lock.position, 9, [1.0, 0.35, 0.15]]);
-      if (exitOpen()) list.push([exitCenter(), 45, [0.3, 1.2, 0.7]]);
+      if (exitOpen()) list.push([exitCenter(), 45, [0.22, 0.85, 0.5]]);
       for (const spinner of spinners) if (spinner.kind === 'core') list.push([spinner.at, spinner.radius * 7, [0.45, 0.8, 1.5]]);
       for (const laser of lasers) if (laserState(laser) === 'on') { const [a, b] = laser.beams[0]; list.push([mul(add(a, b), 0.5), 26, [1.2, 0.2, 0.15]]); }
       const near = list.map(light => [light, dot(gapBetween(light[0], camera.position), gapBetween(light[0], camera.position))])
@@ -8662,7 +8927,7 @@
       near.forEach(([position, radius, color], i) => { positions.set([...position, radius], i * 4); colors.set(color, i * 3); });
       return { positions, colors, count: near.length };
     }
-    function buildSprites(camera) {
+    function buildSprites(camera, strike = 0) {
       const data = [];
       const quad = (corners, uvs, color, alpha) => { for (const i of [0, 1, 2, 0, 2, 3]) data.push(...corners[i], ...uvs[i], ...color, alpha); };
       const billboard = (position, size, color, alpha) => {
@@ -8710,6 +8975,110 @@
           const rise = (time * 9 + (wreck.phase + k / 3) * 14) % 14, x = wreck.position[0] + (k - 1) * 1.4, z = wreck.position[2] + Math.sin(k * 2.1 + wreck.phase) * 1.2;
           streak([x, wreck.position[1] + rise, z], [x, wreck.position[1] + rise + 2.6, z], 0.5 * (1 - rise / 14), [1.0, 0.55, 0.2], 1.4 * (1 - rise / 14));
         }
+      }
+      // Standing fires: a flickering heart and tongues of flame climbing off it.
+      const fire = (at, size, seed) => {
+        const flicker = 0.75 + 0.25 * Math.sin(time * 19 + seed * 7) * Math.sin(time * 7.3 + seed);
+        billboard(at, size * 0.5 * flicker, [1.0, 0.5, 0.14], 1.1);
+        billboard(add(at, [0, size * 0.3, 0]), size * 1.2, [1.0, 0.3, 0.08], 0.16 * flicker);
+        for (let k = 0; k < 4; k++) {
+          const rise = (time * 10 + (seed + k / 4) * size * 1.6) % (size * 1.6), r = rise / (size * 1.6);
+          const x = at[0] + Math.sin(k * 2.4 + seed * 5 + time * 3) * size * 0.18, z = at[2] + Math.cos(k * 1.9 + seed * 3 + time * 2.6) * size * 0.18;
+          streak([x, at[1] + rise, z], [x, at[1] + rise + size * 0.3, z], size * 0.14 * (1 - r), [1.0, 0.6 - r * 0.3, 0.2], 1.6 * (1 - r));
+        }
+      };
+      (level.flames || []).forEach(([x, y, z, size], i) => { if (nearby([x, y, z], 600)) fire([x, y, z], size, i * 0.37); });
+      // Power feeds: a beam from each live source to where it is fed, and a glow there that dims as the sources fall.
+      for (const feed of level.feeds || []) {
+        const sources = enemies.filter(e => e.title === feed.title), live = sources.filter(e => e.hp > 0);
+        const pulse = 0.75 + 0.25 * Math.sin(time * 6);
+        for (const source of live) {
+          const from = add(source.position, [0, 1.5, 0]), to = feed.axis ? [feed.axis[0], from[1], feed.axis[1]] : feed.up ? add(from, [0, feed.up, 0]) : feed.to;
+          // A spectrum gives each source its own hue round the colour wheel, in the order they were placed.
+          const hue = sources.indexOf(source) / sources.length * Math.PI * 2;
+          const color = feed.spectrum ? [0.75 + 0.55 * Math.cos(hue), 0.75 + 0.55 * Math.cos(hue - 2.1), 0.75 + 0.55 * Math.cos(hue + 2.1)] : feed.color;
+          const beat = feed.spectrum ? 0.7 + 0.3 * Math.sin(time * (3 + sources.indexOf(source) * 0.7)) : pulse;
+          streak(from, to, feed.width || 1.1, color, 0.7 * beat); streak(from, to, (feed.width || 1.1) * 3, color, 0.12 * beat);
+        }
+        if (live.length && feed.to) billboard(feed.to, 26, feed.color, 0.16 * live.length / sources.length * pulse);
+      }
+      // Something falling burning through the sky, far off: a white-hot head, a long tail of fire and smoke, and debris.
+      if (level.falling) {
+        const dir = normalize(level.falling), drop = (time * 0.9) % 70;
+        const head = add(add(camera.position, mul(dir, 520)), [0, -drop, 0]), back = normalize([dir[0] * 0.3, 1, dir[2] * 0.3]);
+        billboard(head, 9, [1.0, 0.85, 0.6], 1.2);
+        billboard(head, 26, [1.0, 0.45, 0.15], 0.35);
+        streak(head, add(head, mul(back, 150)), 7, [1.0, 0.5, 0.18], 0.7);
+        streak(add(head, mul(back, 40)), add(head, mul(back, 260)), 12, [0.55, 0.4, 0.35], 0.2);
+        for (let k = 0; k < 6; k++) {
+          const fall = (time * 6 + k * 13) % 80, side = (hashInt(k, 1, 909) - 0.5) * 40;
+          billboard(add(head, [side + Math.sin(k) * 6, -fall, Math.cos(k * 2.1) * 12]), 2.2, [1.0, 0.6, 0.25], 0.8 * (1 - fall / 80));
+        }
+      }
+      for (const enemy of enemies) if (enemy.hp > 0 && enemy.look && TARGET_LOOKS[enemy.look]?.flame && nearby(enemy.position, 400)) fire(add(enemy.position, [0, 2.4, 0]), 5, enemy.phase);
+      // Weather round the ship: rain falling through a box that follows the camera, lightning strokes far off, or motes.
+      const weather = level.weather;
+      if (weather?.rain && !coveredAt(camera.position[0], camera.position[2], camera.position[1])) {
+        const [cx, cy, cz] = camera.position, box = 70, wind = 0.35;
+        for (let k = 0; k < 260; k++) {
+          const hx = hashInt(k, 1, 71), hz = hashInt(k, 2, 71), hy = hashInt(k, 3, 71);
+          const x = cx + ((hx * box - cx) % box + box) % box - box / 2, z = cz + ((hz * box - cz) % box + box) % box - box / 2;
+          const y = cy + 30 - ((time * 48 + hy * 60) % 60);
+          streak([x, y, z], [x + wind * 2.4, y - 2.6, z], 0.045, [0.62, 0.72, 0.85], 0.55);
+        }
+      }
+      if (weather?.lightning && strike > 0.15) {
+        const k = Math.floor(time / 11), angle = hashInt(k, 2, 404) * Math.PI * 2, far = 520;
+        let at = add(camera.position, [Math.cos(angle) * far, 260, Math.sin(angle) * far]);
+        for (let j = 0; j < 9; j++) {
+          const next = add(at, [(hashInt(k, j + 3, 405) - 0.5) * 50, -34, (hashInt(k, j + 3, 406) - 0.5) * 50]);
+          streak(at, next, 2.2, [0.75, 0.85, 1.0], 2.5 * strike); at = next;
+        }
+      }
+      if (weather?.motes) {
+        const [cx, cy, cz] = camera.position, box = 90;
+        for (let k = 0; k < 180; k++) {
+          const hx = hashInt(k, 1, 81), hz = hashInt(k, 2, 81), hy = hashInt(k, 3, 81);
+          const x = cx + ((hx * box + Math.sin(time * 0.3 + k) * 3 - cx) % box + box) % box - box / 2;
+          const z = cz + ((hz * box + time * 0.8 - cz) % box + box) % box - box / 2;
+          const y = cy + ((hy * box + time * 1.1 - cy) % box + box) % box - box / 2;
+          billboard([x, y, z], 0.22 + hashInt(k, 4, 81) * 0.3, weather.motes, 0.6);
+          if (k % 12 === 0) billboard([x, y, z], 6, weather.motes, 0.035);
+        }
+      }
+      // Dust: big faint wisps hanging in a wider box round the ship, so the cloud moves past as you fly.
+      if (weather?.dust) {
+        const [cx, cy, cz] = camera.position, box = 220;
+        for (let k = 0; k < 48; k++) {
+          const hx = hashInt(k, 1, 91), hz = hashInt(k, 2, 91), hy = hashInt(k, 3, 91);
+          const x = cx + ((hx * box + Math.sin(time * 0.05 + k) * 8 - cx) % box + box) % box - box / 2;
+          const z = cz + ((hz * box - cz) % box + box) % box - box / 2, y = cy + ((hy * box - cy) % box + box) % box - box / 2;
+          billboard([x, y, z], 22 + hashInt(k, 4, 91) * 26, weather.dust, 0.05);
+        }
+      }
+      // The Requiem, following on the way out: a hull too dark to see but for rows of running lights, a bow beacon and its drive.
+      if (level.escort && escort) {
+        const along = escort.along, side = normalize(cross(along, [0, 1, 0])), up = [0, 1, 0], hull = escort.at;
+        for (let k = 0; k <= 16; k++) {
+          const at = add(hull, mul(along, (k - 8) * 9));
+          for (const s2 of [-1, 1]) billboard(add(at, add(mul(side, s2 * 7), mul(up, 2))), 0.7, [0.6, 0.85, 1.0], 0.75);
+          if (k % 4 === 0) billboard(add(at, mul(up, 6)), 0.6, [0.6, 0.85, 1.0], 0.55);
+        }
+        billboard(add(hull, mul(along, 76)), 1.2, [1.0, 0.25, 0.2], Math.sin(time * 4) > 0.3 ? 1.4 : 0.15);
+        billboard(add(hull, mul(along, -78)), 9, [0.45, 0.7, 1.2], 0.45);
+        streak(add(hull, mul(along, -78)), add(hull, mul(along, -130)), 4, [0.35, 0.6, 1.1], 0.3);
+      }
+      // A husk smoulders: a dull ember glow, thin grey smoke, and now and then a spark from its broken works.
+      for (const husk of husks) {
+        if (!nearby(husk.position, 220)) continue;
+        const age = time - husk.born, fade = Math.max(0.25, 1 - age / 40);
+        billboard(husk.position, 2.2, [1.0, 0.32, 0.08], 0.35 * fade * (0.8 + 0.2 * Math.sin(time * 7 + husk.phase * 9)));
+        for (let k = 0; k < 3; k++) {
+          const rise = (time * 3.2 + (husk.phase + k / 3) * 12) % 12, x = husk.position[0] + Math.sin(k * 2.3 + husk.phase * 5 + rise * 0.25) * 1.1;
+          const z = husk.position[2] + Math.cos(k * 1.7 + husk.phase * 3 + rise * 0.2) * 1.1;
+          billboard([x, husk.position[1] + 1 + rise, z], 1.2 + rise * 0.35, [0.5, 0.48, 0.45], 0.09 * fade * (1 - rise / 12));
+        }
+        if (Math.sin(time * 1.3 + husk.phase * 20) > 0.97) streak(husk.position, add(husk.position, [Math.sin(time * 40) * 1.5, 1.8, Math.cos(time * 37) * 1.5]), 0.08, [1.0, 0.75, 0.4], 1.5);
       }
       const sentinel = enemies.find(e => e.type === 'sentinel' && e.hp > 0), herald = enemies.find(e => e.type === 'herald' && e.hp > 0);
       for (const enemy of enemies) {
@@ -8785,11 +9154,13 @@
       }
       const gate = exitCenter(), spansX = level.exit[3];
       if (exitOpen()) {
-        billboard(gate, 8, [0.2, 1.0, 0.6], 0.45);
+        // Close up the haze thins, so the frame and the way through stay readable.
+        const gap = gapBetween(gate, camera.position), close = Math.min(1, Math.max(0.25, Math.sqrt(dot(gap, gap)) / 45));
+        billboard(gate, 8, [0.2, 1.0, 0.6], 0.45 * close);
         streak(gate, add(gate, [0, 80, 0]), 1.8, [0.3, 1.0, 0.6], 0.45);
         for (let k = 0; k < 12; k++) {
           const angle = time * 1.6 + k * Math.PI / 6, r = 4.8 + Math.sin(time * 3 + k) * 0.6;
-          billboard(add(gate, spansX ? [Math.cos(angle) * r, Math.sin(angle) * r, 0] : [0, Math.sin(angle) * r, Math.cos(angle) * r]), 1.1, [0.5, 1.0, 0.75], 0.9);
+          billboard(add(gate, spansX ? [Math.cos(angle) * r, Math.sin(angle) * r, 0] : [0, Math.sin(angle) * r, Math.cos(angle) * r]), 1.1, [0.5, 1.0, 0.75], 0.9 * (0.5 + 0.5 * close));
         }
       } else billboard(gate, 6, [0.5, 0.55, 0.6], 0.12);
       const goal = objectives[objectiveIndex];
@@ -8844,8 +9215,10 @@
         const across = normalize(Math.abs(n[1]) > 0.95 ? cross(n, [1, 0, 0]) : cross(n, [0, 1, 0])), up = cross(across, n);
         const a = mul(across, radius), b = mul(up, radius);
         const flicker = enemy.guardOn && enemy.guardTimer < 0.8 ? 0.45 + 0.55 * (Math.sin(time * 38) > 0 ? 1 : 0) : 1;
+        // Close up the honeycomb thins, so a shield filling the view doesn't hide what is behind it.
+        const gap = gapBetween(center, camera.position), close = Math.min(1, Math.max(0.3, (Math.sqrt(dot(gap, gap)) - radius * 0.5) / (radius * 3)));
         quad([sub(sub(center, a), b), sub(add(center, a), b), add(add(center, a), b), add(sub(center, a), b)], [[4, 0], [5, 0], [5, 1], [4, 1]],
-          [0.35 + enemy.guardFlash * 0.5, 0.75 + enemy.guardFlash * 0.2, 1.0], (0.55 + enemy.guardFlash * 0.9) * enemy.guardUp * flicker);
+          [0.35 + enemy.guardFlash * 0.5, 0.75 + enemy.guardFlash * 0.2, 1.0], (0.55 * close + enemy.guardFlash * 0.9) * enemy.guardUp * flicker);
       }
       for (const rail of rails) {
         const k = rail.life / 0.22;
@@ -8964,8 +9337,16 @@
         return reach > 0 && square - along * along <= reach * reach;
       };
     }
+    // Lightning: once in each stretch of eight to fourteen seconds a stroke lights the clouds, flickering twice.
+    function lightningNow() {
+      if (!level.weather?.lightning) return 0;
+      const span = 11, k = Math.floor(time / span), at = k * span + hashInt(k, 1, 404) * (span - 2), since = time - at;
+      if (since < 0 || since > 1.2) return 0;
+      return Math.exp(-since * 7) + 0.6 * Math.exp(-Math.abs(since - 0.22) * 18);
+    }
     function render() {
-      const camera = cameraForShip(), viewProj = viewProjection(camera), focal = focalLength(), sky = level.sky;
+      const camera = cameraForShip(), viewProj = viewProjection(camera), focal = focalLength(), sky = level.sky, strike = lightningNow();
+      if (post) { post.ensure(world.width, world.height); gl.bindFramebuffer(gl.FRAMEBUFFER, post.msaa); }
       gl.viewport(0, 0, world.width, world.height);
       gl.clear(gl.DEPTH_BUFFER_BIT);
       gl.disable(gl.DEPTH_TEST); gl.depthMask(false); gl.disable(gl.BLEND);
@@ -8973,10 +9354,10 @@
       const s = skyProgram.uniforms;
       gl.uniform3fv(s.uForward, camera.view.forward); gl.uniform3fv(s.uRight, camera.view.right); gl.uniform3fv(s.uUp, camera.view.up);
       gl.uniform2f(s.uSpread, width / 2 / focal, height / 2 / focal); gl.uniform3fv(s.uSunDir, sky.sunDir);
-      gl.uniform3fv(s.uFogColor, sky.fog); gl.uniform3fv(s.uZenith, sky.zenith); gl.uniform1f(s.uTime, time);
+      gl.uniform3fv(s.uFogColor, mul(sky.fog, 1 + strike * 2.2)); gl.uniform3fv(s.uZenith, add(sky.zenith, mul([0.35, 0.4, 0.55], strike))); gl.uniform1f(s.uTime, time);
       const planet = level.planet;
       gl.uniform3fv(s.uPlanetDir, planet.dir); gl.uniform3fv(s.uPlanetA, planet.a); gl.uniform3fv(s.uPlanetB, planet.b); gl.uniform1f(s.uPlanetSize, planet.size); gl.uniform1i(s.uQuality, GRAPHICS[graphics].detail);
-      gl.uniform1f(s.uAirless, level.space ? 2 : level.moon ? 1 : 0);
+      gl.uniform1f(s.uAirless, level.space ? 2 : level.moon ? 1 : 0); gl.uniform1f(s.uVeil, sky.veil || 0);
       gl.bindVertexArray(skyMesh); gl.drawArrays(gl.TRIANGLES, 0, 3);
 
       gl.enable(gl.DEPTH_TEST); gl.depthMask(true);
@@ -8985,15 +9366,14 @@
       gl.uniformMatrix4fv(u.uViewProj, false, viewProj);
       gl.uniform1i(u.uAlbedo, 0); gl.uniform1i(u.uDetail, 1);
       gl.uniform3fv(u.uCamera, camera.position); gl.uniform3fv(u.uSunDir, sky.sunDir);
-      gl.uniform3fv(u.uSunColor, sky.sun); gl.uniform3f(u.uSkyLight, 0.46, 0.54, 0.66); gl.uniform3f(u.uGroundLight, 0.17, 0.16, 0.17);
-      gl.uniform3fv(u.uFogColor, sky.fog); gl.uniform3fv(u.uHeadPos, camera.position); gl.uniform3fv(u.uHeadDir, camera.view.forward);
+      gl.uniform3fv(u.uSunColor, sky.sun); gl.uniform3f(u.uSkyLight, 0.46 + strike * 0.9, 0.54 + strike * 0.95, 0.66 + strike * 1.1); gl.uniform3f(u.uGroundLight, 0.17, 0.16, 0.17);
+      gl.uniform3fv(u.uFogColor, mul(sky.fog, 1 + strike * 2.2)); gl.uniform3fv(u.uHeadPos, camera.position); gl.uniform3fv(u.uHeadDir, camera.view.forward);
       gl.uniform4fv(u.uLights, lights.positions); gl.uniform3fv(u.uLightColors, lights.colors); gl.uniform1i(u.uLightCount, lights.count); gl.uniform1i(u.uQuality, GRAPHICS[graphics].detail);
       gl.uniform1f(u.uCurve, curve); gl.uniform1f(u.uDatum, FLOOR); gl.uniform1f(u.uTime, time); gl.uniform1f(u.uWater, 0);
-      if (level.fog) { gl.uniform3f(u.uFog, ...level.fog); gl.uniform1f(u.uHaze, level.haze ?? 0); }
-      else if (level.moon) { gl.uniform3f(u.uFog, 220, 900, 0.75); gl.uniform1f(u.uHaze, 0); }
-      else if (level.cylinder) { gl.uniform3f(u.uFog, 160, 1000, 0.6); gl.uniform1f(u.uHaze, 0); }
-      else if (level.space) { gl.uniform3f(u.uFog, 300, 1200, 0.5); gl.uniform1f(u.uHaze, 0); }
-      else if (level.canyon) { gl.uniform3f(u.uFog, 200, 1100, 0.7); gl.uniform1f(u.uHaze, 0.2); } else { gl.uniform3f(u.uFog, 75, 540, 0.94); gl.uniform1f(u.uHaze, 0.35); }
+      const [fog, haze] = level.fog ? [level.fog, level.haze ?? 0] : level.moon ? [[180, 840, 0.8], 0] : level.cylinder ? [[150, 950, 0.66], 0]
+        : level.space ? [[300, 1200, 0.5], 0] : level.canyon ? [[170, 960, 0.78], 0.24] : [[75, 540, 0.94], 0.35];
+      gl.uniform3fv(u.uFog, fog); gl.uniform1f(u.uHaze, haze);
+      gl.uniform1f(u.uLinear, post ? 1 : 0); gl.uniform3f(u.uRim, 0, 0, 0); gl.uniform1f(u.uGrime, 1); gl.uniform1f(u.uDim, level.dimLights || 0);
       const reactorPulse = 1 + 0.3 * Math.sin(time * 2.2), gatePulse = exitOpen() ? 1 + 0.35 * Math.sin(time * 5) : 0.15;
       boundMaterial = null;
       const seen = inView(camera);
@@ -9005,6 +9385,8 @@
         drawMesh(mesh, IDENTITY, 0, level.tint || WHITE, exposure);
         gl.uniform2f(u.uScroll, 0, 0); gl.uniform1f(u.uWater, 0);
       }
+      // Grime is laid in world space, so it stays off anything that moves.
+      gl.uniform1f(u.uGrime, 0);
       // Spinners: reactor columns pulse, rings and cubes turn.
       for (const spinner of spinners) {
         if (!seen(spinner.at, spinner.bound)) continue;
@@ -9036,11 +9418,22 @@
       for (const [model, flash, exposure] of liveBarrels) drawMesh(barrelMesh.lid, model, flash, WHITE, exposure);
       useMaterial(materials.drone);
       const glowing = [];
+      // A dead machine slumps and settles a little into its floor, burnt dark.
+      for (const husk of husks) {
+        const look = TARGET_LOOKS[husk.look], settle = Math.min(1, (time - husk.born) * 2.5);
+        if (!look || !near(husk.position, 300) || !seen(husk.position, 5)) continue;
+        if (look.material && materials[look.material]) useMaterial(materials[look.material]);
+        const at = [husk.position[0], husk.position[1] - 0.45 * husk.scale * settle, husk.position[2]];
+        drawMesh(look.mesh, modelMatrix(at, husk.yaw, husk.lean * settle, husk.scale * (1 - 0.08 * settle)), 0, [0.2, 0.17, 0.15], exposureAt(at));
+        if (look.material) useMaterial(materials.drone);
+      }
       for (const craft of sinking) {
         const look = TARGET_LOOKS[craft.look], at = [craft.position[0], craft.position[1] - craft.t * craft.t * 0.25, craft.position[2]];
         const model = modelMatrix(at, craft.yaw, Math.min(0.9, craft.t * 0.3), craft.scale);
         drawMesh(look.mesh, model, 0, [0.6, 0.6, 0.65], exposureAt(at));
       }
+      // Derelicts catch a faint cold rim of light, so their shapes hold against the dark.
+      gl.uniform3f(u.uRim, 0.1, 0.16, 0.22);
       level.dressing.forEach(([name, x, y, z, yaw, size], i) => {
         const wreck = WRECKS[name], at = [x, y, z];
         if (!wreck || !near(at, 1200) || !seen(at, dressBoxes[i].r)) return;
@@ -9052,6 +9445,7 @@
         }
         useMaterial(materials.drone);
       });
+      gl.uniform3f(u.uRim, 0, 0, 0);
       for (const [name, x, y, z, yaw] of level.dressing) {
         const look = TARGET_LOOKS[name], at = [x, y, z];
         if (!look || !near(at, 300) || !seen(at, 4)) continue;
@@ -9061,6 +9455,7 @@
         if (look.material) useMaterial(materials.drone);
         if (look.lit) glowing.push([look.lit, model, mul(look.glow, 0.6), 0]);
       }
+      const currentGoal = objectives[objectiveIndex], targetsNow = new Set(currentGoal?.kind === 'destroy' ? currentGoal.enemies : []);
       for (const enemy of enemies) {
         if (enemy.hp <= 0 || enemy.cloaked || !near(enemy.position, 400)) continue;
         const kind = ENEMY_TYPES[enemy.type];
@@ -9070,7 +9465,10 @@
         if (enemy.look) {
           const look = TARGET_LOOKS[enemy.look], model = modelMatrix(enemy.position, enemy.lookYaw ?? enemy.yaw, 0, kind.scale);
           if (look.material && materials[look.material]) useMaterial(materials[look.material]);
+          const wanted = targetsNow.has(enemy);
+          if (wanted) gl.uniform3f(u.uRim, 0.75, 0.55, 0.18);
           drawMesh(look.mesh, model, enemy.flash * 0.8, look.material ? [1, 1, 1] : [0.95, 0.95, 1.0], exposureAt(enemy.position));
+          if (wanted) gl.uniform3f(u.uRim, 0, 0, 0);
           if (look.material) useMaterial(materials.drone);
           if (look.lit) glowing.push([look.lit, model, look.glow, enemy.flash]);
           continue;
@@ -9103,19 +9501,20 @@
           pickup.type === 'missile' ? [1.3, 0.5, 0.85] : pickup.type === 'launcher' ? [0.8, 0.55, 1.6] : WHITE, exposureAt(pickup.position));
       }
 
-      const sprites = buildSprites(camera);
+      const sprites = buildSprites(camera, strike);
       if (sprites.length) {
         gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE); gl.depthMask(false);
         gl.useProgram(spriteProgram.program);
         gl.uniformMatrix4fv(spriteProgram.uniforms.uViewProj, false, viewProj);
         gl.uniform3fv(spriteProgram.uniforms.uCamera, camera.position);
-        gl.uniform1f(spriteProgram.uniforms.uCurve, curve); gl.uniform1f(spriteProgram.uniforms.uDatum, FLOOR);
+        gl.uniform1f(spriteProgram.uniforms.uCurve, curve); gl.uniform1f(spriteProgram.uniforms.uDatum, FLOOR); gl.uniform3fv(spriteProgram.uniforms.uFog, fog);
         gl.bindVertexArray(spriteMesh.vao); gl.bindBuffer(gl.ARRAY_BUFFER, spriteMesh.buffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(sprites), gl.DYNAMIC_DRAW);
         gl.drawArrays(gl.TRIANGLES, 0, sprites.length / 9);
         gl.disable(gl.BLEND); gl.depthMask(true);
       }
       gl.bindVertexArray(null);
+      if (post) post.finish();
     }
 
     function drawRadar() {
@@ -9382,6 +9781,8 @@
         explosions.push({ position: enemy.position.slice(), life: 0.65, scale: look?.burn ? 2 : 1.2 });
         sparks(enemy.position, 30, look ? look.glow : [0.4, 1.0, 0.9], 20); playExplosionSound();
         if (look?.burn) wrecks.push({ position: enemy.position.slice(), phase: enemy.phase });
+        if (look && !enemy.craft?.sinks) husks.push({ look: enemy.look, position: enemy.position.slice(), yaw: enemy.lookYaw ?? enemy.yaw, scale: ENEMY_TYPES.core.scale,
+          lean: (enemy.phase - 0.5) * 0.5, phase: enemy.phase, born: time });
         if (left) registerHit(`${enemy.title || 'DATA CORE'} DESTROYED // ${left} LEFT`);
         else for (const gate of gates) if (gate.kind === 'core') openGate(gate, 'ALL DATA CORES DOWN // WAY OPEN');
         return;
@@ -9999,7 +10400,7 @@
       let guarded = null;
       while (reach < 260) {
         const p = along(reach);
-        if (!freeAt(...p) || insideGirder(p) || (guarded = shieldStop(along(reach - 0.8), p))) break;
+        if (stopsShots(p) || (guarded = shieldStop(along(reach - 0.8), p))) break;
         reach += 0.8;
       }
       if (guarded) shieldBlocked(guarded);
@@ -10070,7 +10471,7 @@
         if (guarded) { shieldBlocked(guarded); detonateMissile(guarded.point, null, guarded.enemy); missiles.splice(i, 1); continue; }
         const struck = enemies.find(enemy => enemy.hp > 0 && !enemy.hacked && segmentHitsSphere(previous, missile.position, enemy.position, ENEMY_TYPES[enemy.type].radius + 0.6));
         const barrel = barrels.find(b => !b.exploded && segmentHitsSphere(previous, missile.position, b.position, 2.3));
-        const blocked = !freeAt(...missile.position) || insideGirder(missile.position);
+        const blocked = stopsShots(missile.position);
         if (struck || barrel || blocked || missile.life <= 0) {
           detonateMissile(blocked ? previous : missile.position, struck);
           missiles.splice(i, 1);
@@ -10089,7 +10490,7 @@
         if (Math.hypot(...sub(ship.position, missile.position)) < 70) warning = true;
         const hit = segmentHitsSphere(previous, missile.position, chasing, 1.8);
         if (hit) { if (chasing === wingman.position) hitWingman(2); else damage(18, 'MISSILE HIT'); }
-        if (hit || missile.life <= 0 || !freeAt(...missile.position) || insideGirder(missile.position)) {
+        if (hit || missile.life <= 0 || stopsShots(missile.position)) {
           explosions.push({ position: missile.position.slice(), life: 0.65, scale: 0.5 });
           sparks(missile.position, 12, [1.0, 0.4, 0.2], 14);
           if (!hit) playExplosionSound();
@@ -10400,7 +10801,7 @@
             hit = true; break;
           }
         }
-        if (!hit && (!freeAt(...shot.position) || insideGirder(shot.position))) {
+        if (!hit && stopsShots(shot.position)) {
           const gate = gateAt(shot.position);
           if (gate && gate.kind === 'secret') {
             gate.hp -= shot.damage; gate.flash = 1;
@@ -10420,7 +10821,7 @@
           enemyShots.splice(i,1);
         } else if (wingmanUp() && segmentHitsSphere(previous, shot.position, wingman.position, 1.8)) {
           hitWingman(1); enemyShots.splice(i, 1);
-        } else if (shot.life <= 0 || !freeAt(...shot.position) || insideGirder(shot.position)) {
+        } else if (shot.life <= 0 || stopsShots(shot.position)) {
           if (shot.life > 0) sparks(previous, 5, [1.0, 0.5, 0.2], 9);
           enemyShots.splice(i,1);
         }
@@ -10429,9 +10830,26 @@
       for (const gate of gates) {
         gate.flash = Math.max(0, gate.flash - dt * 4);
         for (const lock of gate.locks) lock.flash = Math.max(0, lock.flash - dt * 4);
+        // The first time a chained gate comes into view close by, say what opens it.
+        if (!gate.cued && !gate.opening) {
+          const live = gate.locks.filter(lock => lock.hp > 0);
+          if (live.length && live.some(lock => Math.hypot(...gapBetween(lock.position, ship.position)) < 45 && lineOfSight(lock.position))) {
+            gate.cued = true;
+            notice(live.length > 1 ? `CHAINED GATE // SHOOT THE ${live.length} LOCKS` : 'CHAINED GATE // SHOOT THE LOCK', 2);
+          }
+        }
         if (!gate.opening || gate.open >= 1) continue;
         gate.open = Math.min(1, gate.open + dt / 1.6);
         if (gate.open > 0.85) fillCells([gate.x0, gate.z0, gate.x1, gate.z1], i => { sealed[i] = 0; });
+      }
+      // On the exit leg the Requiem eases in behind the ship and follows it out.
+      if (level.escort && objectives[objectiveIndex]?.kind === 'exit') {
+        // It keeps station ahead and off to port, where the pilot can see it, and turns slowly to the ship's heading.
+        const heading = [Math.sin(ship.yaw), 0, Math.cos(ship.yaw)], right = [Math.cos(ship.yaw), 0, -Math.sin(ship.yaw)];
+        const want = add(add(ship.position, mul(heading, 150)), add(mul(right, -75), [0, 30, 0]));
+        if (!escort) escort = { at: add(want, mul(heading, -400)), along: heading };
+        escort.at = add(escort.at, mul(sub(want, escort.at), Math.min(1, dt * 0.45)));
+        escort.along = normalize(add(escort.along, mul(sub(heading, escort.along), Math.min(1, dt * 0.3))));
       }
       if (bossBlast) {
         bossBlast.timer -= dt; bossBlast.next -= dt;
@@ -10494,7 +10912,7 @@
       time += world;
       if (warpTimer === 0) sectorTime += dt;
       if (briefTimer > 0 && (briefTimer -= dt) <= 0) notice(level.brief, 4);
-      noticeTimer = Math.max(0, noticeTimer - dt);
+      noticeTimer = Math.max(0, noticeTimer - dt); storyTimer = Math.max(0, storyTimer - dt);
       setStyle(statusText, 'opacity', String(clamp(Math.max(hitTimer * 3, noticeTimer * 2), 0, 1)));
       if (warpTimer > 0) {
         // The gate pulls the ship in while the screen whites out, then the next sector loads.
