@@ -5713,7 +5713,7 @@
       in float vShade;
       uniform sampler2D uAlbedo;
       uniform sampler2D uDetail;
-      uniform vec3 uCamera, uSunDir, uSunColor, uSkyLight, uGroundLight, uFogColor, uHeadPos, uHeadDir, uTint;
+      uniform vec3 uCamera, uSunDir, uSunColor, uSkyLight, uGroundLight, uFogColor, uHeadPos, uHeadDir, uTint, uAverage;
       uniform float uFlash, uSpecular, uBump, uEmissive, uExposure, uHaze, uWater, uTime, uShine, uGrime, uLinear, uGlowVary, uContrast, uCrust, uDim;
       uniform vec3 uFog, uRim;
       uniform int uQuality;
@@ -5749,15 +5749,15 @@
           }
         }
         // Busy ground patterns (sand ripples, grass, brickwork) are eased towards their average colour.
-        if (uQuality > 0 && uContrast < 1.0) albedo = mix(textureLod(uAlbedo, vUv, 12.0).rgb * uTint, albedo, uContrast);
+        if (uQuality > 0 && uContrast < 1.0) albedo = mix(uAverage * uTint, albedo, uContrast);
         vec4 detail = texture(uDetail, vUv);
         vec3 n = normalize(vNormal), N = n;
         bool full = uQuality > 0;
         if (full) {
           // Against the texture's own average, a blurred sample at a sixth the scale makes a slow drift in brightness that hides
           // the repeat of every tile.
-          vec3 average = textureLod(uAlbedo, vUv, 12.0).rgb, broad = textureLod(uAlbedo, vUv * 0.163 + vec2(0.37, 0.71), 4.0).rgb;
-          float drift = dot(broad, vec3(0.3, 0.5, 0.2)) / max(dot(average, vec3(0.3, 0.5, 0.2)), 0.03);
+          vec3 broad = textureLod(uAlbedo, vUv * 0.163 + vec2(0.37, 0.71), 4.0).rgb;
+          float drift = dot(broad, vec3(0.3, 0.5, 0.2)) / max(dot(uAverage, vec3(0.3, 0.5, 0.2)), 0.03);
           albedo *= clamp(mix(1.0, drift, 0.45), 0.72, 1.3);
         }
         if (full) {
@@ -5782,13 +5782,14 @@
         float beam = smoothstep(0.78, 0.97, dot(-headL, uHeadDir)) * pow(clamp(1.0 - headDist / 95.0, 0.0, 1.0), 2.0);
         float headN = max(dot(N, headL), 0.0);
         diffuse += vec3(1.0, 0.92, 0.78) * 1.1 * headN * beam;
-        if (full) spec += vec3(1.0, 0.92, 0.78) * pow(max(dot(N, normalize(headL + V)), 0.0), shine * 1.25) * headN * beam;
+        if (full && beam > 0.0) spec += vec3(1.0, 0.92, 0.78) * pow(max(dot(N, normalize(headL + V)), 0.0), shine * 1.25) * headN * beam;
         for (int i = 0; i < 16; i++) {
           if (i >= uLightCount) break;
           vec3 L = uLights[i].xyz - vPos;
           float d = length(L);
           L /= max(d, 0.001);
           float fall = clamp(1.0 - d / uLights[i].w, 0.0, 1.0);
+          if (fall <= 0.0) continue;
           fall *= fall;
           float nl = max(dot(N, L), 0.0);
           diffuse += uLightColors[i] * nl * fall;
@@ -5827,7 +5828,7 @@
     const SKY_VS = `#version 300 es
       layout(location = 0) in vec2 aPos;
       out vec2 vNdc;
-      void main() { vNdc = aPos; gl_Position = vec4(aPos, 0.9999, 1.0); }`;
+      void main() { vNdc = aPos; gl_Position = vec4(aPos, 1.0, 1.0); }`;
     // Dusk sky with drifting clouds, a low sun, faint stars and a banded gas giant.
     const SKY_FS = `#version 300 es
       precision highp float;
@@ -6034,7 +6035,7 @@
     function createMesh(data, layout = SURFACE_LAYOUT, usage = gl.STATIC_DRAW) {
       const vao = gl.createVertexArray(), buffer = gl.createBuffer();
       gl.bindVertexArray(vao); gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), usage);
+      gl.bufferData(gl.ARRAY_BUFFER, data instanceof Float32Array ? data : new Float32Array(data), usage);
       for (const [location, size, offset] of layout) {
         gl.enableVertexAttribArray(location); gl.vertexAttribPointer(location, size, gl.FLOAT, false, 36, offset);
       }
@@ -6099,8 +6100,10 @@
     function ensureMaterials(names) {
       for (const name of names) {
         if (materials[name] || !textureFactories[name]) continue;
-        const texture = textureFactories[name](), [specular, bump, emissive] = MATERIAL_SETTINGS[name];
-        materials[name] = { name, specular, bump, emissive, shine: MATERIAL_SHINE[name] ?? 40, vary: MATERIAL_GLOW_VARY[name] ?? 0,
+        const texture = textureFactories[name](), [specular, bump, emissive] = MATERIAL_SETTINGS[name], average = [0, 0, 0];
+        for (let k = 0; k < texture.color.length; k += 4) { average[0] += texture.color[k]; average[1] += texture.color[k + 1]; average[2] += texture.color[k + 2]; }
+        for (let k = 0; k < 3; k++) average[k] /= texture.color.length / 4 * 255;
+        materials[name] = { name, specular, bump, emissive, average, shine: MATERIAL_SHINE[name] ?? 40, vary: MATERIAL_GLOW_VARY[name] ?? 0,
           contrast: MATERIAL_CONTRAST[name] ?? 1, crust: name === 'floorLava' ? 1 : 0,
           albedo: uploadTexture(texture.color, texture.w, texture.h), detail: uploadTexture(texture.normal, texture.w, texture.h) };
       }
@@ -6614,8 +6617,38 @@
       groups = levelGroups;
       return Object.entries(groups).map(([key, data]) => {
         const [name, covered] = key.split('|');
-        return { name, exposure: covered ? 0.3 : 1, mesh: createMesh(data) };
+        return { name, exposure: covered ? 0.3 : 1, mesh: tiledMesh(data) };
       });
+    }
+    // A level mesh is cut into square tiles of ground. Each tile is one run of triangles in the mesh's buffer with a ball
+    // round it, so a frame draws only the tiles that can show on screen, and draws the nearest first.
+    const TILE = CELL * 16;
+    function tiledMesh(data) {
+      const triangles = data.length / 27, slots = new Map(), slotOf = new Int32Array(triangles), sizes = [];
+      for (let t = 0; t < triangles; t++) {
+        const o = t * 27, x = (data[o] + data[o + 9] + data[o + 18]) / 3, z = (data[o + 2] + data[o + 11] + data[o + 20]) / 3;
+        const key = Math.floor((z - GRID_Z0) / TILE) * 4096 + Math.floor((x - GRID_X0) / TILE);
+        let slot = slots.get(key);
+        if (slot === undefined) { slot = sizes.length; slots.set(key, slot); sizes.push(0); }
+        slotOf[t] = slot; sizes[slot]++;
+      }
+      const starts = [], boxes = sizes.map(() => [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity]);
+      let total = 0;
+      for (const size of sizes) { starts.push(total); total += size; }
+      const sorted = new Float32Array(data.length), next = starts.slice();
+      for (let t = 0; t < triangles; t++) {
+        const slot = slotOf[t], from = t * 27, to = next[slot]++ * 27, box = boxes[slot];
+        for (let k = 0; k < 27; k++) sorted[to + k] = data[from + k];
+        for (let k = 0; k < 27; k += 9) for (let axis = 0; axis < 3; axis++) {
+          const v = data[from + k + axis];
+          if (v < box[axis]) box[axis] = v;
+          if (v > box[axis + 3]) box[axis + 3] = v;
+        }
+      }
+      // Each tile: its first vertex and vertex count, then the centre and radius of its ball.
+      const tiles = new Float32Array(sizes.length * 6);
+      boxes.forEach(([x0, y0, z0, x1, y1, z1], k) => tiles.set([starts[k] * 3, sizes[k] * 3, (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2, Math.hypot(x1 - x0, y1 - y0, z1 - z0) / 2], k * 6));
+      return { ...createMesh(sorted), tiles };
     }
     function buildBarrel() {
       const side = [], lid = [], sides = 20, r = 1.7, h = 3.6;
@@ -8900,47 +8933,101 @@
       gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, material.detail);
       gl.uniform1f(u.uSpecular, material.specular); gl.uniform1f(u.uBump, material.bump); gl.uniform1f(u.uEmissive, material.emissive * pulse);
       gl.uniform1f(u.uShine, material.shine); gl.uniform1f(u.uGlowVary, material.vary); gl.uniform1f(u.uContrast, material.contrast); gl.uniform1f(u.uCrust, material.crust);
+      gl.uniform3fv(u.uAverage, material.average);
     }
     function drawMesh(mesh, model = IDENTITY, flash = 0, tint = WHITE, exposure = 1) {
       const u = surfaceProgram.uniforms;
       gl.uniformMatrix4fv(u.uModel, false, model); gl.uniform1f(u.uFlash, flash); gl.uniform3fv(u.uTint, tint); gl.uniform1f(u.uExposure, exposure);
       gl.bindVertexArray(mesh.vao); gl.drawArrays(gl.TRIANGLES, 0, mesh.count);
     }
+    // The nearest lights are kept in order as they are offered, so a frame builds no lists and sorts nothing.
+    const lightSpots = new Float32Array(64), lightColors = new Float32Array(48), lightGaps = new Float32Array(16);
+    let lightCount = 0, lightLimit = 0, lightEye = null;
+    function offerLight(p, radius, r, g, b) {
+      let dx = p[0] - lightEye[0];
+      if (wrapCells) dx -= AROUND * Math.round(dx / AROUND);
+      const dy = p[1] - lightEye[1], dz = p[2] - lightEye[2], gap = dx * dx + dy * dy + dz * dz, reach = radius + 160;
+      if (gap >= reach * reach) return;
+      let k = lightCount;
+      if (k === lightLimit) { if (gap >= lightGaps[k - 1]) return; k--; } else lightCount++;
+      for (; k > 0 && lightGaps[k - 1] > gap; k--) {
+        lightGaps[k] = lightGaps[k - 1];
+        lightSpots.copyWithin(k * 4, k * 4 - 4, k * 4); lightColors.copyWithin(k * 3, k * 3 - 3, k * 3);
+      }
+      lightGaps[k] = gap;
+      lightSpots[k * 4] = p[0]; lightSpots[k * 4 + 1] = p[1]; lightSpots[k * 4 + 2] = p[2]; lightSpots[k * 4 + 3] = radius;
+      lightColors[k * 3] = r; lightColors[k * 3 + 1] = g; lightColors[k * 3 + 2] = b;
+    }
+    const BOLT_TINT = [0.35, 0.9, 1.0];
     function gatherLights(camera) {
-      const list = [];
-      for (const shot of shots) list.push([shot.position, 16, shot.kind === 'plasma' ? [0.9, 0.35, 1.0] : mul(shot.tint || [0.35, 0.9, 1.0], 0.8)]);
-      for (const rail of rails) list.push([rail.to, 30, mul([0.5, 0.85, 1.0], rail.life / 0.22 * 2)]);
-      for (const shot of enemyShots) list.push([shot.position, 12, [1.0, 0.4, 0.15]]);
-      for (const missile of missiles) list.push([missile.position, 14, [1.0, 0.55, 0.2]]);
-      for (const missile of enemyMissiles) list.push([missile.position, 14, [1.0, 0.25, 0.15]]);
-      for (const explosion of explosions) { const k = explosion.life / 0.65; list.push([explosion.position, (26 + 24 * (1 - k)) * explosion.scale, [2.1 * k, 1.05 * k, 0.32 * k]]); }
-      if (muzzleTimer > 0) list.push([add(ship.position, mul(camera.view.forward, 2)), 24, mul([0.4, 0.85, 1.0], muzzleTimer / 0.12 * 1.5)]);
-      for (const enemy of enemies) if (enemy.hp > 0 && !enemy.cloaked) { const kind = ENEMY_TYPES[enemy.type]; list.push([enemy.position, 10 * kind.scale, mul(kind.eye, 0.85)]); }
-      for (const pickup of pickups) if (!pickup.taken) list.push([pickup.position, 13, PICKUP_COLORS[pickup.type]]);
-      for (const gate of gates) for (const lock of gate.locks) if (lock.hp > 0) list.push([lock.position, 9, [1.0, 0.35, 0.15]]);
-      if (exitOpen()) list.push([exitCenter(), 45, [0.22, 0.85, 0.5]]);
-      for (const spinner of spinners) if (spinner.kind === 'core') list.push([spinner.at, spinner.radius * 7, [0.45, 0.8, 1.5]]);
-      for (const laser of lasers) if (laserState(laser) === 'on') { const [a, b] = laser.beams[0]; list.push([mul(add(a, b), 0.5), 26, [1.2, 0.2, 0.15]]); }
-      const near = list.map(light => [light, dot(gapBetween(light[0], camera.position), gapBetween(light[0], camera.position))])
-        .filter(([light, d]) => d < (light[1] + 160) ** 2).sort((a, b) => a[1] - b[1]).slice(0, GRAPHICS[graphics].lights).map(([light]) => light);
-      const positions = new Float32Array(64), colors = new Float32Array(48);
-      near.forEach(([position, radius, color], i) => { positions.set([...position, radius], i * 4); colors.set(color, i * 3); });
-      return { positions, colors, count: near.length };
+      lightCount = 0; lightLimit = GRAPHICS[graphics].lights; lightEye = camera.position;
+      for (const shot of shots) {
+        if (shot.kind === 'plasma') offerLight(shot.position, 16, 0.9, 0.35, 1.0);
+        else { const tint = shot.tint || BOLT_TINT; offerLight(shot.position, 16, tint[0] * 0.8, tint[1] * 0.8, tint[2] * 0.8); }
+      }
+      for (const rail of rails) { const k = rail.life / 0.22 * 2; offerLight(rail.to, 30, 0.5 * k, 0.85 * k, k); }
+      for (const shot of enemyShots) offerLight(shot.position, 12, 1.0, 0.4, 0.15);
+      for (const missile of missiles) offerLight(missile.position, 14, 1.0, 0.55, 0.2);
+      for (const missile of enemyMissiles) offerLight(missile.position, 14, 1.0, 0.25, 0.15);
+      for (const explosion of explosions) { const k = explosion.life / 0.65; offerLight(explosion.position, (26 + 24 * (1 - k)) * explosion.scale, 2.1 * k, 1.05 * k, 0.32 * k); }
+      if (muzzleTimer > 0) { const k = muzzleTimer / 0.12 * 1.5; offerLight(add(ship.position, mul(camera.view.forward, 2)), 24, 0.4 * k, 0.85 * k, k); }
+      for (const enemy of enemies) if (enemy.hp > 0 && !enemy.cloaked) { const kind = ENEMY_TYPES[enemy.type], eye = kind.eye; offerLight(enemy.position, 10 * kind.scale, eye[0] * 0.85, eye[1] * 0.85, eye[2] * 0.85); }
+      for (const pickup of pickups) if (!pickup.taken) { const color = PICKUP_COLORS[pickup.type]; offerLight(pickup.position, 13, color[0], color[1], color[2]); }
+      for (const gate of gates) for (const lock of gate.locks) if (lock.hp > 0) offerLight(lock.position, 9, 1.0, 0.35, 0.15);
+      if (exitOpen()) offerLight(exitCenter(), 45, 0.22, 0.85, 0.5);
+      for (const spinner of spinners) if (spinner.kind === 'core') offerLight(spinner.at, spinner.radius * 7, 0.45, 0.8, 1.5);
+      for (const laser of lasers) if (laserState(laser) === 'on') { const [a, b] = laser.beams[0]; offerLight(mul(add(a, b), 0.5), 26, 1.2, 0.2, 0.15); }
+      return { positions: lightSpots, colors: lightColors, count: lightCount };
+    }
+    // Glows are written straight into one buffer that grows as needed, so a frame of them makes no garbage.
+    let spriteData = new Float32Array(54 * 512), spriteFloats = 0;
+    function spriteRoom(floats) {
+      if (spriteFloats + floats <= spriteData.length) return;
+      const bigger = new Float32Array(Math.max(spriteData.length * 2, spriteFloats + floats));
+      bigger.set(spriteData.subarray(0, spriteFloats)); spriteData = bigger;
+    }
+    function spriteVertex(x, y, z, u, v, color, alpha) {
+      const d = spriteData, o = spriteFloats;
+      d[o] = x; d[o + 1] = y; d[o + 2] = z; d[o + 3] = u; d[o + 4] = v; d[o + 5] = color[0]; d[o + 6] = color[1]; d[o + 7] = color[2]; d[o + 8] = alpha;
+      spriteFloats = o + 9;
     }
     function buildSprites(camera, strike = 0) {
-      const data = [];
-      const quad = (corners, uvs, color, alpha) => { for (const i of [0, 1, 2, 0, 2, 3]) data.push(...corners[i], ...uvs[i], ...color, alpha); };
-      const billboard = (position, size, color, alpha) => {
-        const r = mul(camera.view.right, size), u = mul(camera.view.up, size);
-        quad([sub(sub(position, r), u), sub(add(position, r), u), add(add(position, r), u), add(sub(position, r), u)], [[0, 0], [1, 0], [1, 1], [0, 1]], color, alpha);
+      spriteFloats = 0;
+      const [rx, ry, rz] = camera.view.right, [ux, uy, uz] = camera.view.up, [ex, ey, ez] = camera.position;
+      const quad = (corners, uvs, color, alpha) => {
+        spriteRoom(54);
+        for (let k = 0; k < 6; k++) { const i = k < 3 ? k : k === 3 ? 0 : k - 2; spriteVertex(corners[i][0], corners[i][1], corners[i][2], uvs[i][0], uvs[i][1], color, alpha); }
       };
+      // A square facing the camera; `u0` picks the kind of glow the shader draws in it.
+      const facing = (position, size, color, alpha, u0) => {
+        spriteRoom(54);
+        const x = position[0], y = position[1], z = position[2], ax = rx * size, ay = ry * size, az = rz * size, bx = ux * size, by = uy * size, bz = uz * size;
+        spriteVertex(x - ax - bx, y - ay - by, z - az - bz, u0, 0, color, alpha);
+        spriteVertex(x + ax - bx, y + ay - by, z + az - bz, u0 + 1, 0, color, alpha);
+        spriteVertex(x + ax + bx, y + ay + by, z + az + bz, u0 + 1, 1, color, alpha);
+        spriteVertex(x - ax - bx, y - ay - by, z - az - bz, u0, 0, color, alpha);
+        spriteVertex(x + ax + bx, y + ay + by, z + az + bz, u0 + 1, 1, color, alpha);
+        spriteVertex(x - ax + bx, y - ay + by, z - az + bz, u0, 1, color, alpha);
+      };
+      const billboard = (position, size, color, alpha) => facing(position, size, color, alpha, 0);
       const streak = (a, b, w, color, alpha) => {
-        const axis = sub(b, a), length = Math.hypot(...axis);
+        let dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2];
+        const length = Math.sqrt(dx * dx + dy * dy + dz * dz);
         if (length < 0.0001) return;
-        const along = mul(axis, 1 / length), side = cross(along, sub(camera.position, a)), sideLength = Math.hypot(...side);
+        dx /= length; dy /= length; dz /= length;
+        const tx = ex - a[0], ty = ey - a[1], tz = ez - a[2];
+        let sx = dy * tz - dz * ty, sy = dz * tx - dx * tz, sz = dx * ty - dy * tx;
+        const sideLength = Math.sqrt(sx * sx + sy * sy + sz * sz);
         if (sideLength < 0.0001) return;
-        const offset = mul(side, w / sideLength), start = sub(a, mul(along, w)), end = add(b, mul(along, w));
-        quad([sub(start, offset), sub(end, offset), add(end, offset), add(start, offset)], [[2, 0], [3, 0], [3, 1], [2, 1]], color, alpha);
+        sx *= w / sideLength; sy *= w / sideLength; sz *= w / sideLength;
+        const x0 = a[0] - dx * w, y0 = a[1] - dy * w, z0 = a[2] - dz * w, x1 = b[0] + dx * w, y1 = b[1] + dy * w, z1 = b[2] + dz * w;
+        spriteRoom(54);
+        spriteVertex(x0 - sx, y0 - sy, z0 - sz, 2, 0, color, alpha);
+        spriteVertex(x1 - sx, y1 - sy, z1 - sz, 3, 0, color, alpha);
+        spriteVertex(x1 + sx, y1 + sy, z1 + sz, 3, 1, color, alpha);
+        spriteVertex(x0 - sx, y0 - sy, z0 - sz, 2, 0, color, alpha);
+        spriteVertex(x1 + sx, y1 + sy, z1 + sz, 3, 1, color, alpha);
+        spriteVertex(x0 + sx, y0 + sy, z0 + sz, 2, 1, color, alpha);
       };
       const seen = inView(camera), nearby = (position, limit) => { const d = gapBetween(position, camera.position); return dot(d, d) < limit * limit && seen(position, 14); };
       for (const beacon of beacons) {
@@ -9185,10 +9272,7 @@
         streak(boltTail(shot, 0.06), shot.position, width, shot.tint || [0.35, 0.9, 1.0], 1.6);
         billboard(shot.position, width * 2, [0.8, 1.0, 1.0], 1.2);
       }
-      const disc = (position, size, color, alpha) => {
-        const r = mul(camera.view.right, size), u = mul(camera.view.up, size);
-        quad([sub(sub(position, r), u), sub(add(position, r), u), add(add(position, r), u), add(sub(position, r), u)], [[4, 0], [5, 0], [5, 1], [4, 1]], color, alpha);
-      };
+      const disc = (position, size, color, alpha) => facing(position, size, color, alpha, 4);
       const ring = (center, radius, color, alpha) => {
         const r = mul(camera.view.right, radius), u = mul(camera.view.up, radius);
         let last = add(center, r);
@@ -9282,7 +9366,7 @@
           billboard(start, 3, [0.6, 0.9, 1.0], 0.9);
         }
       }
-      return data;
+      return spriteFloats;
     }
     // Where a point appears once a moon's curve is applied (the shaders' bend), seen from `eye`.
     let curve = 0;
@@ -9337,6 +9421,47 @@
         return reach > 0 && square - along * along <= reach * reach;
       };
     }
+    // Picks the tiles of a level mesh that can show on screen into drawFirsts and drawCounts, nearest first, and returns how
+    // many. A tile's ball is tested against the four sides of the view and its far end.
+    const MAX_TILES = 8192, FAR = 900;
+    const drawFirsts = new Int32Array(MAX_TILES), drawCounts = new Int32Array(MAX_TILES), drawGaps = new Float32Array(MAX_TILES);
+    const multiDraw = gl.getExtension('WEBGL_multi_draw');
+    function tilePicker(camera) {
+      const focal = focalLength(), kx = width / 2 / focal, ky = height / 2 / focal, slackX = Math.sqrt(1 + kx * kx), slackY = Math.sqrt(1 + ky * ky);
+      const [cx, cy, cz] = camera.position, [fx, fy, fz] = camera.view.forward, [rx, ry, rz] = camera.view.right, [ux, uy, uz] = camera.view.up;
+      // A curved world stretches things a little as it bends them: most at a moon's top, or in a hollow of a cylinder's floor.
+      const stretch = curve > 0 ? 1 + (WALL_TOP - FLOOR) * curve : curve < 0 ? 1.25 : 1;
+      return (tiles) => {
+        let count = 0;
+        for (let t = 0; t < tiles.length && count < MAX_TILES; t += 6) {
+          let x = tiles[t + 2], y = tiles[t + 3], z = tiles[t + 4];
+          const radius = tiles[t + 5] * stretch;
+          if (curve > 0) {
+            // The same bend the shaders apply (see `bend`), without making a point for it.
+            const ox = x - cx, oz = z - cz, flat = Math.sqrt(ox * ox + oz * oz);
+            if (flat > 0.001) { const world = 1 / curve, r = world + y - FLOOR, a = Math.min(flat * curve, 3.1), along = r * Math.sin(a) / flat; x = cx + ox * along; z = cz + oz * along; y = FLOOR - world + r * Math.cos(a); }
+          } else if (curve < 0) {
+            const world = -1 / curve, ox = x - cx - AROUND * Math.round((x - cx) / AROUND), a = ox / world, r = world - (y - FLOOR);
+            x = cx + r * Math.sin(a); y = FLOOR + world - r * Math.cos(a);
+          }
+          const dx = x - cx, dy = y - cy, dz = z - cz, along = dx * fx + dy * fy + dz * fz;
+          if (along < -radius || along - radius > FAR) continue;
+          if (dx * dx + dy * dy + dz * dz > radius * radius &&
+            (Math.abs(dx * rx + dy * ry + dz * rz) - along * kx > radius * slackX || Math.abs(dx * ux + dy * uy + dz * uz) - along * ky > radius * slackY)) continue;
+          let k = count++;
+          for (; k > 0 && drawGaps[k - 1] > along; k--) { drawGaps[k] = drawGaps[k - 1]; drawFirsts[k] = drawFirsts[k - 1]; drawCounts[k] = drawCounts[k - 1]; }
+          drawGaps[k] = along; drawFirsts[k] = tiles[t]; drawCounts[k] = tiles[t + 1];
+        }
+        return count;
+      };
+    }
+    function drawTiles(mesh, count, tint, exposure) {
+      const u = surfaceProgram.uniforms;
+      gl.uniformMatrix4fv(u.uModel, false, IDENTITY); gl.uniform1f(u.uFlash, 0); gl.uniform3fv(u.uTint, tint); gl.uniform1f(u.uExposure, exposure);
+      gl.bindVertexArray(mesh.vao);
+      if (multiDraw) multiDraw.multiDrawArraysWEBGL(gl.TRIANGLES, drawFirsts, 0, drawCounts, 0, count);
+      else for (let k = 0; k < count; k++) gl.drawArrays(gl.TRIANGLES, drawFirsts[k], drawCounts[k]);
+    }
     // Lightning: once in each stretch of eight to fourteen seconds a stroke lights the clouds, flickering twice.
     function lightningNow() {
       if (!level.weather?.lightning) return 0;
@@ -9349,18 +9474,7 @@
       if (post) { post.ensure(world.width, world.height); gl.bindFramebuffer(gl.FRAMEBUFFER, post.msaa); }
       gl.viewport(0, 0, world.width, world.height);
       gl.clear(gl.DEPTH_BUFFER_BIT);
-      gl.disable(gl.DEPTH_TEST); gl.depthMask(false); gl.disable(gl.BLEND);
-      gl.useProgram(skyProgram.program);
-      const s = skyProgram.uniforms;
-      gl.uniform3fv(s.uForward, camera.view.forward); gl.uniform3fv(s.uRight, camera.view.right); gl.uniform3fv(s.uUp, camera.view.up);
-      gl.uniform2f(s.uSpread, width / 2 / focal, height / 2 / focal); gl.uniform3fv(s.uSunDir, sky.sunDir);
-      gl.uniform3fv(s.uFogColor, mul(sky.fog, 1 + strike * 2.2)); gl.uniform3fv(s.uZenith, add(sky.zenith, mul([0.35, 0.4, 0.55], strike))); gl.uniform1f(s.uTime, time);
-      const planet = level.planet;
-      gl.uniform3fv(s.uPlanetDir, planet.dir); gl.uniform3fv(s.uPlanetA, planet.a); gl.uniform3fv(s.uPlanetB, planet.b); gl.uniform1f(s.uPlanetSize, planet.size); gl.uniform1i(s.uQuality, GRAPHICS[graphics].detail);
-      gl.uniform1f(s.uAirless, level.space ? 2 : level.moon ? 1 : 0); gl.uniform1f(s.uVeil, sky.veil || 0);
-      gl.bindVertexArray(skyMesh); gl.drawArrays(gl.TRIANGLES, 0, 3);
-
-      gl.enable(gl.DEPTH_TEST); gl.depthMask(true);
+      gl.enable(gl.DEPTH_TEST); gl.depthMask(true); gl.disable(gl.BLEND);
       gl.useProgram(surfaceProgram.program);
       const u = surfaceProgram.uniforms, lights = gatherLights(camera);
       gl.uniformMatrix4fv(u.uViewProj, false, viewProj);
@@ -9376,14 +9490,18 @@
       gl.uniform1f(u.uLinear, post ? 1 : 0); gl.uniform3f(u.uRim, 0, 0, 0); gl.uniform1f(u.uGrime, 1); gl.uniform1f(u.uDim, level.dimLights || 0);
       const reactorPulse = 1 + 0.3 * Math.sin(time * 2.2), gatePulse = exitOpen() ? 1 + 0.35 * Math.sin(time * 5) : 0.15;
       boundMaterial = null;
-      const seen = inView(camera);
+      const seen = inView(camera), pickTiles = tilePicker(camera);
+      gl.uniform2f(u.uScroll, 0, 0);
       for (const { name, exposure, mesh } of levelMeshes) {
+        const count = pickTiles(mesh.tiles);
+        if (!count) continue;
         useMaterial(materials[name], name === 'reactor' ? reactorPulse : name === 'exitFrame' ? gatePulse : 1);
+        const flows = name === 'floorSludge' || name === 'floorLava' || name === 'floorWater';
         if (name === 'floorSludge') gl.uniform2f(u.uScroll, time * 0.012, time * 0.02);
         if (name === 'floorLava') gl.uniform2f(u.uScroll, time * 0.006, time * 0.01);
         if (name === 'floorWater') { gl.uniform2f(u.uScroll, time * 0.01, -time * 0.016); gl.uniform1f(u.uWater, 1); }
-        drawMesh(mesh, IDENTITY, 0, level.tint || WHITE, exposure);
-        gl.uniform2f(u.uScroll, 0, 0); gl.uniform1f(u.uWater, 0);
+        drawTiles(mesh, count, level.tint || WHITE, exposure);
+        if (flows) { gl.uniform2f(u.uScroll, 0, 0); gl.uniform1f(u.uWater, 0); }
       }
       // Grime is laid in world space, so it stays off anything that moves.
       gl.uniform1f(u.uGrime, 0);
@@ -9501,16 +9619,29 @@
           pickup.type === 'missile' ? [1.3, 0.5, 0.85] : pickup.type === 'launcher' ? [0.8, 0.55, 1.6] : WHITE, exposureAt(pickup.position));
       }
 
+      // The sky goes in last among the solid things, on the far plane, so it is only worked out where it shows.
+      gl.depthFunc(gl.LEQUAL); gl.depthMask(false);
+      gl.useProgram(skyProgram.program);
+      const s = skyProgram.uniforms;
+      gl.uniform3fv(s.uForward, camera.view.forward); gl.uniform3fv(s.uRight, camera.view.right); gl.uniform3fv(s.uUp, camera.view.up);
+      gl.uniform2f(s.uSpread, width / 2 / focal, height / 2 / focal); gl.uniform3fv(s.uSunDir, sky.sunDir);
+      gl.uniform3fv(s.uFogColor, mul(sky.fog, 1 + strike * 2.2)); gl.uniform3fv(s.uZenith, add(sky.zenith, mul([0.35, 0.4, 0.55], strike))); gl.uniform1f(s.uTime, time);
+      const planet = level.planet;
+      gl.uniform3fv(s.uPlanetDir, planet.dir); gl.uniform3fv(s.uPlanetA, planet.a); gl.uniform3fv(s.uPlanetB, planet.b); gl.uniform1f(s.uPlanetSize, planet.size); gl.uniform1i(s.uQuality, GRAPHICS[graphics].detail);
+      gl.uniform1f(s.uAirless, level.space ? 2 : level.moon ? 1 : 0); gl.uniform1f(s.uVeil, sky.veil || 0);
+      gl.bindVertexArray(skyMesh); gl.drawArrays(gl.TRIANGLES, 0, 3);
+      gl.depthFunc(gl.LESS); gl.depthMask(true);
+
       const sprites = buildSprites(camera, strike);
-      if (sprites.length) {
+      if (sprites) {
         gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE); gl.depthMask(false);
         gl.useProgram(spriteProgram.program);
         gl.uniformMatrix4fv(spriteProgram.uniforms.uViewProj, false, viewProj);
         gl.uniform3fv(spriteProgram.uniforms.uCamera, camera.position);
         gl.uniform1f(spriteProgram.uniforms.uCurve, curve); gl.uniform1f(spriteProgram.uniforms.uDatum, FLOOR); gl.uniform3fv(spriteProgram.uniforms.uFog, fog);
         gl.bindVertexArray(spriteMesh.vao); gl.bindBuffer(gl.ARRAY_BUFFER, spriteMesh.buffer);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(sprites), gl.DYNAMIC_DRAW);
-        gl.drawArrays(gl.TRIANGLES, 0, sprites.length / 9);
+        gl.bufferData(gl.ARRAY_BUFFER, spriteData, gl.DYNAMIC_DRAW, 0, sprites);
+        gl.drawArrays(gl.TRIANGLES, 0, sprites / 9);
         gl.disable(gl.BLEND); gl.depthMask(true);
       }
       gl.bindVertexArray(null);
