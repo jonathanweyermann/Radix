@@ -364,6 +364,7 @@
     //   weather: { rain, lightning, motes: [r, g, b] }: rain driven past the ship, lightning in the clouds now and then,
     //     or motes (spores, ash, dust) drifting round it
     //   flames: [x, y, z, size] fires burning in place, such as a flare stack's lip
+    //   fumes: false leaves out the smoke, vapour, mist and steam that floors of lava, sludge, water, cave ice and vents give off
     //   feeds: [{ title, to: [x, y, z] or axis: [x, z] or up: height, color or spectrum, width }] beams of power running from
     //     every live target with that title to a point (or straight across to an upright line at its own height, or straight
     //     up), each going out as its target dies; `spectrum` gives each source its own hue
@@ -4774,6 +4775,27 @@
     // Laser grids: beams stacked every 3.2 units across a passage, on for the first half of each period and
     // flickering a warning just before they come back on. Vents are listed so their updrafts can be drawn.
     const lasers = [], vents = [];
+    // Fumes rise wherever the floor gives them off: smoke and embers over lava, vapour over sludge, mist over water and
+    // in ice caves, steam off the vents. Each is [x, y, z, kind, number, shade]; a sector sets `fumes: false` to go without.
+    let fumes = [];
+    const FUME_KINDS = { lava: 0.09, sludge: 0.07, water: 0.025, ice: 0.03, vent: 0.2 };
+    function findFumes(def) {
+      const list = [];
+      if (def.space || def.moon || def.fumes === false) return list;
+      for (let gz = 0; gz < GRID_D; gz++) for (let gx = 0; gx < GRID_W; gx++) {
+        const i = gz * GRID_W + gx, material = open[i] - 1;
+        if (!open[i] || sealed[i]) continue;
+        const lake = wet[i] ? (def.terrain.liquid === 'floorLava' ? 'lava' : def.terrain.liquid === 'floorIce' ? null : 'water') : null;
+        const kind = lake || (material === LAVA ? 'lava' : material === SLUDGE ? 'sludge' : material === WATER ? 'water' : material === VENT ? 'vent'
+          : material === ICE && ceilY[i] < WALL_TOP && !natural[i] ? 'ice' : null);
+        if (!kind || hashInt(gx, gz, 77) > FUME_KINDS[kind]) continue;
+        const shade = !def.lit && ceilY[i] < WALL_TOP ? 0.5 : 1;
+        list.push([GRID_X0 + (gx + 0.5) * CELL, floorY[i], GRID_Z0 + (gz + 0.5) * CELL, kind, list.length, shade]);
+      }
+      // A wide sea or lava field keeps an even scatter of them.
+      const keep = Math.max(1, Math.ceil(list.length / 700));
+      return keep > 1 ? list.filter((fume, k) => k % keep === 0) : list;
+    }
     let laserCooldown = 0;
     function setupHazards(def) {
       lasers.length = 0; vents.length = 0;
@@ -5926,15 +5948,31 @@
       }
       // Glows fade into the same fog as the surfaces round them.
       void main() { vUv = aUv; vColor = aColor; vFog = clamp(smoothstep(uFog.x * 0.8, uFog.y, distance(aPos, uCamera)) * (uFog.z + 0.1), 0.0, 1.0); gl_Position = uViewProj * vec4(bend(aPos), 1.0); }`;
-    // Additive glows; streak quads carry u in [2, 3] so they fade across their width only.
+    // Additive glows; streak quads carry u in [2, 3] so they fade across their width only. Quads with u in [6, 7] are puffs
+    // of smoke, steam or mist: they cover what is behind them instead of adding to it, with a ragged edge that differs
+    // from puff to puff (v carries twice a puff's number as well as its place across the quad).
     const SPRITE_FS = `#version 300 es
       precision highp float;
       in vec2 vUv;
       in vec4 vColor;
       in float vFog;
+      uniform vec3 uFogColor;
       out vec4 outColor;
+      float hash2(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float vnoise(vec2 p) {
+        vec2 i = floor(p), f = fract(p), u = f * f * (3.0 - 2.0 * f);
+        return mix(mix(hash2(i), hash2(i + vec2(1.0, 0.0)), u.x), mix(hash2(i + vec2(0.0, 1.0)), hash2(i + vec2(1.0, 1.0)), u.x), u.y);
+      }
       void main() {
         float glow;
+        if (vUv.x > 5.5) {
+          float seed = floor(vUv.y * 0.5);
+          vec2 p = vec2(vUv.x - 6.0, vUv.y - seed * 2.0) * 2.0 - 1.0;
+          float ragged = vnoise(p * 1.6 + seed * 7.3) * 0.65 + vnoise(p * 3.9 - seed * 3.1) * 0.35;
+          float cover = vColor.a * smoothstep(1.0, 0.1, dot(p, p) + (ragged - 0.5) * 0.9) * (1.0 - vFog * 0.6);
+          outColor = vec4(mix(vColor.rgb * (0.8 + 0.4 * ragged), uFogColor, vFog * 0.85) * cover, cover);
+          return;
+        }
         if (vUv.x > 3.5) {
           // A shield disc: a faint fill under a honeycomb of glowing lines, with a bright rim.
           vec2 p = vec2((vUv.x - 4.5) * 2.0, vUv.y * 2.0 - 1.0);
@@ -5955,7 +5993,7 @@
           float r = dot(p, p);
           glow = (exp(-r * 7.0) + exp(-r * 2.2) * 0.35) * (1.0 - smoothstep(0.75, 1.0, r));
         }
-        outColor = vec4(vColor.rgb * vColor.a * glow * (1.0 - vFog * 0.9), 1.0);
+        outColor = vec4(vColor.rgb * vColor.a * glow * (1.0 - vFog * 0.9), 0.0);
       }`;
 
     // The post pass: the scene is drawn linear into a multisampled half-float buffer, resolved, and then put on screen
@@ -8242,6 +8280,7 @@
       radarEdges.length = 0; beacons.length = 0;
       curve = level.moon ? 1 / level.moon.radius : level.cylinder ? -1 / AXIS : 0;
       levelMeshes = buildLevel(level);
+      fumes = findFumes(level);
       ensureMaterials(levelMeshes.map(mesh => mesh.name));
       for (const spinner of spinners) for (const mesh of spinner.meshes) if (mesh) { gl.deleteBuffer(mesh.buffer); gl.deleteVertexArray(mesh.vao); }
       spinners = (level.spinners || []).map(buildSpinner);
@@ -8999,17 +9038,58 @@
         for (let k = 0; k < 6; k++) { const i = k < 3 ? k : k === 3 ? 0 : k - 2; spriteVertex(corners[i][0], corners[i][1], corners[i][2], uvs[i][0], uvs[i][1], color, alpha); }
       };
       // A square facing the camera; `u0` picks the kind of glow the shader draws in it.
-      const facing = (position, size, color, alpha, u0) => {
+      const facing = (position, size, color, alpha, u0, v0 = 0) => {
         spriteRoom(54);
         const x = position[0], y = position[1], z = position[2], ax = rx * size, ay = ry * size, az = rz * size, bx = ux * size, by = uy * size, bz = uz * size;
-        spriteVertex(x - ax - bx, y - ay - by, z - az - bz, u0, 0, color, alpha);
-        spriteVertex(x + ax - bx, y + ay - by, z + az - bz, u0 + 1, 0, color, alpha);
-        spriteVertex(x + ax + bx, y + ay + by, z + az + bz, u0 + 1, 1, color, alpha);
-        spriteVertex(x - ax - bx, y - ay - by, z - az - bz, u0, 0, color, alpha);
-        spriteVertex(x + ax + bx, y + ay + by, z + az + bz, u0 + 1, 1, color, alpha);
-        spriteVertex(x - ax + bx, y - ay + by, z - az + bz, u0, 1, color, alpha);
+        spriteVertex(x - ax - bx, y - ay - by, z - az - bz, u0, v0, color, alpha);
+        spriteVertex(x + ax - bx, y + ay - by, z + az - bz, u0 + 1, v0, color, alpha);
+        spriteVertex(x + ax + bx, y + ay + by, z + az + bz, u0 + 1, v0 + 1, color, alpha);
+        spriteVertex(x - ax - bx, y - ay - by, z - az - bz, u0, v0, color, alpha);
+        spriteVertex(x + ax + bx, y + ay + by, z + az + bz, u0 + 1, v0 + 1, color, alpha);
+        spriteVertex(x - ax + bx, y - ay + by, z - az + bz, u0, v0 + 1, color, alpha);
       };
       const billboard = (position, size, color, alpha) => facing(position, size, color, alpha, 0);
+      const gapOk = (dx, dz, limit) => dx * dx + dz * dz < limit * limit;
+      // Puffs: each is thinned as the camera comes up to it, so flying through one never fills the view, and fades out at
+      // the edge of its range. They are drawn before the glows, farthest first, so nearer ones cover farther ones.
+      const puffs = [], rich = GRAPHICS[graphics].detail, haze = level.sky.fog;
+      const puff = (x, y, z, size, color, alpha, number, range = 170) => {
+        let dx = x - ex; const dy = y - ey, dz = z - ez;
+        if (wrapCells) dx -= AROUND * Math.round(dx / AROUND);
+        const gap = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        const cover = alpha * clamp((gap - size * 0.5) / (size * 1.5), 0, 1) * clamp((range - gap) / 40, 0, 1);
+        if (cover > 0.004) puffs.push([gap, x, y, z, size, color, cover, number]);
+      };
+      // A column of puffs climbing from `at`, swelling and thinning as they rise.
+      const plume = (at, count, height, speed, size, grow, color, alpha, number, range) => {
+        for (let k = 0; k < count; k++) {
+          const rise = (time * speed / height + k / count + number * 0.37) % 1, y = at[1] + rise * height;
+          const x = at[0] + Math.sin(rise * 4 + k * 2.3 + number) * size * (0.3 + rise) + rise * height * 0.12, z = at[2] + Math.cos(rise * 3.1 + k * 1.7 + number * 2) * size * (0.3 + rise);
+          puff(x, y, z, size + rise * grow, color, alpha * Math.min(1, rise * 6) * (1 - rise) ** 1.3, number * 8 + k, range);
+        }
+      };
+      const SMOKE = [0.1, 0.095, 0.09], FUME = [0.36, 0.2, 0.12], STEAM = [0.62, 0.66, 0.7], mist = mul(haze, 1.15), VAPOUR = [0.3, 0.42, 0.16], EMBER = [1.0, 0.5, 0.14];
+      for (const [x, y, z, kind, number, shade] of fumes) {
+        const dx = x - ex - (wrapCells ? AROUND * Math.round((x - ex) / AROUND) : 0), dz = z - ez;
+        if (dx * dx + dz * dz > 175 * 175 || (!rich && number % 2)) continue;
+        const sway = time * 0.11 + number * 1.3, at = [x, y, z];
+        if (kind === 'lava') {
+          plume(at, 3, 30, 2.6, 4, 9, mul(FUME, shade), 0.46, number);
+          // Embers lift off the melt and wink out.
+          for (let k = 0; k < 2; k++) {
+            const rise = (time * 0.22 + k / 2 + number * 0.61) % 1;
+            if (gapOk(dx, dz, 110)) billboard([x + Math.sin(rise * 7 + number + k) * 3, y + 0.5 + rise * 20, z + Math.cos(rise * 5 + number * 2 + k) * 3], 0.16 + 0.1 * (1 - rise), EMBER, 1.5 * (1 - rise));
+          }
+        } else if (kind === 'vent') plume(at, 4, 34, 13, 2.4, 7, mul(STEAM, shade), 0.36, number);
+        else if (kind === 'sludge') {
+          puff(x + Math.sin(sway) * 4, y + 1.6, z + Math.cos(sway * 0.8) * 4, 8 + 2 * Math.sin(sway * 1.7), mul(VAPOUR, shade), 0.36 + 0.08 * Math.sin(sway * 2.3), number);
+          plume(at, 2, 14, 1.1, 2, 4, mul(VAPOUR, shade * 1.2), 0.32, number);
+        } else {
+          // Mist lies low over water and along the floors of ice caves, drifting slowly.
+          const lift = kind === 'ice' ? 1.6 : 2.2, size = kind === 'ice' ? 11 : 15;
+          puff(x + Math.sin(sway) * 6, y + lift, z + Math.cos(sway * 0.7) * 6, size + 3 * Math.sin(sway * 1.3), mul(mist, shade), (kind === 'ice' ? 0.32 : 0.3) + 0.06 * Math.sin(sway * 2.1), number);
+        }
+      }
       const streak = (a, b, w, color, alpha) => {
         let dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2];
         const length = Math.sqrt(dx * dx + dy * dy + dz * dz);
@@ -9062,6 +9142,7 @@
           const rise = (time * 9 + (wreck.phase + k / 3) * 14) % 14, x = wreck.position[0] + (k - 1) * 1.4, z = wreck.position[2] + Math.sin(k * 2.1 + wreck.phase) * 1.2;
           streak([x, wreck.position[1] + rise, z], [x, wreck.position[1] + rise + 2.6, z], 0.5 * (1 - rise / 14), [1.0, 0.55, 0.2], 1.4 * (1 - rise / 14));
         }
+        plume(add(wreck.position, [0, 3, 0]), 5, 46, 5, 3, 11, SMOKE, 0.5, Math.round(wreck.phase * 97), 260);
       }
       // Standing fires: a flickering heart and tongues of flame climbing off it.
       const fire = (at, size, seed) => {
@@ -9073,6 +9154,7 @@
           const x = at[0] + Math.sin(k * 2.4 + seed * 5 + time * 3) * size * 0.18, z = at[2] + Math.cos(k * 1.9 + seed * 3 + time * 2.6) * size * 0.18;
           streak([x, at[1] + rise, z], [x, at[1] + rise + size * 0.3, z], size * 0.14 * (1 - r), [1.0, 0.6 - r * 0.3, 0.2], 1.6 * (1 - r));
         }
+        plume(add(at, [0, size * 0.9, 0]), 4, size * 7, size * 0.8, size * 0.45, size * 1.6, SMOKE, 0.42, Math.round(seed * 53), 420);
       };
       (level.flames || []).forEach(([x, y, z, size], i) => { if (nearby([x, y, z], 600)) fire([x, y, z], size, i * 0.37); });
       // Power feeds: a beam from each live source to where it is fed, and a glow there that dims as the sources fall.
@@ -9160,11 +9242,7 @@
         if (!nearby(husk.position, 220)) continue;
         const age = time - husk.born, fade = Math.max(0.25, 1 - age / 40);
         billboard(husk.position, 2.2, [1.0, 0.32, 0.08], 0.35 * fade * (0.8 + 0.2 * Math.sin(time * 7 + husk.phase * 9)));
-        for (let k = 0; k < 3; k++) {
-          const rise = (time * 3.2 + (husk.phase + k / 3) * 12) % 12, x = husk.position[0] + Math.sin(k * 2.3 + husk.phase * 5 + rise * 0.25) * 1.1;
-          const z = husk.position[2] + Math.cos(k * 1.7 + husk.phase * 3 + rise * 0.2) * 1.1;
-          billboard([x, husk.position[1] + 1 + rise, z], 1.2 + rise * 0.35, [0.5, 0.48, 0.45], 0.09 * fade * (1 - rise / 12));
-        }
+        plume(add(husk.position, [0, 1, 0]), 3, 16, 3, 1.3, 4.5, mul(SMOKE, exposureAt(husk.position) < 1 ? 0.8 : 1.5), 0.4 * fade, Math.round(husk.phase * 89), 220);
         if (Math.sin(time * 1.3 + husk.phase * 20) > 0.97) streak(husk.position, add(husk.position, [Math.sin(time * 40) * 1.5, 1.8, Math.cos(time * 37) * 1.5]), 0.08, [1.0, 0.75, 0.4], 1.5);
       }
       const sentinel = enemies.find(e => e.type === 'sentinel' && e.hp > 0), herald = enemies.find(e => e.type === 'herald' && e.hp > 0);
@@ -9341,6 +9419,7 @@
         billboard(explosion.position, size, [1.0, 0.45, 0.12], (1 - k) * 1.4);
         billboard(explosion.position, size * 0.55, [1.0, 0.85, 0.5], (1 - k) ** 2 * 2);
         billboard(add(explosion.position, [0, k * 4, 0]), (3 + k * 9) * explosion.scale, [0.9, 0.3, 0.08], (1 - k) * 0.8);
+        puff(explosion.position[0], explosion.position[1] + k * 5, explosion.position[2], (3 + k * 8) * explosion.scale, SMOKE, 0.5 * Math.sin(Math.PI * Math.min(1, k * 1.15)), Math.round(explosion.position[0] * 7 + explosion.position[2]) & 255, 300);
       }
       for (const spark of particles) streak(sub(spark.position, mul(spark.velocity, 0.035)), spark.position, 0.12, spark.color, spark.life / spark.maxLife * 2);
       // A cylinder's sun is a line of light down its axis: drawn at axis height it bends onto the axis from anywhere.
@@ -9365,6 +9444,16 @@
           }
           billboard(start, 3, [0.6, 0.9, 1.0], 0.9);
         }
+      }
+      if (puffs.length) {
+        // The glows were written first; the puffs go in front of them in the buffer, farthest first.
+        puffs.sort((a, b) => b[0] - a[0]);
+        const glows = spriteFloats, size = puffs.length * 54;
+        spriteRoom(size);
+        spriteData.copyWithin(size, 0, glows);
+        spriteFloats = 0;
+        for (const [, x, y, z, radius, color, cover, number] of puffs) facing([x, y, z], radius, color, cover, 6, number * 2);
+        spriteFloats = glows + size;
       }
       return spriteFloats;
     }
@@ -9634,8 +9723,9 @@
 
       const sprites = buildSprites(camera, strike);
       if (sprites) {
-        gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE); gl.depthMask(false);
+        gl.enable(gl.BLEND); gl.blendFuncSeparate(gl.ONE, gl.ONE_MINUS_SRC_ALPHA, gl.ZERO, gl.ONE); gl.depthMask(false);
         gl.useProgram(spriteProgram.program);
+        gl.uniform3fv(spriteProgram.uniforms.uFogColor, mul(sky.fog, 1 + strike * 2.2));
         gl.uniformMatrix4fv(spriteProgram.uniforms.uViewProj, false, viewProj);
         gl.uniform3fv(spriteProgram.uniforms.uCamera, camera.position);
         gl.uniform1f(spriteProgram.uniforms.uCurve, curve); gl.uniform1f(spriteProgram.uniforms.uDatum, FLOOR); gl.uniform3fv(spriteProgram.uniforms.uFog, fog);
@@ -11197,7 +11287,7 @@
         return { peak: +peak.toFixed(3), rms: +Math.sqrt(sum / data.length).toFixed(3) };
       }, exitCenter, exitOpen, step(seconds) { for (let t = 0; t < seconds; t += 1 / 60) update(1 / 60); }, ship, enemies, shots, enemyShots, bend, unbend, damage, ranks, timers, waits, wells, wingman, usePower, dashShip, flipShip, resetPowers, showUpgrades, enemyMissiles, barrels, pickups, gates, addEnemy, openGate, hurtEnemy, resetGame, insideGirder, startSector, render, cells: { open, floorY, ceilY, roofY, underY, cellIndex, freeAt, cutOn, cutTo, warpOn, ownerOf, ventAt }, get level() { return level; }, get health() { return health; }, set health(v) { health = v; }, get phoenixReady() { return phoenixReady; }, get dashCharges() { return dashCharges; }, get time() { return time; }, get firing() { return mouseFiring; }, set firing(v) { mouseFiring = v; }, get boosting() { return boostFrom !== null; }, get objective() { return objectiveIndex; }, get mapOpen() { return mapOpen; }, set mapOpen(v) { mapOpen = v; },
         // For the autopilot (tools/playtest): flight inputs, collision and objective state, and a way past the menus.
-        debugFlags, touch, keys, shipFits, lineOfSight, objectiveSpot, sealed, zoneAt, get objectives() { return objectives; }, get levelIndex() { return levelIndex; },
+        debugFlags, touch, keys, shipFits, lineOfSight, objectiveSpot, sealed, zoneAt, get objectives() { return objectives; }, get fumes() { return fumes; }, get levelIndex() { return levelIndex; },
         get grid() { return { x0: GRID_X0, z0: GRID_Z0, w: GRID_W, d: GRID_D, cell: CELL, top: WALL_TOP, spaceFloor }; }, get shield() { return shield; },
         get destroyed() { return destroyed; }, get warping() { return warpTimer > 0; }, get sectorTime() { return sectorTime; }, get kills() { return kills; },
         get weaponLevel() { return weaponLevel; }, get missileAmmo() { return missileAmmo; }, get notice() { return statusText.textContent; },
